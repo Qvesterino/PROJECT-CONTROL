@@ -1,0 +1,38 @@
+"""Duplicate file detector for PROJECT CONTROL."""
+
+from __future__ import annotations
+
+from itertools import combinations
+from typing import Any, Dict, List, Tuple
+
+
+def detect_duplicates(snapshot: Dict[str, Any]) -> List[Tuple[str, str]]:
+    """
+    Detect files sharing the same base name but located in different directories.
+
+    Args:
+        snapshot: Scan snapshot that provides a ``files`` list with ``path`` strings.
+
+    Returns:
+        Tuple pairs representing duplicate candidates.
+    """
+    buckets: Dict[str, List[str]] = {}
+    for file in snapshot.get("files", []):
+        path = file.get("path")
+        if not path:
+            continue
+
+        stem = path.rsplit("/", 1)[-1].lower()
+        buckets.setdefault(stem, []).append(path)
+
+    duplicates: List[Tuple[str, str]] = []
+    for paths in buckets.values():
+        if len(paths) < 2:
+            continue
+        for pair in combinations(paths, 2):
+            duplicates.append(pair)
+
+    return duplicates
+
+
+analyze = detect_duplicates

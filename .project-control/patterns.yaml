@@ -1,0 +1,21 @@
+entrypoints:
+- main.js
+- index.ts
+writers:
+- scale
+- emissive
+- opacity
+- position
+
+ignore_dirs:
+  - .git
+  - .project-control
+  - node_modules
+  - __pycache__
+
+extensions:
+  - .py
+  - .js
+  - .ts
+  - .md
+  - .txt

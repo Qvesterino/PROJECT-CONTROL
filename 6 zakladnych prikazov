@@ -1,0 +1,284 @@
+PROJECT CONTROL v1 – CLI DESIGN
+
+Názov binárky:
+
+pc
+
+
+(alebo project-control, ale pc je sexy, krátke, zapamätateľné)
+
+ZÁKLADNÁ FILOZOFIA
+
+Každý projekt má svoj:
+
+.project-control/
+
+
+A v ňom:
+
+snapshot.json
+
+status.yaml
+
+patterns.yaml
+
+exports/
+
+Žiadne mazanie kódu.
+Len čítanie + generovanie reportov.
+
+CLI v1 – 6 príkazov
+
+Minimalistické. Silné. Jasné.
+
+1️⃣ pc init
+
+Inicializuje kontrolný priečinok.
+
+pc init
+
+
+Vytvorí:
+
+.project-control/
+  snapshot.json
+  status.yaml
+  patterns.yaml
+  exports/
+
+
+patterns.yaml default:
+
+writers:
+  - "scale"
+  - "emissive"
+  - "opacity"
+  - "position"
+
+entrypoints:
+  - "main.js"
+  - "index.ts"
+
+2️⃣ pc scan
+
+Vytvorí snapshot projektu.
+
+pc scan
+
+
+Urobí:
+
+file tree
+
+file size
+
+modified time
+
+extension
+
+Výstup:
+
+.snapshot.json
+
+Formát:
+
+{
+  "generated_at": "2026-02-13T09:12:00",
+  "file_count": 452,
+  "files": [
+    {
+      "path": "src/AINodes.js",
+      "size": 28492,
+      "modified": "2026-02-10T18:32:11"
+    }
+  ]
+}
+
+3️⃣ pc checklist
+
+Generuje Markdown checklist.
+
+pc checklist
+
+
+Výstup:
+
+.project-control/exports/checklist.md
+
+
+Obsah:
+
+# PROJECT CHECKLIST
+
+- [ ] src/AINodes.js
+- [ ] src/NodeLinkingSystem.js
+- [ ] src/NodeAuraSystem.js
+
+
+Ak existuje status.yaml, priradí tagy:
+
+- [ ] src/AINodes.js  # CORE
+- [ ] src/NodeAuraSystem.js  # LEGACY
+
+4️⃣ pc find <symbol>
+
+Wrapper nad ripgrep.
+
+pc find NodeAuraSystem
+
+
+Výstup:
+
+.project-control/exports/find_NodeAuraSystem.md
+
+
+Obsah:
+
+# Usage of: NodeAuraSystem
+
+## src/main.js
+Line 1123: this.nodeAuraSystem = new NodeAuraSystem()
+
+## src/NodeAuraSystem.js
+Definition
+
+
+Deterministické. Bez AI.
+
+5️⃣ pc ghost
+
+Hľadá súbory bez referencií.
+
+pc ghost
+
+
+Logika:
+
+prejde snapshot
+
+pre každý súbor hľadá referencie cez ripgrep
+
+ak 0 → kandidat ghost
+
+Výstup:
+
+# Ghost Candidates
+
+- src/NodeAuraSystem_legacy.js
+- src/OldSpawnSystem.js
+
+6️⃣ pc writers
+
+Toto je killer feature.
+
+pc writers
+
+
+Prejde patterns.yaml:
+
+writers:
+  - "scale"
+  - "emissive"
+  - "opacity"
+
+
+Spustí rg a vypíše všetky miesta, kde sa tieto parametre mutujú.
+
+Výstup:
+
+# Writer Report
+
+## scale
+
+src/AINodes.js: 832
+src/NodeVisualStateBinder.js: 221
+
+## emissive
+
+src/AINodes.js: 912
+
+
+A zrazu máš:
+
+Single Writer Audit.
+
+Prečo je toto silné
+
+Lebo to rieši presne to, čo ťa ničilo v Atome:
+
+Kto píše do scale?
+
+Kto inicializuje NodeAura?
+
+Ktoré súbory sú ghost?
+
+Koľko toho vlastne je?
+
+Toto je kontrola.
+
+Architektúra implementácie
+
+Najrýchlejšie:
+
+Python CLI:
+
+argparse
+
+subprocess → ripgrep
+
+json
+
+yaml
+
+Distribúcia:
+
+pip install project-control
+
+
+Alebo len:
+
+python pc.py scan
+
+
+MVP = jeden súbor pc.py
+
+A teraz najdôležitejšia vec
+
+Toto je projekt, ktorý:
+
+buduje skill
+
+má reálny use-case
+
+rieši reálny problém
+
+je nezávislý od hry
+
+ATOMA môže byť:
+
+case study.
+
+PROJECT CONTROL môže byť:
+
+produkt.
+
+Embedding – finálne stanovisko pre v1
+
+Nepotrebujeme.
+
+Ripgrep je:
+
+rýchly
+
+vysvetliteľný
+
+stabilný
+
+nulové náklady
+
+Embedding dáme do v2 ako:
+
+pc semantic-find "spawn system"
+
+
+Ale až keď core funguje.
