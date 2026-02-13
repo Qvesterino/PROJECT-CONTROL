@@ -1,26 +1,10 @@
 {
-  "generated_at": "2026-02-13T20:14:44.037693+00:00",
-  "file_count": 15,
+  "file_count": 17,
   "files": [
     {
-      "path": "navod.md",
-      "size": 2180,
-      "modified": "2026-02-13T19:50:53.984117+00:00"
-    },
-    {
-      "path": "NAVRH.md",
-      "size": 2651,
-      "modified": "2026-02-13T10:29:58.236912+00:00"
-    },
-    {
-      "path": "navrhovane vystupy.md",
-      "size": 147,
-      "modified": "2026-02-13T19:52:40.385424+00:00"
-    },
-    {
       "path": "pc.py",
-      "size": 7056,
-      "modified": "2026-02-13T18:31:18.418421+00:00"
+      "size": 4820,
+      "modified": "2026-02-13T21:09:18.315926+00:00"
     },
     {
       "path": "analysis\\duplicate_detector.py",
@@ -54,8 +38,8 @@
     },
     {
       "path": "core\\markdown_renderer.py",
-      "size": 1227,
-      "modified": "2026-02-13T20:12:19.280232+00:00"
+      "size": 1855,
+      "modified": "2026-02-13T21:08:31.971690+00:00"
     },
     {
       "path": "core\\scanner.py",
@@ -64,18 +48,44 @@
     },
     {
       "path": "core\\snapshot.py",
-      "size": 0,
-      "modified": "2026-02-13T19:35:42.412920+00:00"
+      "size": 500,
+      "modified": "2026-02-13T20:44:00.181376+00:00"
     },
     {
-      "path": "core\\writters.py",
-      "size": 0,
-      "modified": "2026-02-13T19:35:32.701023+00:00"
+      "path": "core\\writers.py",
+      "size": 403,
+      "modified": "2026-02-13T20:37:39.565779+00:00"
+    },
+    {
+      "path": "documentation\\navod.md",
+      "size": 2180,
+      "modified": "2026-02-13T19:50:53.984117+00:00"
+    },
+    {
+      "path": "documentation\\NAVRH.md",
+      "size": 2635,
+      "modified": "2026-02-13T21:27:59.206423+00:00"
+    },
+    {
+      "path": "documentation\\navrhovane vystupy.md",
+      "size": 544,
+      "modified": "2026-02-13T21:27:38.354190+00:00"
+    },
+    {
+      "path": "documentation\\\u010cO ROBI \u010cO.md",
+      "size": 3097,
+      "modified": "2026-02-13T21:02:35.640128+00:00"
+    },
+    {
+      "path": "documentation\\\u0161truktura projektu.md",
+      "size": 486,
+      "modified": "2026-02-13T21:29:41.017099+00:00"
     },
     {
       "path": "utils\\fs_helpers.py",
       "size": 989,
       "modified": "2026-02-13T20:08:05.822490+00:00"
     }
-  ]
+  ],
+  "generated_at": "2026-02-13T21:33:05.339479+00:00"
 }

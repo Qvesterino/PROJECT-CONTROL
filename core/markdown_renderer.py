@@ -30,6 +30,17 @@ def render_ghost_report(result: Dict[str, Any], output_path: str) -> None:
         output_path: When sanitized, path where the markdown should be written.
     """
     report_lines = ["# Smart Ghost Report", ""]
+    report_lines.extend(
+        [
+            "## Summary",
+            "",
+            f"- Orphans: {len(result.get('orphans', []))}",
+            f"- Legacy snippets: {len(result.get('legacy', []))}",
+            f"- Session files: {len(result.get('session', []))}",
+            f"- Duplicates: {len(result.get('duplicates', []))}",
+            "",
+        ]
+    )
 
     for key, heading in SECTION_ORDER:
         section_items = result.get(key, [])

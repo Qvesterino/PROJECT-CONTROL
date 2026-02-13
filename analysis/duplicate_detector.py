@@ -6,7 +6,7 @@ from itertools import combinations
 from typing import Any, Dict, List, Tuple
 
 
-def detect_duplicates(snapshot: Dict[str, Any]) -> List[Tuple[str, str]]:
+def detect_duplicates(snapshot: Dict[str, Any], patterns: Dict[str, Any]) -> List[Tuple[str, str]]:
     """
     Detect files sharing the same base name but located in different directories.
 

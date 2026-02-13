@@ -58,13 +58,9 @@ generuje checklist.md (Markdown task list)
 umožní “tagovať” veci:
 
 CORE
-
 LEGACY
-
 GHOST
-
 DISABLED
-
 REVIEW
 
 V1 to môže byť jednoduchý súbor:
