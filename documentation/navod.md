@@ -13,22 +13,24 @@ V termináli napíš:
 python pc.py ghost --mode pragmatic --stats
 python pc.py ghost --mode strict --deep --stats
 
-*scan ATOMA* :==>     `python "D:\PROJECT_CONTROL\pc.py" scan`
+*scan ATOMA* :==>     `python "D:\PROJECT_CONTROL\pc.py" scan` (vytvori snapshot.json)
 
 *ghost ATOMA* :==>     `python "D:\PROJECT_CONTROL\pc.py" ghost`
 
  *strict ghost* :==>     `python D:\PROJECT_CONTROL\pc.py ghost --mode strict`
  *pragmatic ghost* :==>     `python D:\PROJECT_CONTROL\pc.py ghost --mode pragmatic`
  *deep ghost* :==>     `python D:\PROJECT_CONTROL\pc.py ghost --mode strict --deep`
+
 *fast pragmatic ghost*  ==> `python D:\PROJECT_CONTROL\pc.py ghost --mode pragmatic`
 *fast strict ghost*     ==> `python D:\PROJECT_CONTROL\pc.py ghost --mode strict`
 
-*deep strict ghost*     ==> `python D:\PROJECT_CONTROL\pc.py ghost --mode strict --deep`
+*deep strict ghost*     ==> `python D:\PROJECT_CONTROL\pc.py ghost --mode strict --deep` (vytvorí import_graph_orphans.md)
 *deep pragmatic ghost*  ==> `python D:\PROJECT_CONTROL\pc.py ghost --mode pragmatic --deep`
-*Fast stats*      ==>    `python D:\PROJECT_CONTROL\pc.py ghost --mode pragmatic --stats`
-*Deep stats*       ==>`python D:\PROJECT_CONTROL\ pc.py ghost --mode strict --deep --stats`
 
+*Fast stats*      ==>    `python D:\PROJECT_CONTROL\pc.py ghost --mode pragmatic --stats` (vytvori v terminaly rýchlu štatistiku)
+*Deep stats*       ==>`python D:\PROJECT_CONTROL\pc.py ghost --mode strict --deep --stats`
 
+python D:\PROJECT_CONTROL\pc.py ghost --mode pragmatic --deep --tree-only
 pc.py
    ↓
 core/ghost.py

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
 from typing import List, TypedDict
 
@@ -12,9 +13,12 @@ class FileEntry(TypedDict):
     path: str
     size: int
     modified: str
+    sha256: str
 
 
 class Snapshot(TypedDict):
+    snapshot_version: int
+    snapshot_id: str
     file_count: int
     files: List[FileEntry]
 
@@ -35,7 +39,21 @@ def scan_project(project_root: str, ignore_dirs: List[str], extensions: List[str
     ignore_set = set(ignore_dirs or [])
     ext_set = set(extensions or [])
 
-    snapshot: Snapshot = {"file_count": 0, "files": []}
+    timestamp = datetime.now(timezone.utc)
+    snapshot_id = f"{timestamp.strftime('%Y-%m-%dT%H-%M-%S')}__{sha256(timestamp.isoformat().encode()).hexdigest()[:6]}"
+    snapshot: Snapshot = {
+        "snapshot_version": 1,
+        "snapshot_id": snapshot_id,
+        "file_count": 0,
+        "files": [],
+    }
+
+    def file_sha256(path: Path) -> str:
+        hasher = sha256()
+        with path.open("rb") as f:
+            while chunk := f.read(8192):
+                hasher.update(chunk)
+        return hasher.hexdigest()
 
     for root, dirs, files in os.walk(root_path):
         # In-place filter to prevent walking ignored directories
@@ -54,6 +72,7 @@ def scan_project(project_root: str, ignore_dirs: List[str], extensions: List[str
                     "path": str(path.relative_to(root_path)),
                     "size": stat.st_size,
                     "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+                    "sha256": file_sha256(path),
                 }
             )
 

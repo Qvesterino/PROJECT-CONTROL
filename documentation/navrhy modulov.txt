@@ -1,0 +1,40 @@
+Builder Control Panel
+Modul 1
+
+Folder scan
+
+file count
+
+size
+
+tree
+
+Modul 2
+
+Checklist generator
+
+Modul 3
+
+ripgrep UI
+
+search usage
+
+dependency hints
+
+Modul 4
+
+AI Audit
+
+dead system candidates
+
+duplicate logic
+
+“too many writers” warning
+
+Modul 5
+
+System status
+
+NodeAuraSystem → Disabled
+NodeVisualBinder → Active
+LegacySpawn → Suspicious

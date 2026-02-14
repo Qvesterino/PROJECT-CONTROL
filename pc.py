@@ -19,6 +19,7 @@ from core.ghost import analyze_ghost
 from core.markdown_renderer import SEVERITY_MAP, render_ghost_report, render_writer_report
 from core.writers import run_writers_analysis
 from utils.fs_helpers import run_rg
+from analysis.tree_renderer import render_tree
 
 PROJECT_DIR = Path.cwd()
 CONTROL_DIR = PROJECT_DIR / ".project-control"
@@ -161,10 +162,41 @@ def cmd_ghost(args: argparse.Namespace) -> None:
             print(f"Ghost limits exceeded: {label}({severity})={counts[key]} > {limit_label}={limit_value}")
             raise SystemExit(2)
 
-    output_path = EXPORTS_DIR / "ghost_candidates.md"
-    render_ghost_report(result, str(output_path), include_graph=args.deep)
+    import_graph_saved = False
+    if args.deep:
+        graph_report_path = EXPORTS_DIR / "import_graph_orphans.md"
+        graph_orphans = result.get("graph_orphans", [])
+        graph_lines = [
+            "# Import Graph Orphans",
+            "",
+            "## Legend",
+            "(Directory tree based on import graph reachability)",
+            "",
+            "# NOTE",
+            "This report is static-import based.",
+            "Dynamic runtime wiring (FrameScheduler, registries, side-effects) is not detected.",
+            "",
+        ]
+        if not args.tree_only:
+            for path in graph_orphans:
+                graph_lines.append(f"- {path}")
+        graph_report_path.write_text("\n".join(graph_lines).rstrip() + "\n", encoding="utf-8")
 
-    print(f"Smart ghost report saved: {output_path}")
+        if graph_orphans:
+            tree_output = render_tree(graph_orphans)
+            with graph_report_path.open("a", encoding="utf-8") as f:
+                f.write("\n## Tree View\n\n")
+                f.write(f"Total import graph orphans: {len(graph_orphans)}\n\n")
+                f.write(tree_output)
+        import_graph_saved = True
+
+    output_path = EXPORTS_DIR / "ghost_candidates.md"
+    render_ghost_report(result, str(output_path))
+
+    if not (args.deep and args.tree_only):
+        print(f"Smart ghost report saved: {output_path}")
+    if import_graph_saved:
+        print(f"Import graph report saved: {graph_report_path}")
 
 
 def cmd_writers(args: argparse.Namespace) -> None:
@@ -198,6 +230,11 @@ def main() -> None:
         "--stats",
         action="store_true",
         help="Print only statistics without generating markdown report",
+    )
+    ghost_parser.add_argument(
+        "--tree-only",
+        action="store_true",
+        help="Write only the tree view section to import_graph_orphans.md (no flat list)",
     )
     ghost_parser.add_argument(
         "--mode",
