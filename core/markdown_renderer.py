@@ -6,22 +6,36 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Sequence
 
 
-SECTION_ORDER: Sequence[tuple[str, str]] = (
+BASE_SECTIONS: Sequence[tuple[str, str]] = (
     ("orphans", "Orphans"),
     ("legacy", "Legacy snippets"),
     ("session", "Session files"),
     ("duplicates", "Duplicates"),
 )
 
+GRAPH_SECTION = ("graph_orphans", "Import graph orphans")
 
-def _format_list(title: str, items: Iterable[Any]) -> str:
+SEVERITY_MAP: Dict[str, str] = {
+    "graph_orphans": "CRITICAL",
+    "orphans": "HIGH",
+    "legacy": "MEDIUM",
+    "session": "LOW",
+    "duplicates": "INFO",
+}
+
+
+def _format_list(title: str, items: Iterable[Any], severity: str) -> str:
     if not items:
-        return f"### {title}\n\n_No entries found._\n\n"
+        return f"### {title} [{severity}]\n\n_No entries found._\n\n"
     body = "\n".join(f"- {item}" for item in items)
-    return f"### {title}\n\n{body}\n\n"
+    return f"### {title} [{severity}]\n\n{body}\n\n"
 
 
-def render_ghost_report(result: Dict[str, Any], output_path: str) -> None:
+def render_ghost_report(
+    result: Dict[str, Any],
+    output_path: str,
+    include_graph: bool = False,
+) -> None:
     """
     Build a grouped markdown report and persist it to disk.
 
@@ -30,21 +44,33 @@ def render_ghost_report(result: Dict[str, Any], output_path: str) -> None:
         output_path: When sanitized, path where the markdown should be written.
     """
     report_lines = ["# Smart Ghost Report", ""]
-    report_lines.extend(
+    summary = [
+        "## Summary",
+        "",
+    ]
+    if include_graph:
+        summary.append(
+            f"- Import graph orphans ({SEVERITY_MAP['graph_orphans']}): {len(result.get('graph_orphans', []))}"
+        )
+    summary.extend(
         [
-            "## Summary",
-            "",
-            f"- Orphans: {len(result.get('orphans', []))}",
-            f"- Legacy snippets: {len(result.get('legacy', []))}",
-            f"- Session files: {len(result.get('session', []))}",
-            f"- Duplicates: {len(result.get('duplicates', []))}",
+            f"- Orphans ({SEVERITY_MAP['orphans']}): {len(result.get('orphans', []))}",
+            f"- Legacy snippets ({SEVERITY_MAP['legacy']}): {len(result.get('legacy', []))}",
+            f"- Session files ({SEVERITY_MAP['session']}): {len(result.get('session', []))}",
+            f"- Duplicates ({SEVERITY_MAP['duplicates']}): {len(result.get('duplicates', []))}",
             "",
         ]
     )
+    report_lines.extend(summary)
 
-    for key, heading in SECTION_ORDER:
+    sections = list(BASE_SECTIONS)
+    if include_graph:
+        sections.insert(0, GRAPH_SECTION)
+
+    for key, heading in sections:
         section_items = result.get(key, [])
-        report_lines.append(_format_list(heading, section_items))
+        severity = SEVERITY_MAP.get(key, "INFO")
+        report_lines.append(_format_list(heading, section_items, severity))
 
     report_text = "\n".join(report_lines).rstrip() + "\n"
     Path(output_path).write_text(report_text, encoding="utf-8")

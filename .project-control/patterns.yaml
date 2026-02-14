@@ -17,5 +17,11 @@ extensions:
   - .py
   - .js
   - .ts
-  - .md
-  - .txt
+
+
+graph_ignore_patterns:
+  - Debug
+  - Diagnostics
+  - Example
+  - _SNIPPET
+  - _EXAMPLES

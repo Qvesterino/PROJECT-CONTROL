@@ -16,7 +16,7 @@ from config.patterns_loader import load_patterns
 from core.scanner import scan_project
 from core.snapshot import load_snapshot
 from core.ghost import analyze_ghost
-from core.markdown_renderer import render_ghost_report, render_writer_report
+from core.markdown_renderer import SEVERITY_MAP, render_ghost_report, render_writer_report
 from core.writers import run_writers_analysis
 from utils.fs_helpers import run_rg
 
@@ -32,6 +32,20 @@ DEFAULT_PATTERNS = {
     "entrypoints": ["main.js", "index.ts"],
     "ignore_dirs": [".git", ".project-control", "node_modules", "__pycache__"],
     "extensions": [".py", ".js", ".ts", ".md", ".txt"],
+}
+
+SECTION_DISPLAY_NAMES = {
+    "orphans": "Orphans",
+    "legacy": "Legacy snippets",
+    "session": "Session files",
+    "duplicates": "Duplicates",
+}
+
+SECTION_LIMIT_ARGS = {
+    "orphans": ("max-high", "max_high"),
+    "legacy": ("max-medium", "max_medium"),
+    "session": ("max-low", "max_low"),
+    "duplicates": ("max-info", "max_info"),
 }
 
 
@@ -122,9 +136,33 @@ def cmd_ghost(args: argparse.Namespace) -> None:
     ensure_control_dirs()
     patterns = load_patterns(PROJECT_DIR)
 
-    result = analyze_ghost(snapshot, patterns)
+    if args.deep:
+        print("Running deep import graph analysis... this may take a while.")
+
+    result = analyze_ghost(snapshot, patterns, mode=args.mode, deep=args.deep)
+
+    if args.stats:
+        print("\nGhost Stats")
+        print("-----------")
+        if args.deep:
+            print(f"Import graph orphans (CRITICAL): {len(result.get('graph_orphans', []))}")
+        print(f"Orphans (HIGH): {len(result.get('orphans', []))}")
+        print(f"Legacy snippets (MEDIUM): {len(result.get('legacy', []))}")
+        print(f"Session files (LOW): {len(result.get('session', []))}")
+        print(f"Duplicates (INFO): {len(result.get('duplicates', []))}")
+        return
+
+    counts = {key: len(result.get(key, [])) for key in SECTION_DISPLAY_NAMES}
+    for key, label in SECTION_DISPLAY_NAMES.items():
+        limit_label, attr_name = SECTION_LIMIT_ARGS[key]
+        limit_value = getattr(args, attr_name, -1)
+        if limit_value >= 0 and counts[key] > limit_value:
+            severity = SEVERITY_MAP.get(key, "INFO")
+            print(f"Ghost limits exceeded: {label}({severity})={counts[key]} > {limit_label}={limit_value}")
+            raise SystemExit(2)
+
     output_path = EXPORTS_DIR / "ghost_candidates.md"
-    render_ghost_report(result, str(output_path))
+    render_ghost_report(result, str(output_path), include_graph=args.deep)
 
     print(f"Smart ghost report saved: {output_path}")
 
@@ -150,7 +188,27 @@ def main() -> None:
     find_parser = subparsers.add_parser("find")
     find_parser.add_argument("symbol", nargs="?")
 
-    subparsers.add_parser("ghost")
+    ghost_parser = subparsers.add_parser("ghost")
+    ghost_parser.add_argument(
+        "--deep",
+        action="store_true",
+        help="Run deep import graph analysis (slow)",
+    )
+    ghost_parser.add_argument(
+        "--stats",
+        action="store_true",
+        help="Print only statistics without generating markdown report",
+    )
+    ghost_parser.add_argument(
+        "--mode",
+        choices=["strict", "pragmatic"],
+        default="pragmatic",
+        help="Ghost detection mode: strict = no ignore patterns, pragmatic = apply ignore patterns",
+    )
+    ghost_parser.add_argument("--max-high", type=int, default=-1, help="Fail if high-severity count exceeds this value.")
+    ghost_parser.add_argument("--max-medium", type=int, default=-1, help="Fail if medium-severity count exceeds this value.")
+    ghost_parser.add_argument("--max-low", type=int, default=-1, help="Fail if low-severity count exceeds this value.")
+    ghost_parser.add_argument("--max-info", type=int, default=-1, help="Fail if info-severity count exceeds this value.")
     subparsers.add_parser("writers")
 
     args = parser.parse_args()

@@ -10,10 +10,24 @@ V termináli napíš:
 
 *scan* :==>      `python pc.py scan`
 *ghost* :==>     `python pc.py ghost`
+python pc.py ghost --mode pragmatic --stats
+python pc.py ghost --mode strict --deep --stats
 
 *scan ATOMA* :==>     `python "D:\PROJECT_CONTROL\pc.py" scan`
 
 *ghost ATOMA* :==>     `python "D:\PROJECT_CONTROL\pc.py" ghost`
+
+ *strict ghost* :==>     `python D:\PROJECT_CONTROL\pc.py ghost --mode strict`
+ *pragmatic ghost* :==>     `python D:\PROJECT_CONTROL\pc.py ghost --mode pragmatic`
+ *deep ghost* :==>     `python D:\PROJECT_CONTROL\pc.py ghost --mode strict --deep`
+*fast pragmatic ghost*  ==> `python D:\PROJECT_CONTROL\pc.py ghost --mode pragmatic`
+*fast strict ghost*     ==> `python D:\PROJECT_CONTROL\pc.py ghost --mode strict`
+
+*deep strict ghost*     ==> `python D:\PROJECT_CONTROL\pc.py ghost --mode strict --deep`
+*deep pragmatic ghost*  ==> `python D:\PROJECT_CONTROL\pc.py ghost --mode pragmatic --deep`
+*Fast stats*      ==>    `python D:\PROJECT_CONTROL\pc.py ghost --mode pragmatic --stats`
+*Deep stats*       ==>`python D:\PROJECT_CONTROL\ pc.py ghost --mode strict --deep --stats`
+
 
 pc.py
    ↓
@@ -27,14 +41,9 @@ exports/ghost_candidates.md
 
 
 ## ✅ STEP 1 – Choď do priečinka projektu
-
 *V termináli:*  -->   cd D:\PROJECT CONTROL --->  Uisti sa, že tam máš pc.py.
-
 ## ✅ STEP 2 – Spusti INIT
-
 `python pc.py init`   --->  *Toto vytvorí:*  ---> .project-control/
-
-
 ## ✅ STEP 3 – Spusti SCAN
 
 `python pc.py scan`
