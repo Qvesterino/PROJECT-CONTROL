@@ -13,6 +13,27 @@ V termináli napíš:
 python pc.py ghost --mode pragmatic --stats
 python pc.py ghost --mode strict --deep --stats
 
+
+**ZAKLADNE PRIKAZY**
+python -m project_control.pc help
+python -m project_control.pc init
+python -m project_control.pc scan
+python -m project_control.pc checklist
+python -m project_control.pc find 
+________________________________
+**GHOST PRAGMATIC**
+python -m project_control.pc ghost
+python -m project_control.pc ghost --mode pragmatic
+python -m project_control.pc ghost --mode pragmatic --stats
+python -m project_control.pc ghost --mode pragmatic --deep
+______________________________
+**GHOST STRICT**
+python -m project_control.pc ghost --mode strict
+python -m project_control.pc ghost --mode strict --deep --stats
+python -m project_control.pc ghost --mode strict --deep
+
+
+
 *scan ATOMA* :==>     `python "D:\PROJECT_CONTROL\pc.py" scan` (vytvori snapshot.json)
 
 *ghost ATOMA* :==>     `python "D:\PROJECT_CONTROL\pc.py" ghost`

@@ -1,0 +1,84 @@
+from typing import Dict, Any, List, Set
+from pathlib import Path
+
+from project_control.core.import_parser import extract_imports
+
+
+def _should_ignore(path: str, patterns: list[str]) -> bool:
+    path_l = path.lower()
+    for pattern in patterns:
+        if pattern.lower() in path_l:
+            return True
+    return False
+
+
+def detect_graph_orphans(
+    snapshot: Dict[str, Any],
+    patterns: Dict[str, Any],
+    apply_ignore: bool = True,
+) -> List[str]:
+    """
+    Build a static import graph starting from entrypoints.
+    Return JS/TS files not reachable from entrypoints.
+    """
+
+    entrypoints = patterns.get("entrypoints", [])
+    files = snapshot.get("files", [])
+
+    # Filter JS/TS files only
+    js_files = [
+        f["path"] for f in files
+        if f["path"].endswith((".js", ".ts", ".jsx", ".tsx"))
+    ]
+
+    ignore_patterns = patterns.get("graph_ignore_patterns", []) if apply_ignore else []
+    filtered_files = [
+        path for path in js_files
+        if not _should_ignore(path, ignore_patterns)
+    ]
+
+    js_set = set(filtered_files)
+
+    # Build adjacency map
+    graph: Dict[str, Set[str]] = {path: set() for path in filtered_files}
+
+    for f in files:
+        path = f["path"]
+        if path not in js_set:
+            continue
+
+        try:
+            content = Path(path).read_text(encoding="utf-8")
+        except Exception:
+            continue
+
+        raw_imports = extract_imports(content)
+
+        base_dir = Path(path).parent
+
+        for imp in raw_imports:
+            # Only resolve relative imports
+            if imp.startswith("."):
+                resolved = (base_dir / imp).resolve()
+                for candidate in js_set:
+                    if Path(candidate).resolve() == resolved or \
+                       Path(candidate).resolve() == resolved.with_suffix(".js") or \
+                       Path(candidate).resolve() == resolved.with_suffix(".ts"):
+                        graph[path].add(candidate)
+
+    # DFS from entrypoints
+    reachable: Set[str] = set()
+
+    def dfs(node: str):
+        if node in reachable:
+            return
+        reachable.add(node)
+        for neighbor in graph.get(node, []):
+            dfs(neighbor)
+
+    for ep in entrypoints:
+        if ep in js_set:
+            dfs(ep)
+
+    # Graph orphans = JS files not reachable
+    return sorted(list(js_set - reachable))
