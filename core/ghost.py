@@ -11,7 +11,7 @@ from analysis import (
     session_detector,
 )
 from analysis.import_graph_detector import detect_graph_orphans
-
+from analysis import semantic_detector
 
 class Detector(Protocol):
     def analyze(self, snapshot: Dict[str, Any], patterns: Dict[str, Any]) -> List[Any]:
@@ -30,6 +30,7 @@ def analyze_ghost(
     patterns: Dict[str, Any],
     mode: str = "pragmatic",
     deep: bool = False,
+    
 ) -> Dict[str, List[Any]]:
     """Run every ghost detector and combine their findings."""
     result = {
@@ -37,6 +38,7 @@ def analyze_ghost(
         "legacy": _run_detector(legacy_detector, snapshot, patterns),
         "session": _run_detector(session_detector, snapshot, patterns),
         "duplicates": _run_detector(duplicate_detector, snapshot, patterns),
+        "semantic_findings": _run_detector(semantic_detector, snapshot, patterns),
         "graph_orphans": [],
     }
 
@@ -45,5 +47,4 @@ def analyze_ghost(
         result["graph_orphans"] = detect_graph_orphans(
             snapshot, patterns, apply_ignore=(mode == "pragmatic")
         )
-    return result
     return result

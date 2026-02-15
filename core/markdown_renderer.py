@@ -21,6 +21,7 @@ SEVERITY_MAP: Dict[str, str] = {
     "legacy": "MEDIUM",
     "session": "LOW",
     "duplicates": "INFO",
+    "semantic_findings": "MEDIUM",
 }
 
 
@@ -71,6 +72,24 @@ def render_ghost_report(
         section_items = result.get(key, [])
         severity = SEVERITY_MAP.get(key, "INFO")
         report_lines.append(_format_list(heading, section_items, severity))
+        if key == "legacy":
+            semantic_items = result.get("semantic_findings", [])
+            if semantic_items:
+                section = "### Semantic Findings [MEDIUM]\n\n"
+                orphans = [item for item in semantic_items if item.get("type") == "orphan"]
+                duplicates = [item for item in semantic_items if item.get("type") == "duplicate"]
+                if orphans:
+                    section += "**Semantic Orphans** (low similarity to codebase):\n"
+                    for item in orphans:
+                        section += f"- {item['path']} (similarities: {item.get('similarities', 0):.2f})\n"
+                    section += "\n"
+                if duplicates:
+                    section += "**Semantic Duplicates** (high similarity to other files):\n"
+                    for item in duplicates:
+                        section += f"- {item['path']} ↔ {item.get('related_to', 'unknown')} (similarities: {item.get('similarity', 0):.2f})\n"
+                report_lines.append(section)
+            else:
+                report_lines.append("### Semantic Findings [MEDIUM]\n\nNo entries found.\n")
 
     report_text = "\n".join(report_lines).rstrip() + "\n"
     Path(output_path).write_text(report_text, encoding="utf-8")

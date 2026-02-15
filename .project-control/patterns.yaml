@@ -25,3 +25,10 @@ graph_ignore_patterns:
   - Example
   - _SNIPPET
   - _EXAMPLES
+
+# ... existing patterns ...
+
+# Semantic analysis configuration
+embedding:
+  semantic_orphan_threshold: 0.65   # Files with avg similarity < this are orphans
+  semantic_duplicate_threshold: 0.92  # Files with similarity > this are duplicates

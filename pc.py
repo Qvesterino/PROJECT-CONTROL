@@ -6,25 +6,20 @@ Uses modular components for scanning, analysis, and reporting.
 """
 
 import argparse
-import json
 import yaml
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 from config.patterns_loader import load_patterns
-from core.scanner import scan_project
-from core.snapshot import load_snapshot
-from core.ghost import analyze_ghost
-from core.markdown_renderer import SEVERITY_MAP, render_ghost_report, render_writer_report
+from core.ghost_service import run_ghost, write_ghost_reports
+from core.markdown_renderer import render_writer_report
+from core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
 from core.writers import run_writers_analysis
 from utils.fs_helpers import run_rg
-from analysis.tree_renderer import render_tree
 
 PROJECT_DIR = Path.cwd()
 CONTROL_DIR = PROJECT_DIR / ".project-control"
 EXPORTS_DIR = CONTROL_DIR / "exports"
-SNAPSHOT_FILE = CONTROL_DIR / "snapshot.json"
 STATUS_FILE = CONTROL_DIR / "status.yaml"
 PATTERNS_FILE = CONTROL_DIR / "patterns.yaml"
 
@@ -34,21 +29,6 @@ DEFAULT_PATTERNS = {
     "ignore_dirs": [".git", ".project-control", "node_modules", "__pycache__"],
     "extensions": [".py", ".js", ".ts", ".md", ".txt"],
 }
-
-SECTION_DISPLAY_NAMES = {
-    "orphans": "Orphans",
-    "legacy": "Legacy snippets",
-    "session": "Session files",
-    "duplicates": "Duplicates",
-}
-
-SECTION_LIMIT_ARGS = {
-    "orphans": ("max-high", "max_high"),
-    "legacy": ("max-medium", "max_medium"),
-    "session": ("max-low", "max_low"),
-    "duplicates": ("max-info", "max_info"),
-}
-
 
 def ensure_control_dirs() -> None:
     CONTROL_DIR.mkdir(exist_ok=True)
@@ -81,15 +61,12 @@ def cmd_scan(args: argparse.Namespace) -> None:
     ensure_control_dirs()
     patterns = load_patterns(PROJECT_DIR)
 
-    snapshot = scan_project(
+    snapshot = create_snapshot(
         PROJECT_DIR,
         patterns.get("ignore_dirs", []),
         patterns.get("extensions", []),
     )
-    snapshot["generated_at"] = datetime.now(timezone.utc).isoformat()
-
-    with SNAPSHOT_FILE.open("w", encoding="utf-8") as f:
-        json.dump(snapshot, f, indent=2)
+    save_snapshot(snapshot, PROJECT_DIR)
 
     print(f"Scan complete. {snapshot['file_count']} files indexed.")
 
@@ -140,63 +117,30 @@ def cmd_ghost(args: argparse.Namespace) -> None:
     if args.deep:
         print("Running deep import graph analysis... this may take a while.")
 
-    result = analyze_ghost(snapshot, patterns, mode=args.mode, deep=args.deep)
+    result = run_ghost(snapshot, patterns, args)
+    analysis = result["analysis"]
 
     if args.stats:
         print("\nGhost Stats")
         print("-----------")
         if args.deep:
-            print(f"Import graph orphans (CRITICAL): {len(result.get('graph_orphans', []))}")
-        print(f"Orphans (HIGH): {len(result.get('orphans', []))}")
-        print(f"Legacy snippets (MEDIUM): {len(result.get('legacy', []))}")
-        print(f"Session files (LOW): {len(result.get('session', []))}")
-        print(f"Duplicates (INFO): {len(result.get('duplicates', []))}")
+            print(f"Import graph orphans (CRITICAL): {len(analysis.get('graph_orphans', []))}")
+        print(f"Orphans (HIGH): {len(analysis.get('orphans', []))}")
+        print(f"Legacy snippets (MEDIUM): {len(analysis.get('legacy', []))}")
+        print(f"Session files (LOW): {len(analysis.get('session', []))}")
+        print(f"Duplicates (INFO): {len(analysis.get('duplicates', []))}")
         return
 
-    counts = {key: len(result.get(key, [])) for key in SECTION_DISPLAY_NAMES}
-    for key, label in SECTION_DISPLAY_NAMES.items():
-        limit_label, attr_name = SECTION_LIMIT_ARGS[key]
-        limit_value = getattr(args, attr_name, -1)
-        if limit_value >= 0 and counts[key] > limit_value:
-            severity = SEVERITY_MAP.get(key, "INFO")
-            print(f"Ghost limits exceeded: {label}({severity})={counts[key]} > {limit_label}={limit_value}")
-            raise SystemExit(2)
+    if result["limit_violation"]:
+        print(result["limit_violation"]["message"])
+        raise SystemExit(result["limit_violation"]["exit_code"])
 
-    import_graph_saved = False
-    if args.deep:
-        graph_report_path = EXPORTS_DIR / "import_graph_orphans.md"
-        graph_orphans = result.get("graph_orphans", [])
-        graph_lines = [
-            "# Import Graph Orphans",
-            "",
-            "## Legend",
-            "(Directory tree based on import graph reachability)",
-            "",
-            "# NOTE",
-            "This report is static-import based.",
-            "Dynamic runtime wiring (FrameScheduler, registries, side-effects) is not detected.",
-            "",
-        ]
-        if not args.tree_only:
-            for path in graph_orphans:
-                graph_lines.append(f"- {path}")
-        graph_report_path.write_text("\n".join(graph_lines).rstrip() + "\n", encoding="utf-8")
-
-        if graph_orphans:
-            tree_output = render_tree(graph_orphans)
-            with graph_report_path.open("a", encoding="utf-8") as f:
-                f.write("\n## Tree View\n\n")
-                f.write(f"Total import graph orphans: {len(graph_orphans)}\n\n")
-                f.write(tree_output)
-        import_graph_saved = True
-
-    output_path = EXPORTS_DIR / "ghost_candidates.md"
-    render_ghost_report(result, str(output_path))
+    write_ghost_reports(result, PROJECT_DIR, args)
 
     if not (args.deep and args.tree_only):
-        print(f"Smart ghost report saved: {output_path}")
-    if import_graph_saved:
-        print(f"Import graph report saved: {graph_report_path}")
+        print(f"Smart ghost report saved: {PROJECT_DIR / result['ghost_report_path']}")
+    if args.deep and result["deep_report_path"] is not None:
+        print(f"Import graph report saved: {PROJECT_DIR / result['deep_report_path']}")
 
 
 def cmd_writers(args: argparse.Namespace) -> None:
