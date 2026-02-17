@@ -106,17 +106,6 @@ def write_ghost_reports(result: GhostResult, project_root: Path, args) -> None:
     ghost_report_path = exports_dir / "ghost_candidates.md"
     render_ghost_report(result["analysis"], str(ghost_report_path))
 
-    metrics = result["analysis"].get("metrics", {})
-    if args.deep and metrics:
-        print("GRAPH SUMMARY:")
-        print(f"Nodes: {metrics['node_count']}")
-        print(f"Edges: {metrics['edge_count']}")
-        print(f"Reachable: {metrics['reachable_count']}")
-        print(f"Unreachable: {metrics['unreachable_count']}")
-        print(f"Density: {metrics['density']:.4f}")
-        print(f"Is DAG: {metrics['is_dag']}")
-        print(f"Largest Component: {metrics['largest_component_size']}")
-
     if args.deep and getattr(args, "export_graph", False):
         graph_map = result["analysis"].get("graph", {})
         if graph_map:

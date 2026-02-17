@@ -60,10 +60,9 @@ def analyze_ghost(
 
     result["orphans"] = sorted(result["orphans"], key=lambda p: p.lower())
     if deep:
-        graph_result = detect_graph_orphans(
+        graph_orphans, graph = detect_graph_orphans(
             snapshot, patterns, content_store, apply_ignore=(mode == "pragmatic")
         )
-        result["graph_orphans"] = graph_result["orphans"]
-        result["graph"] = graph_result["graph"]
-        result["metrics"] = graph_result["metrics"]
+        result["graph_orphans"] = graph_orphans
+        result["graph"] = graph
     return result

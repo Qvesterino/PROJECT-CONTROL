@@ -1,31 +1,23 @@
 entrypoints:
-- main.js
-- index.ts
-writers:
-- scale
-- emissive
-- opacity
-- position
+  - project_control.pc
 
-ignore_dirs:
-  - .git
-  - .project-control
-  - node_modules
+ignore_patterns:
   - __pycache__
+  - .project-control
+  - exports
+  - Audit
+  - documentation
+  - .qodo
+  - tmp_
+  - test_
+
+search_ignore_patterns:
+  - __pycache__
+  - .project-control
+  - exports
 
 extensions:
   - .py
-  - .js
-  - .ts
-
-
-graph_ignore_patterns:
-  - Debug
-  - Diagnostics
-  - Example
-  - _SNIPPET
-  - _EXAMPLES
-
 # ... existing patterns ...
 
 # Semantic analysis configuration

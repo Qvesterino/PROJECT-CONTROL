@@ -55,15 +55,11 @@ def analyze_ghost(
         "duplicates": _run_detector(duplicate_detector, snapshot, patterns, content_store),
         "semantic_findings": _run_detector(semantic_detector, snapshot, patterns, content_store),
         "graph_orphans": [],
-        "graph": {},
     }
 
     result["orphans"] = sorted(result["orphans"], key=lambda p: p.lower())
     if deep:
-        graph_result = detect_graph_orphans(
+        result["graph_orphans"] = detect_graph_orphans(
             snapshot, patterns, content_store, apply_ignore=(mode == "pragmatic")
         )
-        result["graph_orphans"] = graph_result["orphans"]
-        result["graph"] = graph_result["graph"]
-        result["metrics"] = graph_result["metrics"]
     return result

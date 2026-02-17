@@ -1,0 +1,125 @@
+from math import inf
+from typing import Dict, Any, List, Set, TYPE_CHECKING
+
+from project_control.core import import_parser
+
+if TYPE_CHECKING:
+    from project_control.core.content_store import ContentStore
+
+
+EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]
+
+
+def _should_ignore(path: str, patterns: list[str]) -> bool:
+    path_l = path.lower()
+    for pattern in patterns:
+        if pattern.lower() in path_l:
+            return True
+    return False
+
+
+def _norm_path(path: str) -> str:
+    normalized = path.replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    return normalized
+
+
+def _resolve_import(base_path: str, specifier: str, all_paths: Set[str]) -> Any:
+    if not specifier.startswith("."):
+        return None
+
+    candidate_paths = []
+    base_dir = base_path.rsplit("/", 1)[0] if "/" in base_path else ""
+    base = f"{base_dir}/{specifier}" if base_dir else specifier
+    base = _norm_path(base)
+
+    has_ext = base.rsplit("/", 1)[-1].count(".") > 0
+    if has_ext:
+        candidate_paths.append(base)
+        for alt_ext in [".ts", ".tsx"] if base.endswith(".js") else []:
+            candidate_paths.append(f"{base[:-3]}{alt_ext}")
+    else:
+        candidate_paths.append(base)
+
+    base_no_ext = base
+    if "." in base_no_ext.rsplit("/", 1)[-1]:
+        base_no_ext = base_no_ext[: base_no_ext.rfind(".")]
+
+    for ext in EXTENSIONS:
+        candidate_paths.append(f"{base_no_ext}{ext}")
+        candidate_paths.append(f"{base_no_ext}/index{ext}")
+
+    for candidate in candidate_paths:
+        if candidate in all_paths:
+            return candidate
+    return None
+
+
+def detect_graph_orphans(
+    snapshot: Dict[str, Any],
+    patterns: Dict[str, Any],
+    content_store: "ContentStore",
+    apply_ignore: bool = True,
+) -> List[str]:
+    """
+    Build a static import graph starting from entrypoints.
+    Return JS/TS files not reachable from entrypoints (snapshot-only).
+
+    Args:
+        content_store: ContentStore instance for reading file contents without filesystem access.
+    """
+
+    entrypoints = patterns.get("entrypoints", [])
+    files = snapshot.get("files", [])
+    print("DEBUG RAW FILE COUNT:", len(files))
+    for f in files[:5]:
+        print("DEBUG SNAPSHOT PATH:", f.get("path"))
+
+    js_files = sorted(
+        _norm_path(f["path"])
+        for f in files
+        if _norm_path(f["path"]).endswith((".js", ".ts", ".jsx", ".tsx"))
+    )
+    print("DEBUG JS_FILES COUNT:", len(js_files))
+    print("DEBUG FIRST 5 JS_FILES:", js_files[:5])
+
+    ignore_patterns = patterns.get("graph_ignore_patterns", []) if apply_ignore else []
+    filtered_files = [
+        path for path in js_files if not _should_ignore(path, ignore_patterns)
+    ]
+
+    all_paths = set(filtered_files)
+    print("ENTRYPOINTS:", entrypoints)
+    print("TOTAL FILES:", len(all_paths))
+    print("FIRST 5 FILES:", list(sorted(all_paths))[:5])
+    graph: Dict[str, Set[str]] = {path: set() for path in filtered_files}
+    print("GRAPH NODES:", len(graph))
+
+    for path in filtered_files:
+        try:
+            content = content_store.get_text(path)
+        except Exception:
+            continue
+
+        raw_imports = import_parser.extract_imports(content)
+        for imp in sorted(raw_imports):
+            resolved = _resolve_import(path, _norm_path(imp), all_paths)
+            if resolved:
+                graph[path].add(resolved)
+
+    reachable: Set[str] = set()
+
+    def dfs(node: str) -> None:
+        if node in reachable:
+            return
+        reachable.add(node)
+        for neighbor in sorted(graph.get(node, [])):
+            dfs(neighbor)
+
+    for ep in sorted(entrypoints):
+        ep_norm = _norm_path(ep)
+        if ep_norm in all_paths:
+            dfs(ep_norm)
+
+    return sorted(all_paths - reachable)

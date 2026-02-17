@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Set, Tuple
 
-from project_control.analysis.entrypoint_policy import EntryPointPolicy
-from project_control.analysis.graph_metrics import GraphMetrics
 from project_control.analysis.import_graph_engine import ImportGraphEngine
-from project_control.analysis.js_import_graph_engine import JSImportGraphEngine
 from project_control.analysis.python_import_graph_engine import PythonImportGraphEngine
 from project_control.core.content_store import ContentStore
 
@@ -20,12 +17,9 @@ def detect_graph_orphans(
 ) -> List[str]:
     entrypoints = patterns.get("entrypoints", [])
     ignore_patterns = patterns.get("graph_ignore_patterns", []) if apply_ignore else []
-    policy = EntryPointPolicy(snapshot, content_store, patterns)
-    entry_modules = policy.resolve()
 
     engines: List[ImportGraphEngine] = [
         PythonImportGraphEngine(),
-        JSImportGraphEngine(),
     ]
 
     aggregated_orphans: Set[str] = set()
@@ -34,18 +28,9 @@ def detect_graph_orphans(
     js_file_count = 0
 
     for engine in engines:
-        if isinstance(engine, PythonImportGraphEngine):
-            orphans, engine_graph = engine.build_graph(
-                snapshot,
-                content_store,
-                entrypoints,
-                ignore_patterns,
-                entry_modules=entry_modules,
-            )
-        else:
-            orphans, engine_graph = engine.build_graph(
-                snapshot, content_store, entrypoints, ignore_patterns
-            )
+        orphans, engine_graph = engine.build_graph(
+            snapshot, content_store, entrypoints, ignore_patterns
+        )
         aggregated_orphans.update(orphans)
         if isinstance(engine, PythonImportGraphEngine):
             py_file_count = len(orphans)
@@ -61,9 +46,5 @@ def detect_graph_orphans(
     print("JS FILE COUNT:", js_file_count)
     print("TOTAL GRAPH NODES:", total_nodes)
     print("UNREACHABLE:", len(result))
-    metrics = GraphMetrics(aggregated_graph, entry_modules).compute()
-    return {
-        "orphans": result,
-        "graph": aggregated_graph,
-        "metrics": metrics,
-    }
+
+    return result, aggregated_graph

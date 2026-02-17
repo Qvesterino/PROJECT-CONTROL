@@ -182,11 +182,6 @@ def main() -> None:
         help="Write only the tree view section to import_graph_orphans.md (no flat list)",
     )
     ghost_parser.add_argument(
-        "--export-graph",
-        action="store_true",
-        help="Export the combined import graph in DOT and Mermaid formats when running deep analysis",
-    )
-    ghost_parser.add_argument(
         "--mode",
         choices=["strict", "pragmatic"],
         default="pragmatic",
