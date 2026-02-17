@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Set, Tuple
 
 from project_control.analysis.entrypoint_policy import EntryPointPolicy
+from project_control.analysis.graph_anomaly import GraphAnomalyAnalyzer
 from project_control.analysis.graph_metrics import GraphMetrics
 from project_control.analysis.import_graph_engine import ImportGraphEngine
 from project_control.analysis.js_import_graph_engine import JSImportGraphEngine
@@ -62,8 +63,11 @@ def detect_graph_orphans(
     print("TOTAL GRAPH NODES:", total_nodes)
     print("UNREACHABLE:", len(result))
     metrics = GraphMetrics(aggregated_graph, entry_modules).compute()
+    from project_control.analysis.graph_anomaly import GraphAnomalyAnalyzer
+    anomalies = GraphAnomalyAnalyzer(aggregated_graph, metrics).analyze()
     return {
         "orphans": result,
         "graph": aggregated_graph,
         "metrics": metrics,
+        "anomalies": anomalies,
     }

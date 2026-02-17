@@ -56,6 +56,7 @@ def analyze_ghost(
         "semantic_findings": _run_detector(semantic_detector, snapshot, patterns, content_store),
         "graph_orphans": [],
         "graph": {},
+        "metrics": {},
     }
 
     result["orphans"] = sorted(result["orphans"], key=lambda p: p.lower())

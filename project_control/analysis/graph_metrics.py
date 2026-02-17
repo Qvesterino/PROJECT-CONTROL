@@ -100,6 +100,7 @@ class GraphMetrics:
             "unreachable_count": unreachable_count,
             "density": density,
             "avg_out_degree": sum(out_degrees) / max(1, node_count),
+            "avg_in_degree": sum(in_degrees.values()) / max(1, node_count),
             "max_out_degree": max(out_degrees, default=0),
             "max_in_degree": max(in_degrees.values(), default=0),
             "weakly_connected_components_count": len(components),
@@ -108,4 +109,7 @@ class GraphMetrics:
             "cycle_count": cycle_count,
             "root_nodes": root_nodes,
             "leaf_nodes": leaf_nodes,
+            "entry_modules": self.entry_modules,
+            "reachable_nodes": sorted(reachable),
+            "unreachable_nodes": sorted(set(node_list) - reachable),
         }

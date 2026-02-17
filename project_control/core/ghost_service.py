@@ -116,6 +116,14 @@ def write_ghost_reports(result: GhostResult, project_root: Path, args) -> None:
         print(f"Density: {metrics['density']:.4f}")
         print(f"Is DAG: {metrics['is_dag']}")
         print(f"Largest Component: {metrics['largest_component_size']}")
+        anomalies = result["analysis"].get("anomalies", {})
+        if anomalies:
+            print("ARCHITECTURE ANOMALY REPORT")
+            print(f"Cycle Groups: {anomalies.get('cycle_groups')}")
+            print(f"God Modules: {anomalies.get('god_modules')}")
+            print(f"Dead Clusters: {anomalies.get('dead_clusters')}")
+            print(f"Isolated Nodes: {anomalies.get('isolated_nodes')}")
+            print(f"Smell Score: {anomalies.get('smell_score')} ({anomalies.get('smell_level')})")
 
     if args.deep and getattr(args, "export_graph", False):
         graph_map = result["analysis"].get("graph", {})
