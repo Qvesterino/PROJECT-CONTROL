@@ -9,11 +9,8 @@ from typing import Any, Dict, Optional, TypedDict
 
 from project_control.analysis import graph_exporter
 from project_control.analysis.tree_renderer import render_tree
-from project_control.analysis.graph_trend import GraphTrendAnalyzer
-from project_control.persistence.drift_history_repository import DriftHistoryRepository
-from project_control.usecases.ghost_usecase import GhostUseCase
+from project_control.core.ghost import analyze_ghost
 from project_control.core.markdown_renderer import SEVERITY_MAP, render_ghost_report
-from project_control.core.snapshot_service import load_snapshot
 
 
 SECTION_DISPLAY_NAMES = {
@@ -44,45 +41,18 @@ class GhostResult(TypedDict):
     ghost_report_path: Path
 
 
-def _ensure_control_dirs(project_root: Path) -> None:
-    control_dir = project_root / ".project-control"
-    exports_dir = control_dir / "exports"
-    control_dir.mkdir(exist_ok=True)
-    exports_dir.mkdir(exist_ok=True)
-
-
-def _load_compare_snapshot(path: Path) -> Dict[str, Any]:
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def run_ghost(args, project_root: Path) -> Optional[GhostResult]:
-    """Execute ghost analysis flow and limit checks."""
-    _ensure_control_dirs(project_root)
-
-    try:
-        snapshot = load_snapshot(project_root)
-    except FileNotFoundError:
-        print("Run 'pc scan' first.")
-        return None
-
-    if args.deep:
-        print("Running deep import graph analysis... this may take a while.")
-
-    compare_snapshot: Optional[Dict[str, Any]] = None
-    if getattr(args, "compare_snapshot", None):
-        compare_snapshot = _load_compare_snapshot(Path(args.compare_snapshot))
-
-    usecase = GhostUseCase(project_root, debug=getattr(args, "debug", False))
-    analysis = usecase.run(
-        snapshot,
-        compare_snapshot=compare_snapshot,
-        enable_drift=args.deep and compare_snapshot is not None,
-        enable_trend=args.deep and compare_snapshot is not None,
-        mode=args.mode,
-        deep=args.deep,
-    )
-
+def run_ghost(snapshot, patterns, args, snapshot_path: Path) -> GhostResult:
+    """
+    Execute ghost analysis and validate optional severity thresholds.
+    
+    Args:
+        snapshot: The snapshot dictionary.
+        patterns: Configuration patterns.
+        args: CLI arguments.
+        snapshot_path: Path to snapshot.json for ContentStore.
+    """
+    compare_path = getattr(args, "compare_snapshot", None)
+    analysis = analyze_ghost(snapshot, patterns, snapshot_path, mode=args.mode, deep=args.deep, compare_snapshot_path=compare_path)
     counts = {key: len(analysis.get(key, [])) for key in SECTION_DISPLAY_NAMES}
 
     limit_violation: Optional[LimitViolation] = None
@@ -179,27 +149,26 @@ def write_ghost_reports(result: GhostResult, project_root: Path, args) -> None:
                 print(f"  {metric}: {prefix}{delta}")
             
             print(f"Drift severity: {drift.get('severity', 'UNKNOWN')}")
-            repo = DriftHistoryRepository(project_root)
-            history_data = repo.load()
-            if history_data is not None:
-                before_count = len(repo.current_history())
-                repo.append({"timestamp": datetime.now(timezone.utc).isoformat(), "drift": drift})
-                repo.save()
-                after_history = repo.current_history()
-                trimmed = max(0, before_count + 1 - repo.max_entries)
-                if getattr(args, "debug", False):
-                    print(f"Drift history entries: {len(after_history)}")
-                    print(f"Trimmed: {trimmed}")
-                    print(f"Version: {history_data.get('version', 'unknown')}")
-                if len(after_history) >= 2:
-                    trend = GraphTrendAnalyzer([entry["drift"] for entry in after_history]).compute()
-                    if trend:
-                        result["analysis"]["trend"] = trend
-                        print("=== STABILITY TREND REPORT ===")
-                        print(f"Average Intensity: {trend.get('avg_intensity')}")
-                        print(f"Volatility: {trend.get('volatility')}")
-                        print(f"Stability Index: {trend.get('stability_index')}")
-                        print(f"Classification: {trend.get('classification')}")
+            history_dir = project_root / ".project-control"
+            history_path = history_dir / "drift_history.json"
+            history = []
+            if history_path.exists():
+                try:
+                    history = json.loads(history_path.read_text(encoding="utf-8"))
+                except Exception:
+                    history = []
+            history.append({"timestamp": datetime.now(timezone.utc).isoformat(), "drift": drift})
+            history_path.write_text(json.dumps(history, indent=2), encoding="utf-8")
+            if len(history) >= 2:
+                from project_control.analysis.graph_trend import GraphTrendAnalyzer
+
+                trend = GraphTrendAnalyzer([entry["drift"] for entry in history]).compute()
+                if trend:
+                    print("=== STABILITY TREND REPORT ===")
+                    print(f"Average Intensity: {trend.get('avg_intensity')}")
+                    print(f"Volatility: {trend.get('volatility')}")
+                    print(f"Stability Index: {trend.get('stability_index')}")
+                    print(f"Classification: {trend.get('classification')}")
 
     if args.deep and getattr(args, "export_graph", False):
         graph_map = result["analysis"].get("graph", {})

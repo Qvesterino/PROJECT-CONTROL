@@ -2,30 +2,24 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Any, Dict, Iterator, Optional, Tuple
 
 
 class ContentStore:
     """
     Provides filesystem-independent access to file contents.
-    Reads from snapshot.json and .project-control/content/<sha256>.blob files.
+    Reads from validated snapshot data and .project-control/content/<sha256>.blob files.
     """
 
-    def __init__(self, snapshot_path: Path):
+    def __init__(self, snapshot: Dict[str, Any], snapshot_path: Path):
         """
-        Initialize with path to snapshot.json.
-        Loads snapshot data and prepares content directory.
+        Initialize with validated snapshot data and the path to snapshot.json.
+        The snapshot itself is not mutated.
         """
         self.snapshot_path = snapshot_path
-        self.snapshot = self._load_snapshot()
+        self.snapshot = snapshot
         self.content_dir = snapshot_path.parent / "content"
-
-    def _load_snapshot(self) -> Dict:
-        """Load and parse snapshot.json."""
-        with open(self.snapshot_path, "r", encoding="utf-8") as f:
-            return json.load(f)
 
     def _find_file_entry(self, path: str) -> Optional[Dict]:
         """Find file entry by path in snapshot."""

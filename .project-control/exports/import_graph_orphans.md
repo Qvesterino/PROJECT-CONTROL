@@ -10,7 +10,12 @@ Dynamic runtime wiring (FrameScheduler, registries, side-effects) is not detecte
 - project_control\__init__.py
 - project_control\analysis\__init__.py
 - project_control\analysis\duplicate_detector.py
+- project_control\analysis\entrypoint_policy.py
+- project_control\analysis\graph_anomaly.py
+- project_control\analysis\graph_drift.py
 - project_control\analysis\graph_exporter.py
+- project_control\analysis\graph_metrics.py
+- project_control\analysis\graph_trend.py
 - project_control\analysis\import_graph_detector.py
 - project_control\analysis\import_graph_engine.py
 - project_control\analysis\js_import_graph_engine.py
@@ -31,6 +36,7 @@ Dynamic runtime wiring (FrameScheduler, registries, side-effects) is not detecte
 - project_control\config\patterns_loader.py
 - project_control\core\__init__.py
 - project_control\core\content_store.py
+- project_control\core\debug.py
 - project_control\core\duplicate_service.py
 - project_control\core\embedding_service.py
 - project_control\core\ghost.py
@@ -47,6 +53,7 @@ Dynamic runtime wiring (FrameScheduler, registries, side-effects) is not detecte
 - project_control\core\tmp_unused_test.py
 - project_control\core\writers.py
 - project_control\embedding\__init__.py
+- project_control\pc.py
 - project_control\render\__init__.py
 - project_control\render\json_renderer.py
 - project_control\render\markdown_renderer.py
@@ -56,14 +63,19 @@ Dynamic runtime wiring (FrameScheduler, registries, side-effects) is not detecte
 
 ## Tree View
 
-Total import graph orphans: 46
+Total import graph orphans: 53
 
 project_control/
 ├── __init__.py
 ├── analysis/
 │   ├── __init__.py
 │   ├── duplicate_detector.py
+│   ├── entrypoint_policy.py
+│   ├── graph_anomaly.py
+│   ├── graph_drift.py
 │   ├── graph_exporter.py
+│   ├── graph_metrics.py
+│   ├── graph_trend.py
 │   ├── import_graph_detector.py
 │   ├── import_graph_engine.py
 │   ├── js_import_graph_engine.py
@@ -87,6 +99,7 @@ project_control/
 ├── core/
 │   ├── __init__.py
 │   ├── content_store.py
+│   ├── debug.py
 │   ├── duplicate_service.py
 │   ├── embedding_service.py
 │   ├── ghost.py
@@ -104,6 +117,7 @@ project_control/
 │   └── writers.py
 ├── embedding/
 │   └── __init__.py
+├── pc.py
 ├── render/
 │   ├── __init__.py
 │   ├── json_renderer.py

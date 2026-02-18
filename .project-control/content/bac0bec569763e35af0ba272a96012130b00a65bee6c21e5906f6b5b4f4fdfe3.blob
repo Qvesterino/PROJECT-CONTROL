@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from project_control.analysis.entrypoint_policy import EntryPointPolicy
 from project_control.analysis.graph_anomaly import GraphAnomalyAnalyzer
-from project_control.analysis.graph_drift import compare_snapshots
+from project_control.analysis.graph_drift import compare_snapshots, load_snapshot_for_comparison
 from project_control.analysis.graph_metrics import GraphMetrics
 from project_control.analysis.import_graph_engine import ImportGraphEngine
 from project_control.analysis.js_import_graph_engine import JSImportGraphEngine
@@ -20,7 +21,7 @@ def detect_graph_orphans(
     patterns: Dict[str, Any],
     content_store: ContentStore,
     apply_ignore: bool = True,
-    compare_snapshot: Optional[Dict[str, Any]] = None,
+    compare_snapshot_path: Optional[Path] = None,
     debug: bool = False,
 ) -> Dict[str, Any]:
     entrypoints = patterns.get("entrypoints", [])
@@ -84,15 +85,20 @@ def detect_graph_orphans(
     }
     
     # Compute drift if comparison snapshot provided
-    if compare_snapshot is not None:
-        old_graph = compare_snapshot.get("graph", {})
-        old_metrics = compare_snapshot.get("metrics", {})
-        old_anomalies = compare_snapshot.get("anomalies", {})
-        old_entrypoints = compare_snapshot.get("entrypoints", [])
+    if compare_snapshot_path is not None:
+        old_snapshot = load_snapshot_for_comparison(compare_snapshot_path)
+        
+        # Extract old snapshot data
+        old_graph = old_snapshot.get("graph", {})
+        old_metrics = old_snapshot.get("metrics", {})
+        old_anomalies = old_snapshot.get("anomalies", {})
+        old_entrypoints = old_snapshot.get("entrypoints", [])
         old_cycle_groups = old_anomalies.get("cycle_groups", [])
-
+        
+        # Extract current snapshot data
         new_cycle_groups = anomalies.get("cycle_groups", [])
-
+        
+        # Compute drift
         drift = compare_snapshots(
             old_graph=old_graph,
             new_graph=aggregated_graph,
@@ -103,7 +109,7 @@ def detect_graph_orphans(
             old_cycle_groups=old_cycle_groups,
             new_cycle_groups=new_cycle_groups,
         )
-
+        
         analysis_result["drift"] = drift
     
     return analysis_result

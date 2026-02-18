@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Orphans (HIGH): 27
+- Orphans (HIGH): 26
 - Legacy snippets (MEDIUM): 0
 - Session files (LOW): 0
 - Duplicates (INFO): 0
@@ -12,7 +12,6 @@
 - project_control\__init__.py
 - project_control\analysis\__init__.py
 - project_control\analysis\duplicate_detector.py
-- project_control\analysis\js_import_graph_engine.py
 - project_control\analysis\legacy_detector.py
 - project_control\analysis\orphan_detector.py
 - project_control\analysis\python_import_graph_detector.py

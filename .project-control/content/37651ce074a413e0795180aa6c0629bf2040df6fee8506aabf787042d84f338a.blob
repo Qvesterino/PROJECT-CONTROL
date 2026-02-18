@@ -34,8 +34,7 @@ def analyze_ghost(
     snapshot_path: Path,
     mode: str = "pragmatic",
     deep: bool = False,
-    compare_snapshot: Optional[Dict[str, Any]] = None,
-    debug: bool = False,
+    compare_snapshot_path: Optional[Path] = None,
 ) -> Dict[str, List[Any]]:
     """
     Run every ghost detector and combine their findings.
@@ -46,10 +45,9 @@ def analyze_ghost(
         snapshot_path: Path to snapshot.json (used to create ContentStore).
         mode: Analysis mode ("pragmatic" or "strict").
         deep: Whether to run deep analysis (import graph).
-        debug: Enable debug output for deep graph analysis.
     """
     # Create ContentStore for filesystem-independent content access
-    content_store = ContentStore(snapshot, snapshot_path)
+    content_store = ContentStore(snapshot_path)
     
     result = {
         "orphans": _run_detector(orphan_detector, snapshot, patterns, content_store),
@@ -65,12 +63,7 @@ def analyze_ghost(
     result["orphans"] = sorted(result["orphans"], key=lambda p: p.lower())
     if deep:
         graph_result = detect_graph_orphans(
-            snapshot,
-            patterns,
-            content_store,
-            apply_ignore=(mode == "pragmatic"),
-            compare_snapshot=compare_snapshot,
-            debug=debug,
+            snapshot, patterns, content_store, apply_ignore=(mode == "pragmatic"), compare_snapshot_path=compare_snapshot_path
         )
         result["graph_orphans"] = graph_result["orphans"]
         result["graph"] = graph_result["graph"]

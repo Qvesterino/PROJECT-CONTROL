@@ -1,7 +1,7 @@
 {
   "snapshot_version": 1,
-  "snapshot_id": "94e6f11013866740dd372013f447b9ceb350d2c69a2dd6f1b9b9b1cd1fb191db",
-  "file_count": 47,
+  "snapshot_id": "7429a5a3d494516cf3a4ba9992067be51aa4e751b05f6d3baef6bb3cc3f13d3f",
+  "file_count": 53,
   "files": [
     {
       "path": "project_control\\__init__.py",
@@ -22,28 +22,58 @@
       "sha256": "793e509966ef8da7637e71bcbdc14ebaf3be2128198abe4c99eadeda9a9dbc95"
     },
     {
+      "path": "project_control\\analysis\\entrypoint_policy.py",
+      "size": 3092,
+      "modified": "2026-02-17T19:06:59.225267+00:00",
+      "sha256": "11bb7b29abbcadb21e165432ff795ba15a2da73b97e1bb2568c3eb108d75c587"
+    },
+    {
+      "path": "project_control\\analysis\\graph_anomaly.py",
+      "size": 5726,
+      "modified": "2026-02-17T13:16:20.199387+00:00",
+      "sha256": "33fa1f50a364329db732a6d8f5975272aade5ad0d730135a21144e1c23cc984f"
+    },
+    {
+      "path": "project_control\\analysis\\graph_drift.py",
+      "size": 6070,
+      "modified": "2026-02-17T13:40:43.528789+00:00",
+      "sha256": "34cf9025442055581d77e2aee1b33f6afa1c86fa4e7ebd3b670ff7bbb8fd37b1"
+    },
+    {
       "path": "project_control\\analysis\\graph_exporter.py",
       "size": 1290,
       "modified": "2026-02-16T13:26:20.866450+00:00",
       "sha256": "7d9dfc7bea406b87d036d0edec5968a67a58fe95a21ae3ab630a584b40d1b093"
     },
     {
+      "path": "project_control\\analysis\\graph_metrics.py",
+      "size": 4379,
+      "modified": "2026-02-17T13:16:14.293440+00:00",
+      "sha256": "33197abc88a5420adcb196ec41ff12a29389923ec1d2327bd058712e79c1196c"
+    },
+    {
+      "path": "project_control\\analysis\\graph_trend.py",
+      "size": 1553,
+      "modified": "2026-02-17T17:31:21.047446+00:00",
+      "sha256": "ea2ab58d11effc52ba323af17e6e02994ef7a208cd97386ac80b6da4d591968e"
+    },
+    {
       "path": "project_control\\analysis\\import_graph_detector.py",
-      "size": 1713,
-      "modified": "2026-02-16T14:42:42.853358+00:00",
-      "sha256": "d65455559338b33f90f753c00c259bee6e660d610d235a165db0000af4f93f02"
+      "size": 4326,
+      "modified": "2026-02-17T19:07:46.797662+00:00",
+      "sha256": "bac0bec569763e35af0ba272a96012130b00a65bee6c21e5906f6b5b4f4fdfe3"
     },
     {
       "path": "project_control\\analysis\\import_graph_engine.py",
-      "size": 610,
-      "modified": "2026-02-16T13:25:38.871724+00:00",
-      "sha256": "7b60899b4676f7b7cb96882a3c2ce46294249fef2523294be6aa7d627d70c6b7"
+      "size": 687,
+      "modified": "2026-02-17T19:06:54.402220+00:00",
+      "sha256": "713a10eccdd93071e244f901efcffeee7ebcb6689c7ed29481b9cd934c5a55c6"
     },
     {
       "path": "project_control\\analysis\\js_import_graph_engine.py",
-      "size": 2914,
-      "modified": "2026-02-16T13:25:57.310847+00:00",
-      "sha256": "52215cb2aa5a96bf719f704c5983069f86fd4296fb8b2ab7da4bab40a6b4ab38"
+      "size": 3113,
+      "modified": "2026-02-17T19:08:11.585164+00:00",
+      "sha256": "2e707ac07b1105f62e5bb63d3e1d82066399a65abaa07e630e1039acc4dec5d2"
     },
     {
       "path": "project_control\\analysis\\legacy_detector.py",
@@ -59,15 +89,15 @@
     },
     {
       "path": "project_control\\analysis\\python_import_graph_detector.py",
-      "size": 3145,
-      "modified": "2026-02-16T12:20:38.004618+00:00",
-      "sha256": "5dbc4ab3572bb1ef46a9ac3b736abce12720b5963885db91a2c01c13372b8e85"
+      "size": 3260,
+      "modified": "2026-02-17T19:08:15.536747+00:00",
+      "sha256": "cfa6da6b9f7408ad37e3aa2b95cba4a01f2b45493c1ea156304125a2adaf8bc8"
     },
     {
       "path": "project_control\\analysis\\python_import_graph_engine.py",
-      "size": 3743,
-      "modified": "2026-02-16T15:29:50.527433+00:00",
-      "sha256": "d850d114566f6f1a8621405d513edba6e454b7cf2eeac6bb96490212239f280e"
+      "size": 4032,
+      "modified": "2026-02-17T19:08:03.003020+00:00",
+      "sha256": "d4543b910675c46ad9b5a5f30f7e7538ca98403df63793ab8dba0f0217c72703"
     },
     {
       "path": "project_control\\analysis\\semantic_detector.py",
@@ -148,6 +178,12 @@
       "sha256": "1a0417f524a3b78ca91ff2148eeaffeb30121aa35c533f0ea6885f738910bf97"
     },
     {
+      "path": "project_control\\core\\debug.py",
+      "size": 243,
+      "modified": "2026-02-17T19:06:51.171323+00:00",
+      "sha256": "04a1c8d09c79e1e658440415d34866632b1d0d3dd6faccdc18454b7a14e32ede"
+    },
+    {
       "path": "project_control\\core\\duplicate_service.py",
       "size": 0,
       "modified": "2026-02-15T10:13:54.688053+00:00",
@@ -161,15 +197,15 @@
     },
     {
       "path": "project_control\\core\\ghost.py",
-      "size": 2466,
-      "modified": "2026-02-16T13:26:14.660562+00:00",
-      "sha256": "fe598a76cf10de0373d32b9242eccf411bcddce64ae218eda371c926a93169bf"
+      "size": 2884,
+      "modified": "2026-02-17T13:42:19.363338+00:00",
+      "sha256": "37651ce074a413e0795180aa6c0629bf2040df6fee8506aabf787042d84f338a"
     },
     {
       "path": "project_control\\core\\ghost_service.py",
-      "size": 4278,
-      "modified": "2026-02-16T13:26:30.453271+00:00",
-      "sha256": "79ed1605a83edb4793dcaa6d300a04e0c2bdb51a7dda06b8223ec98f5df783bd"
+      "size": 7760,
+      "modified": "2026-02-17T17:33:01.312419+00:00",
+      "sha256": "8c44abbd8d44e845d38484474fa34641579664355184cf2162046431ed21cc59"
     },
     {
       "path": "project_control\\core\\graph_service.py",
@@ -245,9 +281,9 @@
     },
     {
       "path": "project_control\\pc.py",
-      "size": 7154,
-      "modified": "2026-02-16T13:26:34.594582+00:00",
-      "sha256": "845882ad184efa5a76ec74ace1602d8d6754751d295b992ee46d0e1e9e144810"
+      "size": 7526,
+      "modified": "2026-02-17T13:43:43.665867+00:00",
+      "sha256": "bcda73dab4349858ea7b5b7516a73307ff0a4051aa6487283bc83b9584609b35"
     },
     {
       "path": "project_control\\render\\__init__.py",
@@ -286,5 +322,5 @@
       "sha256": "1f8a3f25510861048deb9f72876e695da50f1e06fbcee7673a16740e96ab6901"
     }
   ],
-  "generated_at": "2026-02-16T15:30:18.951463+00:00"
+  "generated_at": "2026-02-17T19:16:38.544317+00:00"
 }

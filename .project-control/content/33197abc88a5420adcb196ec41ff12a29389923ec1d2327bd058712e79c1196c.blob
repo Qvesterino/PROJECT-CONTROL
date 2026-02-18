@@ -80,15 +80,7 @@ class GraphMetrics:
         edge_count = sum(len(self.graph[node]) for node in node_list)
         reachable = self._reachable_nodes()
         unreachable_count = node_count - len(reachable)
-        if node_count < 2:
-            density = 0.0
-        else:
-            max_possible_edges = node_count * (node_count - 1)
-            if max_possible_edges <= 0:
-                density = 0.0
-            else:
-                density = edge_count / max_possible_edges
-            density = max(0.0, min(1.0, density))
+        density = edge_count / max(1, node_count * (node_count - 1))
         out_degrees = [len(self.graph[node]) for node in node_list]
         in_degrees = {node: 0 for node in node_list}
         for node in node_list:

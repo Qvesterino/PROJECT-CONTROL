@@ -107,9 +107,22 @@ def cmd_find(args: argparse.Namespace) -> None:
 
 
 def cmd_ghost(args: argparse.Namespace) -> None:
-    result = run_ghost(args, PROJECT_DIR)
-    if result is None:
+    snapshot = _load_existing_snapshot()
+    if snapshot is None:
         return
+
+    ensure_control_dirs()
+    patterns = load_patterns(PROJECT_DIR)
+
+    if args.deep:
+        print("Running deep import graph analysis... this may take a while.")
+
+    # Convert compare_snapshot string to Path if provided
+    if hasattr(args, "compare_snapshot") and args.compare_snapshot:
+        args.compare_snapshot = Path(args.compare_snapshot)
+
+    snapshot_path = PROJECT_DIR / ".project-control" / "snapshot.json"
+    result = run_ghost(snapshot, patterns, args, snapshot_path)
     analysis = result["analysis"]
 
     if args.stats:
@@ -191,11 +204,6 @@ def main() -> None:
         "--compare-snapshot",
         type=str,
         help="Path to previous snapshot JSON for architectural drift comparison (requires --deep)",
-    )
-    ghost_parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug output for deep analysis and validation",
     )
     subparsers.add_parser("writers")
 
