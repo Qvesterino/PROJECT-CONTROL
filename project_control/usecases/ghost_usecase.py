@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from project_control.config.patterns_loader import load_patterns
+from project_control.core.dto import GhostAnalysisResult
 from project_control.core.snapshot_validator import validate_snapshot
 from project_control.core.ghost import analyze_ghost
 
@@ -25,7 +26,7 @@ class GhostUseCase:
         enable_trend: bool = False,
         mode: str = "pragmatic",
         deep: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> GhostAnalysisResult:
         """
         Execute ghost analysis and return structured results.
 
@@ -62,7 +63,31 @@ class GhostUseCase:
             debug=self.debug,
         )
 
-        if enable_trend:
-            analysis.setdefault("trend", None)
+        raw_graph = analysis.get("graph", {})
+        graph = dict(raw_graph) if isinstance(raw_graph, dict) else {}
+        if "nodes" not in graph:
+            graph["nodes"] = list(raw_graph.keys()) if isinstance(raw_graph, dict) else []
+        if "edges" not in graph and isinstance(raw_graph, dict):
+            graph["edges"] = sum(len(v) for v in raw_graph.values())
+        metrics = analysis.get("metrics", {})
+        anomalies = analysis.get("anomalies", {})
+        drift = analysis.get("drift") if enable_drift else None
+        trend = analysis.get("trend") if enable_trend else None
 
-        return analysis
+        assert isinstance(graph, dict)
+        assert isinstance(metrics, dict)
+        assert isinstance(anomalies, dict)
+
+        # Expose full analysis for layers that still need legacy fields (orphans, etc.).
+        self.last_analysis = analysis
+
+        result = GhostAnalysisResult(
+            graph=graph,
+            metrics=metrics,
+            anomalies=anomalies,
+            drift=drift,
+            trend=trend,
+        )
+
+        result.validate()
+        return result

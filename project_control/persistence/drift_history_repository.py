@@ -41,6 +41,10 @@ class DriftHistoryRepository:
         return data
 
     def load(self) -> Optional[Dict[str, Any]]:
+        tmp_path = self.path.with_suffix(".tmp")
+        if tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
+
         if not self.path.exists():
             self.data = {"version": DRIFT_HISTORY_VERSION, "history": []}
             return self.data
@@ -76,7 +80,9 @@ class DriftHistoryRepository:
             "version": DRIFT_HISTORY_VERSION,
             "history": self.data.get("history", []),
         }
-        self.path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        tmp_path = self.path.with_suffix(".tmp")
+        tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        tmp_path.replace(self.path)
 
     def current_history(self) -> List[Dict[str, Any]]:
         if self.data and isinstance(self.data.get("history"), list):

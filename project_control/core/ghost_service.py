@@ -9,11 +9,19 @@ from typing import Any, Dict, Optional, TypedDict
 
 from project_control.analysis import graph_exporter
 from project_control.analysis.tree_renderer import render_tree
-from project_control.analysis.graph_trend import GraphTrendAnalyzer
+from project_control.analysis.layer_boundary_validator import validate_boundaries
+from project_control.analysis.self_architecture_validator import validate_architecture
 from project_control.persistence.drift_history_repository import DriftHistoryRepository
-from project_control.usecases.ghost_usecase import GhostUseCase
+from project_control.usecases.ghost_workflow import GhostWorkflow
 from project_control.core.markdown_renderer import SEVERITY_MAP, render_ghost_report
 from project_control.core.snapshot_service import load_snapshot
+from project_control.core.dto import ResultValidationError
+from project_control.core.exit_codes import (
+    EXIT_CONTRACT_ERROR,
+    EXIT_LAYER_VIOLATION,
+    EXIT_VALIDATION_ERROR,
+    EXIT_OK,
+)
 
 
 SECTION_DISPLAY_NAMES = {
@@ -60,6 +68,18 @@ def run_ghost(args, project_root: Path) -> Optional[GhostResult]:
     """Execute ghost analysis flow and limit checks."""
     _ensure_control_dirs(project_root)
 
+    if getattr(args, "validate_architecture", False):
+        violations = validate_architecture()
+        if violations:
+            print("ARCHITECTURE VIOLATION:")
+            for v in violations:
+                print(f"{v.file}:{v.line} → {v.target}")
+                print(f"Rule: {v.rule}")
+            raise SystemExit(EXIT_LAYER_VIOLATION)
+        print("ARCHITECTURE VALIDATION PASSED")
+        print("No layer violations detected.")
+        return None
+
     try:
         snapshot = load_snapshot(project_root)
     except FileNotFoundError:
@@ -69,19 +89,40 @@ def run_ghost(args, project_root: Path) -> Optional[GhostResult]:
     if args.deep:
         print("Running deep import graph analysis... this may take a while.")
 
+    if args.deep:
+        violations = validate_boundaries()
+        if violations:
+            print("ARCHITECTURE LAYER VIOLATION DETECTED")
+            for v in violations:
+                print(f"{v.file}:{v.line} imports {v.import_path}")
+            raise SystemExit(EXIT_LAYER_VIOLATION)
+
     compare_snapshot: Optional[Dict[str, Any]] = None
     if getattr(args, "compare_snapshot", None):
         compare_snapshot = _load_compare_snapshot(Path(args.compare_snapshot))
 
     usecase = GhostUseCase(project_root, debug=getattr(args, "debug", False))
-    analysis = usecase.run(
-        snapshot,
-        compare_snapshot=compare_snapshot,
-        enable_drift=args.deep and compare_snapshot is not None,
-        enable_trend=args.deep and compare_snapshot is not None,
-        mode=args.mode,
-        deep=args.deep,
-    )
+    workflow = GhostWorkflow(project_root, debug=getattr(args, "debug", False))
+    repo = DriftHistoryRepository(project_root)
+    history_data = repo.load()
+    history_list = repo.current_history() if history_data is not None else None
+
+    try:
+        analysis, updated_history = workflow.run(
+            snapshot,
+            compare_snapshot=compare_snapshot,
+            deep=args.deep,
+            mode=args.mode,
+            history=history_list,
+        )
+    except ResultValidationError as exc:
+        print("INTERNAL RESULT CONTRACT VIOLATION")
+        print(str(exc))
+        raise SystemExit(EXIT_CONTRACT_ERROR)
+
+    if args.deep and history_data is not None and updated_history is not None:
+        repo.data["history"] = updated_history
+        repo.save()
 
     counts = {key: len(analysis.get(key, [])) for key in SECTION_DISPLAY_NAMES}
 
@@ -93,7 +134,7 @@ def run_ghost(args, project_root: Path) -> Optional[GhostResult]:
             severity = SEVERITY_MAP.get(key, "INFO")
             limit_violation = {
                 "message": f"Ghost limits exceeded: {label}({severity})={counts[key]} > {limit_label}={limit_value}",
-                "exit_code": 2,
+                "exit_code": EXIT_VALIDATION_ERROR,
             }
             break
 
@@ -109,6 +150,8 @@ def run_ghost(args, project_root: Path) -> Optional[GhostResult]:
 def write_ghost_reports(result: GhostResult, project_root: Path, args) -> None:
     """Write ghost markdown outputs according to CLI options."""
     exports_dir = project_root / ".project-control" / "exports"
+    analysis_result = result.get("analysis_result")
+    analysis_dict = analysis_result.as_dict() if analysis_result else {}
 
     if args.deep:
         graph_report_path = exports_dir / "import_graph_orphans.md"
@@ -139,7 +182,7 @@ def write_ghost_reports(result: GhostResult, project_root: Path, args) -> None:
     ghost_report_path = exports_dir / "ghost_candidates.md"
     render_ghost_report(result["analysis"], str(ghost_report_path))
 
-    metrics = result["analysis"].get("metrics", {})
+    metrics = analysis_dict.get("metrics") or result["analysis"].get("metrics", {})
     if args.deep and metrics:
         print("GRAPH SUMMARY:")
         print(f"Nodes: {metrics['node_count']}")
