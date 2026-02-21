@@ -14,6 +14,7 @@ from project_control.core.markdown_renderer import render_writer_report
 from project_control.core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
 from project_control.core.writers import run_writers_analysis
 from project_control.utils.fs_helpers import run_rg
+from project_control.cli.graph_cmd import graph_build, graph_report
 
 PROJECT_DIR = Path.cwd()
 CONTROL_DIR = PROJECT_DIR / ".project-control"
@@ -117,17 +118,18 @@ def cmd_ghost(args: argparse.Namespace) -> int:
 
     if result is None:
         return EXIT_OK
-    analysis = result["analysis"]
+    dto = result["dto"]
+    validation_section = dto.get("validation") or {}
 
     if args.stats:
         print("\nGhost Stats")
         print("-----------")
         if args.deep:
-            print(f"Import graph orphans (CRITICAL): {len(analysis.get('graph_orphans', []))}")
-        print(f"Orphans (HIGH): {len(analysis.get('orphans', []))}")
-        print(f"Legacy snippets (MEDIUM): {len(analysis.get('legacy', []))}")
-        print(f"Session files (LOW): {len(analysis.get('session', []))}")
-        print(f"Duplicates (INFO): {len(analysis.get('duplicates', []))}")
+            print(f"Import graph orphans (CRITICAL): {len(validation_section.get('graph_orphans', []))}")
+        print(f"Orphans (HIGH): {len(validation_section.get('orphans', []))}")
+        print(f"Legacy snippets (MEDIUM): {len(validation_section.get('legacy', []))}")
+        print(f"Session files (LOW): {len(validation_section.get('session', []))}")
+        print(f"Duplicates (INFO): {len(validation_section.get('duplicates', []))}")
         return EXIT_OK
 
     if result["limit_violation"]:
@@ -168,4 +170,11 @@ def dispatch(args: argparse.Namespace) -> int:
         return cmd_ghost(args)
     if args.command == "writers":
         return cmd_writers(args)
+    if args.command == "graph":
+        project_root = Path(getattr(args, "project_root", ".")).resolve()
+        config_path = Path(args.config).resolve() if getattr(args, "config", None) else None
+        if getattr(args, "graph_cmd", None) == "build":
+            return graph_build(project_root, config_path)
+        if getattr(args, "graph_cmd", None) == "report":
+            return graph_report(project_root, config_path)
     return EXIT_OK

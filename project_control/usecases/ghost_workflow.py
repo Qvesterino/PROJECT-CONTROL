@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from project_control.analysis.graph_trend import GraphTrendAnalyzer
+from project_control.core.dto import ResultValidationError
 from project_control.usecases.ghost_usecase import GhostUseCase
+from project_control.core.result_dto import build_ui_result_dto, validate_ui_result_dto
 
 
 class GhostWorkflow:
@@ -27,9 +29,9 @@ class GhostWorkflow:
         """
         Execute ghost analysis and optionally compute trend using provided history.
 
-        Returns a tuple of (analysis_dict, updated_history_list).
+        Returns a tuple of (ui_result_dto, updated_history_list).
         """
-        analysis_result = self.usecase.run(
+        self.usecase.run(
             snapshot,
             compare_snapshot=compare_snapshot,
             enable_drift=deep and compare_snapshot is not None,
@@ -50,4 +52,42 @@ class GhostWorkflow:
                 if trend:
                     analysis["trend"] = trend
 
-        return analysis, updated_history
+        validation_payload = {
+            "orphans": analysis.get("orphans", []),
+            "legacy": analysis.get("legacy", []),
+            "session": analysis.get("session", []),
+            "duplicates": analysis.get("duplicates", []),
+            "semantic_findings": analysis.get("semantic_findings", []),
+            "graph_orphans": analysis.get("graph_orphans", []),
+        }
+
+        graph_payload = None
+        metrics_payload = analysis.get("metrics") if deep else None
+        anomalies_payload = analysis.get("anomalies") if deep else None
+        if deep:
+            graph_payload = {
+                "graph": analysis.get("graph", {}),
+                "entrypoints": analysis.get("entrypoints", []),
+            }
+
+        drift_payload = analysis.get("drift") if deep else None
+        trend_payload = analysis.get("trend") if deep else None
+
+        try:
+            dto = build_ui_result_dto(
+                mode=mode,
+                deep=deep,
+                debug=self.debug,
+                engine_version=None,
+                graph_payload=graph_payload if deep else None,
+                metrics_payload=metrics_payload if deep else None,
+                anomalies_payload=anomalies_payload if deep else None,
+                drift_payload=drift_payload if deep else None,
+                trend_payload=trend_payload if deep else None,
+                validation_payload=validation_payload,
+            )
+            validate_ui_result_dto(dto)
+        except ValueError as exc:
+            raise ResultValidationError(str(exc)) from exc
+
+        return dto, updated_history

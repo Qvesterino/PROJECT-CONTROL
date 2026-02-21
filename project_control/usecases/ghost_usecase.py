@@ -26,7 +26,7 @@ class GhostUseCase:
         enable_trend: bool = False,
         mode: str = "pragmatic",
         deep: bool = False,
-    ) -> GhostAnalysisResult:
+    ) -> Dict[str, Any]:
         """
         Execute ghost analysis and return structured results.
 
@@ -90,4 +90,4 @@ class GhostUseCase:
         )
 
         result.validate()
-        return result
+        return analysis

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, TypedDict
 
 from project_control.analysis import graph_exporter
+from project_control.analysis.graph_trend import GraphTrendAnalyzer
 from project_control.analysis.tree_renderer import render_tree
 from project_control.analysis.layer_boundary_validator import validate_boundaries
 from project_control.analysis.self_architecture_validator import validate_architecture
@@ -45,7 +46,7 @@ class LimitViolation(TypedDict):
 
 
 class GhostResult(TypedDict):
-    analysis: Dict[str, Any]
+    dto: Dict[str, Any]
     counts: Dict[str, int]
     limit_violation: Optional[LimitViolation]
     deep_report_path: Optional[Path]
@@ -101,14 +102,13 @@ def run_ghost(args, project_root: Path) -> Optional[GhostResult]:
     if getattr(args, "compare_snapshot", None):
         compare_snapshot = _load_compare_snapshot(Path(args.compare_snapshot))
 
-    usecase = GhostUseCase(project_root, debug=getattr(args, "debug", False))
     workflow = GhostWorkflow(project_root, debug=getattr(args, "debug", False))
     repo = DriftHistoryRepository(project_root)
     history_data = repo.load()
     history_list = repo.current_history() if history_data is not None else None
 
     try:
-        analysis, updated_history = workflow.run(
+        dto, updated_history = workflow.run(
             snapshot,
             compare_snapshot=compare_snapshot,
             deep=args.deep,
@@ -124,7 +124,8 @@ def run_ghost(args, project_root: Path) -> Optional[GhostResult]:
         repo.data["history"] = updated_history
         repo.save()
 
-    counts = {key: len(analysis.get(key, [])) for key in SECTION_DISPLAY_NAMES}
+    validation_section = dto.get("validation") or {}
+    counts = {key: len(validation_section.get(key, [])) for key in SECTION_DISPLAY_NAMES}
 
     limit_violation: Optional[LimitViolation] = None
     for key, label in SECTION_DISPLAY_NAMES.items():
@@ -139,7 +140,7 @@ def run_ghost(args, project_root: Path) -> Optional[GhostResult]:
             break
 
     return {
-        "analysis": analysis,
+        "dto": dto,
         "counts": counts,
         "limit_violation": limit_violation,
         "deep_report_path": Path(".project-control") / "exports" / "import_graph_orphans.md" if args.deep else None,
@@ -150,12 +151,14 @@ def run_ghost(args, project_root: Path) -> Optional[GhostResult]:
 def write_ghost_reports(result: GhostResult, project_root: Path, args) -> None:
     """Write ghost markdown outputs according to CLI options."""
     exports_dir = project_root / ".project-control" / "exports"
-    analysis_result = result.get("analysis_result")
-    analysis_dict = analysis_result.as_dict() if analysis_result else {}
+    dto = result["dto"]
+    validation_section = dto.get("validation") or {}
+    analysis_section = dto.get("analysis") or {}
+    graph_section = dto.get("graph") or {}
 
     if args.deep:
         graph_report_path = exports_dir / "import_graph_orphans.md"
-        graph_orphans = result["analysis"].get("graph_orphans", [])
+        graph_orphans = validation_section.get("graph_orphans", [])
         graph_lines = [
             "# Import Graph Orphans",
             "",
@@ -180,9 +183,9 @@ def write_ghost_reports(result: GhostResult, project_root: Path, args) -> None:
                 f.write(tree_output)
 
     ghost_report_path = exports_dir / "ghost_candidates.md"
-    render_ghost_report(result["analysis"], str(ghost_report_path))
+    render_ghost_report(validation_section, str(ghost_report_path))
 
-    metrics = analysis_dict.get("metrics") or result["analysis"].get("metrics", {})
+    metrics = analysis_section.get("metrics", {})
     if args.deep and metrics:
         print("GRAPH SUMMARY:")
         print(f"Nodes: {metrics['node_count']}")
@@ -192,7 +195,7 @@ def write_ghost_reports(result: GhostResult, project_root: Path, args) -> None:
         print(f"Density: {metrics['density']:.4f}")
         print(f"Is DAG: {metrics['is_dag']}")
         print(f"Largest Component: {metrics['largest_component_size']}")
-        anomalies = result["analysis"].get("anomalies", {})
+        anomalies = analysis_section.get("anomalies", {})
         if anomalies:
             print("ARCHITECTURE ANOMALY REPORT")
             print(f"Cycle Groups: {anomalies.get('cycle_groups')}")
@@ -201,7 +204,7 @@ def write_ghost_reports(result: GhostResult, project_root: Path, args) -> None:
             print(f"Isolated Nodes: {anomalies.get('isolated_nodes')}")
             print(f"Smell Score: {anomalies.get('smell_score')} ({anomalies.get('smell_level')})")
         
-        drift = result["analysis"].get("drift")
+        drift = dto.get("drift")
         if drift and hasattr(args, "compare_snapshot") and args.compare_snapshot:
             print("=== ARCHITECTURAL DRIFT REPORT ===")
             node_drift = drift.get("node_drift", {})
@@ -237,7 +240,7 @@ def write_ghost_reports(result: GhostResult, project_root: Path, args) -> None:
                 if len(after_history) >= 2:
                     trend = GraphTrendAnalyzer([entry["drift"] for entry in after_history]).compute()
                     if trend:
-                        result["analysis"]["trend"] = trend
+                        dto["trend"] = trend
                         print("=== STABILITY TREND REPORT ===")
                         print(f"Average Intensity: {trend.get('avg_intensity')}")
                         print(f"Volatility: {trend.get('volatility')}")
@@ -245,7 +248,7 @@ def write_ghost_reports(result: GhostResult, project_root: Path, args) -> None:
                         print(f"Classification: {trend.get('classification')}")
 
     if args.deep and getattr(args, "export_graph", False):
-        graph_map = result["analysis"].get("graph", {})
+        graph_map = graph_section.get("edges", {})
         if graph_map:
             dot_path = exports_dir / "import_graph.dot"
             mermaid_path = exports_dir / "import_graph.mmd"

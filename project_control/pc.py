@@ -68,6 +68,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Enable debug output for deep analysis and validation",
     )
     subparsers.add_parser("writers")
+
+    graph_parser = subparsers.add_parser("graph")
+    graph_subparsers = graph_parser.add_subparsers(dest="graph_cmd")
+
+    graph_build_parser = graph_subparsers.add_parser("build")
+    graph_build_parser.add_argument("project_root", nargs="?", default=".")
+    graph_build_parser.add_argument("--config", type=str, help="Path to graph config YAML", default=None)
+
+    graph_report_parser = graph_subparsers.add_parser("report")
+    graph_report_parser.add_argument("project_root", nargs="?", default=".")
+    graph_report_parser.add_argument("--config", type=str, help="Path to graph config YAML", default=None)
     return parser
 
 
