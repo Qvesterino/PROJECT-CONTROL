@@ -14,7 +14,8 @@ from project_control.core.markdown_renderer import render_writer_report
 from project_control.core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
 from project_control.core.writers import run_writers_analysis
 from project_control.utils.fs_helpers import run_rg
-from project_control.cli.graph_cmd import graph_build, graph_report
+from project_control.cli.graph_cmd import graph_build, graph_report, graph_trace
+from project_control.ui import launch_ui
 
 PROJECT_DIR = Path.cwd()
 CONTROL_DIR = PROJECT_DIR / ".project-control"
@@ -170,6 +171,9 @@ def dispatch(args: argparse.Namespace) -> int:
         return cmd_ghost(args)
     if args.command == "writers":
         return cmd_writers(args)
+    if args.command == "ui":
+        launch_ui(PROJECT_DIR)
+        return EXIT_OK
     if args.command == "graph":
         project_root = Path(getattr(args, "project_root", ".")).resolve()
         config_path = Path(args.config).resolve() if getattr(args, "config", None) else None
@@ -177,4 +181,17 @@ def dispatch(args: argparse.Namespace) -> int:
             return graph_build(project_root, config_path)
         if getattr(args, "graph_cmd", None) == "report":
             return graph_report(project_root, config_path)
+        if getattr(args, "graph_cmd", None) == "trace":
+            direction = getattr(args, "direction", "both")
+            max_depth = None if getattr(args, "no_limits", False) or getattr(args, "all", False) else getattr(args, "max_depth", None)
+            max_paths = None if getattr(args, "no_limits", False) or getattr(args, "all", False) else getattr(args, "max_paths", None)
+            return graph_trace(
+                project_root,
+                config_path,
+                getattr(args, "target", ""),
+                direction,
+                max_depth,
+                max_paths,
+                getattr(args, "line", False),
+            )
     return EXIT_OK

@@ -1,0 +1,193 @@
+"""Interactive text-based UI for PROJECT CONTROL."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Optional
+
+from project_control.cli.graph_cmd import graph_trace
+from project_control.config.graph_config import load_graph_config
+from project_control.config.patterns_loader import load_patterns
+from project_control.core.content_store import ContentStore
+from project_control.core.exit_codes import EXIT_OK
+from project_control.core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
+from project_control.core.ghost_service import run_ghost, write_ghost_reports
+from project_control.graph.builder import GraphBuilder, compute_snapshot_hash
+from project_control.graph.metrics import compute_metrics
+from project_control.graph.artifacts import write_artifacts, ensure_output_dir
+
+
+def clear_screen() -> None:
+    os.system("cls" if os.name == "nt" else "clear")
+
+
+def launch_ui(project_root: Path) -> None:
+    project_root = project_root.resolve()
+    while True:
+        clear_screen()
+        snapshot, graph = _status(project_root)
+        _render_status(project_root, snapshot, graph)
+        choice = input("\nSelect an option (1-6): ").strip()
+        if choice == "1":
+            _action_scan(project_root)
+        elif choice == "2":
+            _action_ghost(project_root, deep=False)
+        elif choice == "3":
+            _action_ghost(project_root, deep=True)
+        elif choice == "4":
+            _action_graph_report(project_root)
+        elif choice == "5":
+            _action_trace(project_root)
+        elif choice == "6":
+            print("Exiting PROJECT CONTROL UI.")
+            return
+        else:
+            print("Invalid selection.")
+        input("\nPress Enter to return to menu...")
+
+
+def _status(project_root: Path) -> tuple[Optional[dict], Optional[dict]]:
+    snapshot = None
+    graph = None
+    snapshot_path = project_root / ".project-control" / "snapshot.json"
+    graph_path = project_root / ".project-control" / "out" / "graph.snapshot.json"
+    if snapshot_path.exists():
+        try:
+            snapshot = load_snapshot(project_root)
+        except Exception:
+            snapshot = None
+    if graph_path.exists():
+        try:
+            graph = json.loads(graph_path.read_text(encoding="utf-8"))
+        except Exception:
+            graph = None
+    return snapshot, graph
+
+
+def _render_status(project_root: Path, snapshot: Optional[dict], graph: Optional[dict]) -> None:
+    print("---------------------------------------")
+    print("PROJECT CONTROL")
+    print("---------------------------------------")
+    print(f"Project: {project_root}")
+    print("\nStatus:")
+    snap_status = "OK" if snapshot else "MISSING"
+    print(f"Snapshot: {snap_status}")
+
+    graph_status = "MISSING"
+    if graph:
+        snapshot_hash = compute_snapshot_hash(snapshot) if snapshot else None
+        graph_hash = graph.get("meta", {}).get("snapshotHash")
+        if snapshot_hash and graph_hash and snapshot_hash != graph_hash:
+            graph_status = "OUTDATED"
+        else:
+            graph_status = "OK"
+    print(f"Graph: {graph_status}")
+
+
+def _action_scan(project_root: Path) -> None:
+    print("\nScanning project...")
+    patterns = load_patterns(str(project_root))
+    snapshot = create_snapshot(
+        project_root,
+        patterns.get("ignore_dirs", []),
+        patterns.get("extensions", []),
+    )
+    save_snapshot(snapshot, project_root)
+    print(f"Scan complete. {snapshot.get('file_count', 0)} files indexed.")
+
+
+def _ghost_args(deep: bool) -> SimpleNamespace:
+    return SimpleNamespace(
+        deep=deep,
+        stats=False,
+        tree_only=False,
+        export_graph=False,
+        mode="pragmatic",
+        max_high=-1,
+        max_medium=-1,
+        max_low=-1,
+        max_info=-1,
+        compare_snapshot=None,
+        debug=False,
+        validate_architecture=False,
+    )
+
+
+def _action_ghost(project_root: Path, deep: bool) -> None:
+    print("\nRunning Ghost analysis{}...".format(" (deep)" if deep else ""))
+    args = _ghost_args(deep)
+    result = run_ghost(args, project_root)
+    if result is None:
+        return
+    write_ghost_reports(result, project_root, args)
+    counts = result.get("counts", {})
+    print("Ghost results:")
+    for key, value in sorted(counts.items()):
+        print(f"- {key}: {value}")
+    if result.get("limit_violation"):
+        print(result["limit_violation"]["message"])
+
+
+def _action_graph_report(project_root: Path) -> None:
+    print("\nBuilding graph report...")
+    try:
+        snapshot = load_snapshot(project_root)
+    except FileNotFoundError:
+        print("Snapshot not found. Run scan first.")
+        return
+
+    config = load_graph_config(project_root, None)
+    snapshot_path = project_root / ".project-control" / "snapshot.json"
+    content_store = ContentStore(snapshot, snapshot_path)
+
+    builder = GraphBuilder(project_root, snapshot, content_store, config)
+    graph = builder.build()
+    metrics = compute_metrics(graph, config)
+    snapshot_path_out, metrics_path_out, report_path = write_artifacts(project_root, graph, metrics)
+
+    totals = metrics.get("totals", {})
+    print("Graph summary:")
+    print(f"- Nodes: {totals.get('nodeCount', 0)}")
+    print(f"- Edges: {totals.get('edgeCount', 0)}")
+    print(f"- Cycles: {len(metrics.get('cycles', []))}")
+    print(f"- Orphans: {len(metrics.get('orphanCandidates', []))}")
+    print(f"Artifacts: {snapshot_path_out}")
+    print(f"Report:    {report_path}")
+
+
+def _action_trace(project_root: Path) -> None:
+    try:
+        snapshot = load_snapshot(project_root)
+    except FileNotFoundError:
+        print("Snapshot not found. Run scan first.")
+        return
+
+    target = input("Enter symbol or file: ").strip()
+    if not target:
+        print("No target provided.")
+        return
+    direction = input("Direction (inbound/outbound/both) [both]: ").strip().lower() or "both"
+    try:
+        max_depth_input = input("Max depth [50]: ").strip()
+        max_depth = int(max_depth_input) if max_depth_input else 50
+    except ValueError:
+        max_depth = 50
+    all_paths = input("All paths? (y/n) [n]: ").strip().lower() == "y"
+    max_paths = None if all_paths else 200
+    depth_limit = None if all_paths else max_depth
+
+    print("\nTracing...\n")
+    exit_code = graph_trace(
+        project_root=project_root,
+        config_path=None,
+        target=target,
+        direction=direction,
+        max_depth=depth_limit,
+        max_paths=max_paths,
+        show_line=True,
+    )
+    if exit_code != EXIT_OK:
+        print("Trace finished with issues.")

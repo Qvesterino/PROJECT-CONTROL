@@ -79,6 +79,23 @@ def build_parser() -> argparse.ArgumentParser:
     graph_report_parser = graph_subparsers.add_parser("report")
     graph_report_parser.add_argument("project_root", nargs="?", default=".")
     graph_report_parser.add_argument("--config", type=str, help="Path to graph config YAML", default=None)
+
+    graph_trace_parser = graph_subparsers.add_parser("trace")
+    graph_trace_parser.add_argument("target")
+    graph_trace_parser.add_argument("--all", action="store_true", help="Show all paths (alias for --no-limits)")
+    graph_trace_parser.add_argument("--line", action="store_true", help="Include line-level context for each hop")
+    graph_trace_parser.add_argument(
+        "--direction",
+        choices=["inbound", "outbound", "both"],
+        default="both",
+        help="Traversal direction for trace",
+    )
+    graph_trace_parser.add_argument("--max-depth", type=int, default=10, help="Limit traversal depth")
+    graph_trace_parser.add_argument("--max-paths", type=int, default=50, help="Limit number of returned paths")
+    graph_trace_parser.add_argument("--no-limits", action="store_true", help="Disable depth/path limits")
+    graph_trace_parser.add_argument("--config", type=str, help="Path to graph config YAML", default=None)
+
+    subparsers.add_parser("ui")
     return parser
 
 

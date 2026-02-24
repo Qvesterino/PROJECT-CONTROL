@@ -23,8 +23,12 @@ class ContentStore:
 
     def _find_file_entry(self, path: str) -> Optional[Dict]:
         """Find file entry by path in snapshot."""
+        target = Path(path).as_posix()
         for file in self.snapshot.get("files", []):
-            if file.get("path") == path:
+            candidate = file.get("path")
+            if candidate == path:
+                return file
+            if candidate and Path(candidate).as_posix() == target:
                 return file
         return None
 
