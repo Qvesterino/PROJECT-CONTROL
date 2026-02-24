@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from typing import Optional
 
 from project_control.cli.graph_cmd import graph_trace
-from project_control.config.graph_config import load_graph_config
+from project_control.config.graph_config import GraphConfig, load_graph_config
 from project_control.config.patterns_loader import load_patterns
 from project_control.core.content_store import ContentStore
 from project_control.core.exit_codes import EXIT_OK
@@ -26,27 +26,61 @@ def clear_screen() -> None:
 
 def launch_ui(project_root: Path) -> None:
     project_root = project_root.resolve()
+    mode = _select_mode()
     while True:
         clear_screen()
-        snapshot, graph = _status(project_root)
-        _render_status(project_root, snapshot, graph)
-        choice = input("\nSelect an option (1-6): ").strip()
+        show_status(project_root, mode)
+        print()
+        print("1) Change mode")
+        print("2) Scan project")
+        print("3) Ghost analysis")
+        print("4) Ghost deep analysis")
+        print("5) Graph report")
+        print("6) Trace symbol/file")
+        print("7) Exit")
+        print()
+        choice = input("Select option (1-7): ").strip()
         if choice == "1":
-            _action_scan(project_root)
+            mode = _select_mode()
         elif choice == "2":
-            _action_ghost(project_root, deep=False)
+            _action_scan(project_root)
         elif choice == "3":
-            _action_ghost(project_root, deep=True)
+            _action_ghost(project_root, deep=False)
         elif choice == "4":
-            _action_graph_report(project_root)
+            _action_ghost(project_root, deep=True)
         elif choice == "5":
-            _action_trace(project_root)
+            _action_graph_report(project_root, mode)
         elif choice == "6":
+            _action_trace(project_root, mode)
+        elif choice == "7":
             print("Exiting PROJECT CONTROL UI.")
             return
         else:
             print("Invalid selection.")
         input("\nPress Enter to return to menu...")
+
+
+def show_status(project_root: Path, mode: str) -> None:
+    snapshot, graph = _status(project_root)
+    _render_status(project_root, snapshot, graph, mode)
+
+
+def _select_mode() -> str:
+    while True:
+        clear_screen()
+        print("Select project mode:")
+        print("1) JavaScript / TypeScript")
+        print("2) Python")
+        print("3) Mixed")
+        choice = input("Mode (1-3): ").strip()
+        if choice == "1":
+            return "js"
+        if choice == "2":
+            return "py"
+        if choice == "3":
+            return "mixed"
+        print("Invalid selection. Press Enter to retry.")
+        input()
 
 
 def _status(project_root: Path) -> tuple[Optional[dict], Optional[dict]]:
@@ -67,11 +101,13 @@ def _status(project_root: Path) -> tuple[Optional[dict], Optional[dict]]:
     return snapshot, graph
 
 
-def _render_status(project_root: Path, snapshot: Optional[dict], graph: Optional[dict]) -> None:
+def _render_status(project_root: Path, snapshot: Optional[dict], graph: Optional[dict], mode: str) -> None:
+    mode_label = {"js": "JS/TS", "py": "Python", "mixed": "Mixed"}.get(mode, "Unknown")
     print("---------------------------------------")
     print("PROJECT CONTROL")
     print("---------------------------------------")
     print(f"Project: {project_root}")
+    print(f"Mode:    {mode_label}")
     print("\nStatus:")
     snap_status = "OK" if snapshot else "MISSING"
     print(f"Snapshot: {snap_status}")
@@ -85,6 +121,35 @@ def _render_status(project_root: Path, snapshot: Optional[dict], graph: Optional
         else:
             graph_status = "OK"
     print(f"Graph: {graph_status}")
+
+
+def _make_config(project_root: Path, mode: str) -> GraphConfig:
+    base = load_graph_config(project_root, None)
+    js_cfg = base.languages.get("js_ts", {})
+    py_cfg = base.languages.get("python", {})
+
+    def enable(js_enabled: bool, py_enabled: bool) -> dict:
+        return {
+            "js_ts": {"enabled": js_enabled, "include_exts": list(js_cfg.get("include_exts", []))},
+            "python": {"enabled": py_enabled, "include_exts": list(py_cfg.get("include_exts", []))},
+        }
+
+    if mode == "js":
+        languages = enable(True, False)
+    elif mode == "py":
+        languages = enable(False, True)
+    else:
+        languages = enable(True, True)
+
+    return GraphConfig(
+        include_globs=list(base.include_globs),
+        exclude_globs=list(base.exclude_globs),
+        entrypoints=list(base.entrypoints),
+        alias=dict(base.alias),
+        orphan_allow_patterns=list(base.orphan_allow_patterns),
+        treat_dynamic_imports_as_edges=base.treat_dynamic_imports_as_edges,
+        languages=languages,
+    )
 
 
 def _action_scan(project_root: Path) -> None:
@@ -131,7 +196,7 @@ def _action_ghost(project_root: Path, deep: bool) -> None:
         print(result["limit_violation"]["message"])
 
 
-def _action_graph_report(project_root: Path) -> None:
+def _action_graph_report(project_root: Path, mode: str) -> None:
     print("\nBuilding graph report...")
     try:
         snapshot = load_snapshot(project_root)
@@ -139,7 +204,7 @@ def _action_graph_report(project_root: Path) -> None:
         print("Snapshot not found. Run scan first.")
         return
 
-    config = load_graph_config(project_root, None)
+    config = _make_config(project_root, mode)
     snapshot_path = project_root / ".project-control" / "snapshot.json"
     content_store = ContentStore(snapshot, snapshot_path)
 
@@ -158,7 +223,7 @@ def _action_graph_report(project_root: Path) -> None:
     print(f"Report:    {report_path}")
 
 
-def _action_trace(project_root: Path) -> None:
+def _action_trace(project_root: Path, mode: str) -> None:
     try:
         snapshot = load_snapshot(project_root)
     except FileNotFoundError:
@@ -180,6 +245,8 @@ def _action_trace(project_root: Path) -> None:
     depth_limit = None if all_paths else max_depth
 
     print("\nTracing...\n")
+    config = _make_config(project_root, mode)
+
     exit_code = graph_trace(
         project_root=project_root,
         config_path=None,
@@ -188,6 +255,7 @@ def _action_trace(project_root: Path) -> None:
         max_depth=depth_limit,
         max_paths=max_paths,
         show_line=True,
+        config_override=config,
     )
     if exit_code != EXIT_OK:
         print("Trace finished with issues.")

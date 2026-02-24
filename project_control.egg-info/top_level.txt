@@ -1,0 +1,6 @@
+AUDITY
+contract
+docs
+documentation
+project_control
+tests

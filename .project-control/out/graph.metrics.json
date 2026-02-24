@@ -1,0 +1,16 @@
+{
+  "cycles": [],
+  "depth": {},
+  "entrypoints": [],
+  "externals": {
+    "bySpecifier": {}
+  },
+  "fanIn": {},
+  "fanOut": {},
+  "orphanCandidates": [],
+  "totals": {
+    "edgeCount": 0,
+    "externalEdgeCount": 0,
+    "nodeCount": 0
+  }
+}

@@ -58,12 +58,13 @@ def graph_trace(
     max_depth: Optional[int],
     max_paths: Optional[int],
     show_line: bool,
+    config_override: Optional[GraphConfig] = None,
 ) -> int:
     snapshot = _load_snapshot_or_fail(project_root)
     if snapshot is None:
         return EXIT_VALIDATION_ERROR
 
-    config = load_graph_config(project_root, config_path)
+    config = config_override if config_override is not None else load_graph_config(project_root, config_path)
     graph = _load_or_build_graph(project_root, snapshot, config)
     if graph is None:
         return EXIT_VALIDATION_ERROR
