@@ -15,7 +15,7 @@ from project_control.core.snapshot_service import create_snapshot, load_snapshot
 from project_control.core.writers import run_writers_analysis
 from project_control.utils.fs_helpers import run_rg
 from project_control.cli.graph_cmd import graph_build, graph_report, graph_trace
-from project_control.ui import launch_ui
+from project_control.cli.menu import run_menu
 
 PROJECT_DIR = Path.cwd()
 CONTROL_DIR = PROJECT_DIR / ".project-control"
@@ -61,16 +61,7 @@ def cmd_init(args: argparse.Namespace) -> int:
 
 def cmd_scan(args: argparse.Namespace) -> int:
     ensure_control_dirs()
-    patterns = load_patterns(PROJECT_DIR)
-
-    snapshot = create_snapshot(
-        PROJECT_DIR,
-        patterns.get("ignore_dirs", []),
-        patterns.get("extensions", []),
-    )
-    save_snapshot(snapshot, PROJECT_DIR)
-
-    print(f"Scan complete. {snapshot['file_count']} files indexed.")
+    run_scan(PROJECT_DIR)
     return EXIT_OK
 
 
@@ -112,38 +103,23 @@ def cmd_find(args: argparse.Namespace) -> int:
 
 
 def cmd_ghost(args: argparse.Namespace) -> int:
+    # Shallow ghost only
     try:
         result = run_ghost(args, PROJECT_DIR)
     except SystemExit as exc:
         return int(exc.code)
-
     if result is None:
         return EXIT_OK
     dto = result["dto"]
     validation_section = dto.get("validation") or {}
 
-    if args.stats:
-        print("\nGhost Stats")
-        print("-----------")
-        if args.deep:
-            print(f"Import graph orphans (CRITICAL): {len(validation_section.get('graph_orphans', []))}")
-        print(f"Orphans (HIGH): {len(validation_section.get('orphans', []))}")
-        print(f"Legacy snippets (MEDIUM): {len(validation_section.get('legacy', []))}")
-        print(f"Session files (LOW): {len(validation_section.get('session', []))}")
-        print(f"Duplicates (INFO): {len(validation_section.get('duplicates', []))}")
-        return EXIT_OK
-
-    if result["limit_violation"]:
-        print(result["limit_violation"]["message"])
-        return int(result["limit_violation"]["exit_code"])
-
-    write_ghost_reports(result, PROJECT_DIR, args)
-
-    if not (args.deep and args.tree_only):
-        print(f"Smart ghost report saved: {PROJECT_DIR / result['ghost_report_path']}")
-    if args.deep and result["deep_report_path"] is not None:
-        print(f"Import graph report saved: {PROJECT_DIR / result['deep_report_path']}")
-
+    print("\nGhost Results (shallow)")
+    print("-----------------------")
+    print(f"Orphans: {len(validation_section.get('orphans', []))}")
+    print(f"Legacy: {len(validation_section.get('legacy', []))}")
+    print(f"Session: {len(validation_section.get('session', []))}")
+    print(f"Duplicates: {len(validation_section.get('duplicates', []))}")
+    print(f"Semantic findings: {len(validation_section.get('semantic_findings', []))}")
     return EXIT_OK
 
 
@@ -168,11 +144,13 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "find":
         return cmd_find(args)
     if args.command == "ghost":
+        if getattr(args, "deprecated_deep", False):
+            print("Deprecated: ghost deep legacy graph removed; running shallow detectors instead.")
         return cmd_ghost(args)
     if args.command == "writers":
         return cmd_writers(args)
     if args.command == "ui":
-        launch_ui(PROJECT_DIR)
+        run_menu(PROJECT_DIR)
         return EXIT_OK
     if args.command == "graph":
         project_root = Path(getattr(args, "project_root", ".")).resolve()
@@ -194,4 +172,30 @@ def dispatch(args: argparse.Namespace) -> int:
                 max_paths,
                 getattr(args, "line", False),
             )
+    if args.command == "embed":
+        from project_control.embedding.index_builder import build_index
+        from project_control.embedding.config import EmbedConfig
+        from project_control.embedding.search_engine import SearchEngine
+
+        root = Path(getattr(args, "path", ".")).resolve()
+        cfg = EmbedConfig()
+
+        if getattr(args, "embed_cmd", None) == "build":
+            files, chunks, dim = build_index(root, cfg, overwrite=False)
+            print(f"Embedding build complete. Files: {files}, Chunks: {chunks}, Dim: {dim}")
+            print(f"Index: {cfg.index_path}")
+            return EXIT_OK
+        if getattr(args, "embed_cmd", None) == "rebuild":
+            files, chunks, dim = build_index(root, cfg, overwrite=True)
+            print(f"Embedding rebuild complete. Files: {files}, Chunks: {chunks}, Dim: {dim}")
+            print(f"Index: {cfg.index_path}")
+            return EXIT_OK
+        if getattr(args, "embed_cmd", None) == "search":
+            engine = SearchEngine(root, cfg)
+            top_k = getattr(args, "top_k", 5)
+            results = engine.search(getattr(args, "query", ""), top_k=top_k)
+            for res in results:
+                print(f"{res.file_path}:{res.start_offset}-{res.end_offset} score={res.similarity_score:.3f}")
+                print(res.preview_text)
+            return EXIT_OK
     return EXIT_OK

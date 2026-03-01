@@ -76,7 +76,8 @@ def graph_trace(
         return EXIT_VALIDATION_ERROR
 
     traces = trace_paths(graph, target_id, direction=direction, max_depth=max_depth, max_paths=max_paths)
-    output_lines = _render_trace(graph, traces, target, target_id, symbol_defs, show_line)
+    symbol_usages = _find_symbol_usages(target, limit=50)
+    output_lines = _render_trace(graph, traces, target, target_id, symbol_defs, symbol_usages, show_line)
 
     for line in output_lines:
         print(line)
@@ -157,6 +158,36 @@ def _find_symbol_definitions(symbol: str, limit: int = 3) -> List[Dict]:
     return results
 
 
+def _find_symbol_usages(symbol: str, limit: int = 50) -> List[Dict]:
+    """
+    Return up to `limit` textual occurrences of `symbol` with path/line/snippet.
+
+    This is a pure text search (ripgrep) and complements the graph-based trace by
+    showing every file where the symbol string appears (imports, calls, docs).
+    """
+    raw = run_rg(symbol)
+    results: List[Dict] = []
+    for line in raw.splitlines():
+        if len(results) >= limit:
+            break
+        parts = line.split(":", 2)
+        if len(parts) < 3:
+            continue
+        path, lineno, snippet = parts[0], parts[1], parts[2]
+        try:
+            line_no_int = int(lineno)
+        except ValueError:
+            line_no_int = 0
+        results.append(
+            {
+                "path": path.replace("\\", "/"),
+                "line": line_no_int,
+                "lineText": snippet.strip(),
+            }
+        )
+    return results
+
+
 def _edges_by_pair(edges: List[Dict]) -> Dict[tuple, List[Dict]]:
     mapping: Dict[tuple, List[Dict]] = {}
     for edge in edges:
@@ -167,7 +198,15 @@ def _edges_by_pair(edges: List[Dict]) -> Dict[tuple, List[Dict]]:
     return mapping
 
 
-def _render_trace(graph: Dict, traces: Dict[str, List], target_label: str, target_id: int, symbol_defs: List[Dict], show_line: bool) -> List[str]:
+def _render_trace(
+    graph: Dict,
+    traces: Dict[str, List],
+    target_label: str,
+    target_id: int,
+    symbol_defs: List[Dict],
+    symbol_usages: List[Dict],
+    show_line: bool,
+) -> List[str]:
     id_to_path = {n["id"]: n["path"] for n in graph.get("nodes", [])}
     edges_map = _edges_by_pair(graph.get("edges", []))
 
@@ -205,4 +244,11 @@ def _render_trace(graph: Dict, traces: Dict[str, List], target_label: str, targe
                     line_no = edge.get("line")
                     text = edge.get("lineText", "")
                     lines.append(f"    {id_to_path.get(a, a)}:{line_no or '?'} {text.strip()}")
+
+    if symbol_usages:
+        lines.append("Symbol usages (text search):")
+        for match in symbol_usages:
+            lines.append(f"- {match.get('path')}:{match.get('line', '?')} {match.get('lineText', '')}")
+    else:
+        lines.append("Symbol usages (text search): none")
     return lines

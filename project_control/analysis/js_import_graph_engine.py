@@ -1,4 +1,4 @@
-"""JavaScript/TypeScript import graph engine using snapshot content."""
+"""DEPRECATED/UNUSED: Legacy JavaScript/TypeScript import graph engine."""
 
 from __future__ import annotations
 

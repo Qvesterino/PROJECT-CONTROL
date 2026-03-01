@@ -1,4 +1,4 @@
-"""Unified import graph detector that composes language-specific engines."""
+"""DEPRECATED/UNUSED: Legacy import graph detector (retained for reference)."""
 
 from __future__ import annotations
 

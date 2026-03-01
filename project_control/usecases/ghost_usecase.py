@@ -58,8 +58,8 @@ class GhostUseCase:
             self.patterns,
             self.snapshot_path,
             mode=mode,
-            deep=deep,
-            compare_snapshot=compare,
+            deep=False if deep else False,
+            compare_snapshot=None,
             debug=self.debug,
         )
 

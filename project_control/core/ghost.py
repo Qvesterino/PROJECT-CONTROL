@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
+import json
 
 from project_control.core.content_store import ContentStore
 from project_control.analysis import (
@@ -12,8 +13,6 @@ from project_control.analysis import (
     orphan_detector,
     session_detector,
 )
-from project_control.analysis.import_graph_detector import detect_graph_orphans
-from project_control.analysis import semantic_detector
 
 
 class Detector(Protocol):
@@ -36,6 +35,9 @@ def analyze_ghost(
     deep: bool = False,
     compare_snapshot: Optional[Dict[str, Any]] = None,
     debug: bool = False,
+    project_root: Optional[Path] = None,
+    graph_config: Optional[object] = None,
+    force_graph: bool = False,
 ) -> Dict[str, List[Any]]:
     """
     Run every ghost detector and combine their findings.
@@ -56,7 +58,7 @@ def analyze_ghost(
         "legacy": _run_detector(legacy_detector, snapshot, patterns, content_store),
         "session": _run_detector(session_detector, snapshot, patterns, content_store),
         "duplicates": _run_detector(duplicate_detector, snapshot, patterns, content_store),
-        "semantic_findings": _run_detector(semantic_detector, snapshot, patterns, content_store),
+        "semantic_findings": [],
         "graph_orphans": [],
         "graph": {},
         "metrics": {},
@@ -64,19 +66,5 @@ def analyze_ghost(
 
     result["orphans"] = sorted(result["orphans"], key=lambda p: p.lower())
     if deep:
-        graph_result = detect_graph_orphans(
-            snapshot,
-            patterns,
-            content_store,
-            apply_ignore=(mode == "pragmatic"),
-            compare_snapshot=compare_snapshot,
-            debug=debug,
-        )
-        result["graph_orphans"] = graph_result["orphans"]
-        result["graph"] = graph_result["graph"]
-        result["metrics"] = graph_result["metrics"]
-        result["anomalies"] = graph_result.get("anomalies", {})
-        result["entrypoints"] = graph_result.get("entrypoints", [])
-        if "drift" in graph_result:
-            result["drift"] = graph_result["drift"]
+        print("Deprecated: ghost deep legacy graph removed; falling back to shallow detectors.")
     return result

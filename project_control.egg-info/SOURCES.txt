@@ -29,6 +29,7 @@ project_control/analysis/session_detector.py
 project_control/analysis/tree_renderer.py
 project_control/cli/__init__.py
 project_control/cli/graph_cmd.py
+project_control/cli/menu.py
 project_control/cli/router.py
 project_control/config/__init__.py
 project_control/config/graph_config.py
@@ -52,9 +53,15 @@ project_control/core/snapshot_validator.py
 project_control/core/tmp_unused_test.py
 project_control/core/writers.py
 project_control/embedding/__init__.py
+project_control/embedding/chunker.py
+project_control/embedding/config.py
+project_control/embedding/embed_provider.py
+project_control/embedding/index_builder.py
+project_control/embedding/search_engine.py
 project_control/graph/__init__.py
 project_control/graph/artifacts.py
 project_control/graph/builder.py
+project_control/graph/ensure.py
 project_control/graph/extractor.py
 project_control/graph/metrics.py
 project_control/graph/resolver.py
@@ -66,6 +73,12 @@ project_control/graph/extractors/registry.py
 project_control/persistence/__init__.py
 project_control/persistence/drift_history_repository.py
 project_control/render/__init__.py
+project_control/services/analyze_service.py
+project_control/services/explore_service.py
+project_control/services/graph_service.py
+project_control/services/scan_service.py
+project_control/ui/__init__.py
+project_control/ui/state.py
 project_control/usecases/__init__.py
 project_control/usecases/ghost_usecase.py
 project_control/usecases/ghost_workflow.py
@@ -73,4 +86,5 @@ project_control/utils/__init__.py
 project_control/utils/fs_helpers.py
 tests/__init__.py
 tests/test_extractors_trace.py
+tests/test_ghost_graph_core.py
 tests/test_graph_core.py

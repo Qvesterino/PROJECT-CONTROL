@@ -6,6 +6,7 @@ from project_control.graph.artifacts import write_artifacts, write_report_only
 from project_control.graph.resolver import SpecifierResolver, PythonResolver
 from project_control.graph.extractors.base import ImportOccurrence
 from project_control.graph.extractors.registry import build_registry
+from project_control.graph.ensure import ensure_graph
 
 __all__ = [
     "GraphBuilder",
@@ -16,4 +17,5 @@ __all__ = [
     "PythonResolver",
     "ImportOccurrence",
     "build_registry",
+    "ensure_graph",
 ]

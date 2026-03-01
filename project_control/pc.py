@@ -7,6 +7,7 @@ Parses arguments and dispatches to router.
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 from project_control.cli.router import dispatch
 
 
@@ -23,49 +24,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     ghost_parser = subparsers.add_parser("ghost")
     ghost_parser.add_argument(
-        "--deep",
+        "--deprecated-deep",
         action="store_true",
-        help="Run deep import graph analysis (slow)",
-    )
-    ghost_parser.add_argument(
-        "--stats",
-        action="store_true",
-        help="Print only statistics without generating markdown report",
-    )
-    ghost_parser.add_argument(
-        "--tree-only",
-        action="store_true",
-        help="Write only the tree view section to import_graph_orphans.md (no flat list)",
-    )
-    ghost_parser.add_argument(
-        "--export-graph",
-        action="store_true",
-        help="Export the combined import graph in DOT and Mermaid formats when running deep analysis",
-    )
-    ghost_parser.add_argument(
-        "--mode",
-        choices=["strict", "pragmatic"],
-        default="pragmatic",
-        help="Ghost detection mode: strict = no ignore patterns, pragmatic = apply ignore patterns",
-    )
-    ghost_parser.add_argument("--max-high", type=int, default=-1, help="Fail if high-severity count exceeds this value.")
-    ghost_parser.add_argument("--max-medium", type=int, default=-1, help="Fail if medium-severity count exceeds this value.")
-    ghost_parser.add_argument("--max-low", type=int, default=-1, help="Fail if low-severity count exceeds this value.")
-    ghost_parser.add_argument("--max-info", type=int, default=-1, help="Fail if info-severity count exceeds this value.")
-    ghost_parser.add_argument(
-        "--compare-snapshot",
-        type=str,
-        help="Path to previous snapshot JSON for architectural drift comparison (requires --deep)",
-    )
-    ghost_parser.add_argument(
-        "--validate-architecture",
-        action="store_true",
-        help="Validate analysis layer boundaries before running ghost",
-    )
-    ghost_parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug output for deep analysis and validation",
+        help="Deprecated: no-op; legacy ghost deep removed.",
     )
     subparsers.add_parser("writers")
 
@@ -96,6 +57,17 @@ def build_parser() -> argparse.ArgumentParser:
     graph_trace_parser.add_argument("--config", type=str, help="Path to graph config YAML", default=None)
 
     subparsers.add_parser("ui")
+
+    embed_parser = subparsers.add_parser("embed")
+    embed_sub = embed_parser.add_subparsers(dest="embed_cmd")
+    embed_build = embed_sub.add_parser("build")
+    embed_build.add_argument("path", nargs="?", default=".")
+    embed_rebuild = embed_sub.add_parser("rebuild")
+    embed_rebuild.add_argument("path", nargs="?", default=".")
+    embed_search = embed_sub.add_parser("search")
+    embed_search.add_argument("query")
+    embed_search.add_argument("path", nargs="?", default=".")
+    embed_search.add_argument("--top-k", type=int, default=5)
     return parser
 
 
@@ -103,7 +75,8 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
     if not args.command:
-        parser.print_help()
+        from project_control.cli.menu import run_menu
+        run_menu(Path.cwd())
         return
     exit_code = dispatch(args)
     raise SystemExit(exit_code)

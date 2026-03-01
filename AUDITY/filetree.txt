@@ -1,0 +1,12 @@
+Folder PATH listing for volume Ukladací priestor
+Volume serial number is 268D-FE1E
+D:.
+    ARCHITECTURE MAP.md
+    Audit #1.md
+    filetree.txt
+    FUNCTIONAL_ARCHITECTURE_AUDIT.md
+    navrh na refactor.md
+    refactor_plan_#1.md
+    
+No subfolders exist 
+

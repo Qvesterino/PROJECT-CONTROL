@@ -1,4 +1,4 @@
-"""Python import graph engine using the content store."""
+"""DEPRECATED/UNUSED: Legacy Python import graph engine."""
 
 from __future__ import annotations
 
