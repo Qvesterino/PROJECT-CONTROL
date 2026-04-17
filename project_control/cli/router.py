@@ -173,29 +173,53 @@ def dispatch(args: argparse.Namespace) -> int:
                 getattr(args, "line", False),
             )
     if args.command == "embed":
-        from project_control.embedding.index_builder import build_index
-        from project_control.embedding.config import EmbedConfig
-        from project_control.embedding.search_engine import SearchEngine
+        try:
+            from project_control.embedding.index_builder import build_index
+            from project_control.embedding.config import EmbedConfig
+            from project_control.embedding.search_engine import SearchEngine
+        except ImportError as e:
+            print("❌ Embedding dependencies not installed.")
+            print("   Install with: pip install -e '.[embedding]'")
+            print(f"   Error: {e}")
+            return EXIT_VALIDATION_ERROR
 
         root = Path(getattr(args, "path", ".")).resolve()
         cfg = EmbedConfig()
 
         if getattr(args, "embed_cmd", None) == "build":
-            files, chunks, dim = build_index(root, cfg, overwrite=False)
-            print(f"Embedding build complete. Files: {files}, Chunks: {chunks}, Dim: {dim}")
-            print(f"Index: {cfg.index_path}")
-            return EXIT_OK
+            try:
+                files, chunks, dim = build_index(root, cfg, overwrite=False)
+                print(f"Embedding build complete. Files: {files}, Chunks: {chunks}, Dim: {dim}")
+                print(f"Index: {cfg.index_path}")
+                return EXIT_OK
+            except Exception as e:
+                print(f"❌ Embedding build failed: {e}")
+                print("   Ensure Ollama is running: ollama serve")
+                print(f"   Download model: ollama pull {cfg.model}")
+                return EXIT_VALIDATION_ERROR
         if getattr(args, "embed_cmd", None) == "rebuild":
-            files, chunks, dim = build_index(root, cfg, overwrite=True)
-            print(f"Embedding rebuild complete. Files: {files}, Chunks: {chunks}, Dim: {dim}")
-            print(f"Index: {cfg.index_path}")
-            return EXIT_OK
+            try:
+                files, chunks, dim = build_index(root, cfg, overwrite=True)
+                print(f"Embedding rebuild complete. Files: {files}, Chunks: {chunks}, Dim: {dim}")
+                print(f"Index: {cfg.index_path}")
+                return EXIT_OK
+            except Exception as e:
+                print(f"❌ Embedding rebuild failed: {e}")
+                print("   Ensure Ollama is running: ollama serve")
+                print(f"   Download model: ollama pull {cfg.model}")
+                return EXIT_VALIDATION_ERROR
         if getattr(args, "embed_cmd", None) == "search":
-            engine = SearchEngine(root, cfg)
-            top_k = getattr(args, "top_k", 5)
-            results = engine.search(getattr(args, "query", ""), top_k=top_k)
-            for res in results:
-                print(f"{res.file_path}:{res.start_offset}-{res.end_offset} score={res.similarity_score:.3f}")
-                print(res.preview_text)
-            return EXIT_OK
+            try:
+                engine = SearchEngine(root, cfg)
+                top_k = getattr(args, "top_k", 5)
+                results = engine.search(getattr(args, "query", ""), top_k=top_k)
+                for res in results:
+                    print(f"{res.file_path}:{res.start_offset}-{res.end_offset} score={res.similarity_score:.3f}")
+                    print(res.preview_text)
+                return EXIT_OK
+            except Exception as e:
+                print(f"❌ Embedding search failed: {e}")
+                print("   Ensure index exists: pc embed build")
+                print("   Ensure Ollama is running: ollama serve")
+                return EXIT_VALIDATION_ERROR
     return EXIT_OK

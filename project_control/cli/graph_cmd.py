@@ -46,8 +46,22 @@ def graph_build(project_root: Path, config_path: Optional[Path]) -> int:
 
 
 def graph_report(project_root: Path, config_path: Optional[Path]) -> int:
-    # Report regenerates artifacts to remain deterministic
-    return graph_build(project_root, config_path)
+    """Regenerate graph artifacts from existing graph if cache is valid, otherwise rebuild."""
+    snapshot = _load_snapshot_or_fail(project_root)
+    if snapshot is None:
+        return EXIT_VALIDATION_ERROR
+
+    config = load_graph_config(project_root, config_path)
+    graph = _load_or_build_graph(project_root, snapshot, config)
+    if graph is None:
+        return EXIT_VALIDATION_ERROR
+
+    # Regenerate artifacts from existing graph (metrics may be recomputed for consistency)
+    metrics = compute_metrics(graph, config)
+    snapshot_path_out, metrics_path_out, report_path = write_artifacts(project_root, graph, metrics)
+
+    print(f"Graph report regenerated: {report_path}")
+    return EXIT_OK
 
 
 def graph_trace(

@@ -42,11 +42,19 @@ def analyze(snapshot: Dict[str, Any], patterns: Dict[str, Any], content_store: "
     if not files:
         return []
     
-    # Initialize embedding service
+    # Initialize embedding service with graceful fallback
     # Note: EmbeddingService needs a project root path for cache management
     # We pass the parent directory of snapshot as project root
-    project_root = Path.cwd()
-    embedding_service = EmbeddingService(project_root)
+    try:
+        project_root = Path.cwd()
+        embedding_service = EmbeddingService(project_root)
+    except ImportError as e:
+        print(f"⚠️  Warning: Embedding dependencies not installed. Install with: pip install -e '.[embedding]'")
+        print(f"   Error: {e}")
+        return []
+    except Exception as e:
+        print(f"⚠️  Warning: Failed to initialize embedding service ({e}), skipping semantic analysis")
+        return []
     
     # Load configuration (with defaults)
     embedding_config = patterns.get("embedding", {})

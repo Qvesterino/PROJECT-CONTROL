@@ -97,6 +97,11 @@ class EmbeddingService:
             try:
                 result = ollama_embeddings(model=self.model_name, prompt=chunk)
                 chunk_embeddings.append(result["embedding"])
+            except ImportError as e:
+                raise ImportError(
+                    f"Ollama library not available. Install with: pip install -e '.[embedding]'\n"
+                    f"Also ensure Ollama server is running: https://ollama.ai/"
+                ) from e
             except Exception as e:
                 print(f"⚠️  Warning: Failed to embed chunk ({e}), skipping")
                 continue

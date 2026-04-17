@@ -19,6 +19,13 @@ class OllamaEmbedProvider:
                 json={"model": self.config.model, "input": text},
                 timeout=60,
             )
+        except requests.ConnectionError as exc:
+            raise RuntimeError(
+                f"Cannot connect to Ollama server at {self.config.base_url}\n"
+                f"Ensure Ollama is running: ollama serve\n"
+                f"Download model: ollama pull {self.config.model}\n"
+                f"Get Ollama: https://ollama.ai/"
+            ) from exc
         except requests.RequestException as exc:
             raise RuntimeError(f"Ollama request failed: {exc}") from exc
         if resp.status_code != 200:
