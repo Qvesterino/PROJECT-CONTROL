@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 def _is_code_file(path: str) -> bool:
     """Filter for code files (JS/TS/Python) – skip assets/docs."""
     ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
-    return ext in {".js", ".ts", ".jsx", ".tsx", ".py", ".mjs", ".cjs"}
+    return ext in {"js", "ts", "jsx", "tsx", "py", "mjs", "cjs"}
 
 
 def analyze(snapshot: Dict[str, Any], patterns: Dict[str, Any], content_store: "ContentStore") -> List[Dict[str, Any]]:

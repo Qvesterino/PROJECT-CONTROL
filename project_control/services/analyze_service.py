@@ -3,19 +3,25 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from project_control.core.ghost import analyze_ghost
+from project_control.core.ghost import ghost
+from project_control.core.content_store import ContentStore
+from project_control.config.patterns_loader import load_patterns
 from project_control.ui.state import AppState
 from project_control.graph.ensure import ensure_graph
 from project_control.config.graph_config import GraphConfig, load_graph_config
 
 
 def ghost_fast(project_root: Path) -> None:
+    """Run shallow ghost detectors using canonical ghost core."""
     snapshot_path = project_root / ".project-control" / "snapshot.json"
     if not snapshot_path.exists():
         print("Run pc scan first.")
         return
     snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
-    result = analyze_ghost(snapshot, {}, snapshot_path, deep=False)
+    content_store = ContentStore(snapshot, snapshot_path)
+    patterns = load_patterns(project_root)
+
+    result = ghost(snapshot, patterns, content_store)
     counts = {k: len(v) for k, v in result.items() if isinstance(v, list)}
     print("Ghost detectors (shallow):")
     for k, v in sorted(counts.items()):

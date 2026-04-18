@@ -14,7 +14,7 @@ from project_control.config.patterns_loader import load_patterns
 from project_control.core.content_store import ContentStore
 from project_control.core.exit_codes import EXIT_OK
 from project_control.core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
-from project_control.core.ghost_service import run_ghost, write_ghost_reports
+from project_control.core.ghost_service import run_ghost, write_ghost_report
 from project_control.graph.builder import GraphBuilder, compute_snapshot_hash
 from project_control.graph.metrics import compute_metrics
 from project_control.graph.artifacts import write_artifacts, ensure_output_dir
@@ -34,25 +34,22 @@ def launch_ui(project_root: Path) -> None:
         print("1) Change mode")
         print("2) Scan project")
         print("3) Ghost analysis")
-        print("4) Ghost deep analysis")
-        print("5) Graph report")
-        print("6) Trace symbol/file")
-        print("7) Exit")
+        print("4) Graph report")
+        print("5) Trace symbol/file")
+        print("6) Exit")
         print()
-        choice = input("Select option (1-7): ").strip()
+        choice = input("Select option (1-6): ").strip()
         if choice == "1":
             mode = _select_mode()
         elif choice == "2":
             _action_scan(project_root)
         elif choice == "3":
-            _action_ghost(project_root, deep=False)
+            _action_ghost(project_root)
         elif choice == "4":
-            _action_ghost(project_root, deep=True)
-        elif choice == "5":
             _action_graph_report(project_root, mode)
-        elif choice == "6":
+        elif choice == "5":
             _action_trace(project_root, mode)
-        elif choice == "7":
+        elif choice == "6":
             print("Exiting PROJECT CONTROL UI.")
             return
         else:
@@ -164,36 +161,33 @@ def _action_scan(project_root: Path) -> None:
     print(f"Scan complete. {snapshot.get('file_count', 0)} files indexed.")
 
 
-def _ghost_args(deep: bool) -> SimpleNamespace:
+def _ghost_args() -> SimpleNamespace:
     return SimpleNamespace(
-        deep=deep,
-        stats=False,
-        tree_only=False,
-        export_graph=False,
         mode="pragmatic",
         max_high=-1,
         max_medium=-1,
         max_low=-1,
         max_info=-1,
-        compare_snapshot=None,
-        debug=False,
-        validate_architecture=False,
     )
 
 
-def _action_ghost(project_root: Path, deep: bool) -> None:
-    print("\nRunning Ghost analysis{}...".format(" (deep)" if deep else ""))
-    args = _ghost_args(deep)
-    result = run_ghost(args, project_root)
-    if result is None:
+def _action_ghost(project_root: Path) -> None:
+    print("\nRunning Ghost analysis...")
+    args = _ghost_args()
+    ghost_data = run_ghost(args, project_root)
+    if ghost_data is None:
         return
-    write_ghost_reports(result, project_root, args)
-    counts = result.get("counts", {})
+
+    result = ghost_data["result"]
+    counts = ghost_data["counts"]
+
+    write_ghost_report(result, project_root)
+
     print("Ghost results:")
     for key, value in sorted(counts.items()):
         print(f"- {key}: {value}")
-    if result.get("limit_violation"):
-        print(result["limit_violation"]["message"])
+    if ghost_data.get("limit_violation"):
+        print(ghost_data["limit_violation"]["message"])
 
 
 def _action_graph_report(project_root: Path, mode: str) -> None:

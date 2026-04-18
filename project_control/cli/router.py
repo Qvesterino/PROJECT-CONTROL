@@ -1,4 +1,4 @@
-"""CLI router that delegates commands to core services/usecases."""
+"""CLI router that delegates commands to core services."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Optional
 
 from project_control.config.patterns_loader import load_patterns
 from project_control.core.exit_codes import EXIT_OK, EXIT_VALIDATION_ERROR
-from project_control.core.ghost_service import run_ghost, write_ghost_reports
+from project_control.core.ghost_service import run_ghost, write_ghost_report
 from project_control.core.markdown_renderer import render_writer_report
 from project_control.core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
 from project_control.core.writers import run_writers_analysis
@@ -103,23 +103,30 @@ def cmd_find(args: argparse.Namespace) -> int:
 
 
 def cmd_ghost(args: argparse.Namespace) -> int:
-    # Shallow ghost only
-    try:
-        result = run_ghost(args, PROJECT_DIR)
-    except SystemExit as exc:
-        return int(exc.code)
-    if result is None:
+    """Run shallow ghost analysis using canonical ghost core."""
+    ghost_data = run_ghost(args, PROJECT_DIR)
+    if ghost_data is None:
         return EXIT_OK
-    dto = result["dto"]
-    validation_section = dto.get("validation") or {}
 
-    print("\nGhost Results (shallow)")
-    print("-----------------------")
-    print(f"Orphans: {len(validation_section.get('orphans', []))}")
-    print(f"Legacy: {len(validation_section.get('legacy', []))}")
-    print(f"Session: {len(validation_section.get('session', []))}")
-    print(f"Duplicates: {len(validation_section.get('duplicates', []))}")
-    print(f"Semantic findings: {len(validation_section.get('semantic_findings', []))}")
+    result = ghost_data["result"]
+    counts = ghost_data["counts"]
+
+    # Write markdown report
+    write_ghost_report(result, PROJECT_DIR)
+
+    # Print summary
+    print("\nGhost Results")
+    print("-------------")
+    print(f"Orphans:   {counts.get('orphans', 0)}")
+    print(f"Legacy:    {counts.get('legacy', 0)}")
+    print(f"Sessions:  {counts.get('sessions', 0)}")
+    print(f"Duplicates: {counts.get('duplicates', 0)}")
+    print(f"Semantic:  {counts.get('semantic', 0)}")
+
+    if ghost_data.get("limit_violation"):
+        print(f"\n⚠️  {ghost_data['limit_violation']['message']}")
+        return ghost_data["limit_violation"]["exit_code"]
+
     return EXIT_OK
 
 
@@ -144,8 +151,6 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "find":
         return cmd_find(args)
     if args.command == "ghost":
-        if getattr(args, "deprecated_deep", False):
-            print("Deprecated: ghost deep legacy graph removed; running shallow detectors instead.")
         return cmd_ghost(args)
     if args.command == "writers":
         return cmd_writers(args)
@@ -201,25 +206,28 @@ def dispatch(args: argparse.Namespace) -> int:
             try:
                 files, chunks, dim = build_index(root, cfg, overwrite=True)
                 print(f"Embedding rebuild complete. Files: {files}, Chunks: {chunks}, Dim: {dim}")
-                print(f"Index: {cfg.index_path}")
                 return EXIT_OK
             except Exception as e:
                 print(f"❌ Embedding rebuild failed: {e}")
-                print("   Ensure Ollama is running: ollama serve")
-                print(f"   Download model: ollama pull {cfg.model}")
                 return EXIT_VALIDATION_ERROR
         if getattr(args, "embed_cmd", None) == "search":
             try:
-                engine = SearchEngine(root, cfg)
-                top_k = getattr(args, "top_k", 5)
-                results = engine.search(getattr(args, "query", ""), top_k=top_k)
-                for res in results:
-                    print(f"{res.file_path}:{res.start_offset}-{res.end_offset} score={res.similarity_score:.3f}")
-                    print(res.preview_text)
+                engine = SearchEngine(cfg)
+                hits = engine.search(getattr(args, "query", ""), top_k=getattr(args, "top_k", 5))
+                for rank, hit in enumerate(hits, 1):
+                    print(f"  {rank}. {hit['path']} (score={hit['score']:.4f})")
                 return EXIT_OK
             except Exception as e:
                 print(f"❌ Embedding search failed: {e}")
-                print("   Ensure index exists: pc embed build")
-                print("   Ensure Ollama is running: ollama serve")
                 return EXIT_VALIDATION_ERROR
-    return EXIT_OK
+
+    print(f"Unknown command: {args.command}")
+    return EXIT_VALIDATION_ERROR
+
+
+# Backward compat — used by cmd_scan
+def run_scan(project_root: Path) -> None:
+    from project_control.core.scanner import scan_project
+    snapshot = scan_project(project_root)
+    save_snapshot(snapshot, project_root)
+    print(f"Scan complete. {len(snapshot.get('files', []))} files indexed.")

@@ -23,11 +23,12 @@ def build_parser() -> argparse.ArgumentParser:
     find_parser.add_argument("symbol", nargs="?")
 
     ghost_parser = subparsers.add_parser("ghost")
-    ghost_parser.add_argument(
-        "--deprecated-deep",
-        action="store_true",
-        help="Deprecated: no-op; legacy ghost deep removed.",
-    )
+    ghost_parser.add_argument("--mode", choices=["strict", "pragmatic"], default="pragmatic")
+    ghost_parser.add_argument("--max-high", type=int, default=-1)
+    ghost_parser.add_argument("--max-medium", type=int, default=-1)
+    ghost_parser.add_argument("--max-low", type=int, default=-1)
+    ghost_parser.add_argument("--max-info", type=int, default=-1)
+
     subparsers.add_parser("writers")
 
     graph_parser = subparsers.add_parser("graph")
