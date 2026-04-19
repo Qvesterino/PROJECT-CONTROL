@@ -1,7 +1,7 @@
 {
-  "project_mode": "python",
+  "project_mode": "y",
   "graph_profile": "strict",
-  "trace_direction": "both",
-  "trace_depth": 50,
+  "trace_direction": "inbound",
+  "trace_depth": 49,
   "trace_all_paths": true
 }
