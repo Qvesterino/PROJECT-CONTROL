@@ -1,8 +1,51 @@
 # PROJECT CONTROL
 
-**Deterministic architectural analysis engine** for codebases.
+**Find dead code. Understand your architecture. Stop guessing.**
 
-Project Control scans your project, detects dead code, builds dependency graphs, and helps you keep your architecture clean.
+Project Control is a deterministic analysis tool that tells you what is really happening inside your codebase.
+
+---
+
+## 30-Second Demo
+
+```bash
+pc init
+pc scan
+pc ghost
+pc graph report
+```
+
+That's it. You now understand your codebase.
+
+---
+
+## What is Ghost Analysis?
+
+Ghost analysis finds parts of your codebase that no longer matter:
+
+- **Orphans** — files that are never referenced by anything
+- **Legacy** — outdated code matching known legacy patterns
+- **Sessions** — temporary or session artifacts left behind
+- **Duplicates** — files with identical names in different paths
+- **Semantic** — files that don't belong (embedding-powered, optional)
+
+It is fast, heuristic, and designed to highlight architectural drift before it becomes technical debt.
+
+### Example Output
+
+```
+$ pc ghost
+
+Ghost Results
+-------------
+Orphans:    31
+Legacy:      0
+Sessions:    0
+Duplicates:  0
+Semantic:   61
+```
+
+A detailed markdown report is generated at `.project-control/exports/ghost_candidates.md`.
 
 ---
 
@@ -15,7 +58,7 @@ Project Control scans your project, detects dead code, builds dependency graphs,
 | **Dependency Graph** | Builds a deterministic import graph for Python and JS/TS projects |
 | **Graph Trace** | Traces dependency paths to/from any symbol or file |
 | **Interactive UI** | Text-based menu for guided analysis |
-| **Embedding Search** | Semantic code search powered by Ollama (optional) |
+| **Embedding Search** | Semantic code search powered by local Ollama (optional) |
 
 ---
 
@@ -23,12 +66,15 @@ Project Control scans your project, detects dead code, builds dependency graphs,
 
 - **Python 3.10+**
 - **ripgrep** (`rg`) — required for symbol search and orphan detection
-- **Git** — recommended for version control integration
 
 ### Optional (for semantic analysis)
 
-- **[Ollama](https://ollama.ai)** — local LLM server for embedding computation
-- **FAISS** + **NumPy** — for vector similarity search
+Embedding is **optional and not required for core functionality**. You can safely ignore this section if you only want structural analysis.
+
+If you want semantic code search and semantic ghost detection:
+
+- **[Ollama](https://ollama.ai)** — local LLM server (runs on your machine, no cloud)
+- **FAISS** + **NumPy** — installed automatically with `pip install -e ".[embedding]"`
 
 ---
 
@@ -46,13 +92,10 @@ This installs the `pc` command and core dependencies (`pyyaml`).
 
 ### 2. Install with embedding support (optional)
 
+Skip this if you only need structural analysis.
+
 ```bash
 pip install -e ".[embedding]"
-```
-
-Then start Ollama and pull the embedding model:
-
-```bash
 ollama serve
 ollama pull qwen3-embedding:8b
 ```
@@ -138,7 +181,7 @@ pc ui
 | `pc graph trace <target> --direction inbound` | Trace only incoming dependencies |
 | `pc graph trace <target> --line` | Include line-level context |
 
-### Embedding (requires Ollama)
+### Embedding (optional)
 
 | Command | Description |
 |---------|-------------|
@@ -226,7 +269,7 @@ All outputs are stored in `.project-control/`:
 2. **Legacy Detector** — identifies files matching legacy patterns
 3. **Session Detector** — finds temporary/session files
 4. **Duplicate Detector** — detects files with identical names in different paths
-5. **Semantic Detector** — uses embeddings to find semantically similar or orphan files (requires Ollama)
+5. **Semantic Detector** — uses embeddings to find semantically similar or orphan files (optional, requires Ollama)
 
 ### Graph Engine
 
@@ -284,4 +327,4 @@ project_control/
 
 ## License
 
-This project is provided as-is for internal use.
+MIT
