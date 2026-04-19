@@ -1,5 +1,5 @@
 {
-  "project_mode": "y",
+  "project_mode": "js_ts",
   "graph_profile": "strict",
   "trace_direction": "inbound",
   "trace_depth": 49,
