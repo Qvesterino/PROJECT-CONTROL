@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from itertools import combinations
+from pathlib import Path
 from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -27,7 +28,7 @@ def detect_duplicates(snapshot: Dict[str, Any], patterns: Dict[str, Any], conten
         if not path:
             continue
 
-        stem = path.rsplit("/", 1)[-1].lower()
+        stem = Path(path).name.lower()
         buckets.setdefault(stem, []).append(path)
 
     duplicates: List[Tuple[str, str]] = []
