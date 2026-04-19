@@ -11,19 +11,25 @@ PROJECT_PREFIX = "project_control"
 
 LAYER_ORDER = [
     "analysis",
-    "usecases",
     "core",
     "persistence",
+    "services",
+    "config",
+    "graph",
+    "embedding",
     "cli",
 ]
 
 # Allowed downstream dependencies per layer
 ALLOWED_DEPS = {
     "analysis": set(),
-    "usecases": {"analysis"},
-    "core": {"analysis", "usecases"},
+    "core": {"analysis"},
     "persistence": {"analysis", "core"},
-    "cli": {"analysis", "usecases", "core"},
+    "services": {"analysis", "core", "config", "graph"},
+    "config": set(),
+    "graph": {"analysis", "core", "config"},
+    "embedding": {"core", "config"},
+    "cli": {"analysis", "core", "config", "graph", "services", "embedding"},
 }
 
 

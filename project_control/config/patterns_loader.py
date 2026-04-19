@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import yaml
 
@@ -24,7 +24,7 @@ def _default_patterns() -> Dict[str, Any]:
     return {key: value.copy() if isinstance(value, list) else value for key, value in _DEFAULT_PATTERNS.items()}
 
 
-def load_patterns(project_root: str) -> Dict[str, Any]:
+def load_patterns(project_root: Union[str, Path]) -> Dict[str, Any]:
     """
     Read the patterns.yaml stored in `project_root/.project-control`.
 

@@ -11,7 +11,6 @@ FORBIDDEN_PREFIXES = (
     "project_control.core",
     "project_control.persistence",
     "project_control.cli",
-    "project_control.usecases",
     "project_control.pc",
 )
 
