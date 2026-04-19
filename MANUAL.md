@@ -16,6 +16,39 @@
 - pc ghost --max-low [value] --> Sets maximum allowed count for LOW severity issues (session files), command exits with validation error if threshold is exceeded
 - pc ghost --max-info [value] --> Sets maximum allowed count for INFO severity issues (duplicates), command exits with validation error if threshold is exceeded
 
+## Experimental Features
+
+Some advanced analysis features (deep graph analysis, anomaly detection, drift tracking)
+are currently isolated and not part of the core CLI.
+
+These live in:
+project_control/experimental/
+
+They are:
+
+* not executed during normal CLI usage
+* not guaranteed to be stable
+* reserved for future versions
+
+Core philosophy:
+
+* CLI remains stable, fast, deterministic
+* experimental features evolve separately
+
+### Ghost Contract
+
+Ghost analysis uses a stable core contract:
+
+{
+"orphans": list,
+"legacy": list,
+"duplicates": list,
+"sessions": list,
+"semantic": list
+}
+
+This contract is the single source of truth for all ghost results.
+
 ## Code Quality
 - pc writers --> Analyzes codebase for writer patterns (scale, emissive, opacity, position by default), generates writers report with usage statistics and recommendations, saves report to .project-control/exports/writers_report.md in markdown format
 
@@ -29,5 +62,49 @@
 - pc embed rebuild [path] --> Rebuilds embedding index from scratch
 - pc embed search [query] [path] --> Searches codebase using semantic similarity, returns top-k results
 
+Notes:
+
+* Embedding system is optional
+* Requires external Ollama server
+* If unavailable, semantic analysis is skipped gracefully
+
+
+
 ## Interactive UI
 - pc ui --> Launches interactive text-based menu with scan, ghost, graph report, and trace options
+
+
+____
+
+
+## Experimental Features
+
+Some advanced analysis features (deep graph analysis, anomaly detection, drift tracking)
+are currently isolated and not part of the core CLI.
+
+These live in:
+project_control/experimental/
+
+They are:
+
+* not executed during normal CLI usage
+* not guaranteed to be stable
+* reserved for future versions
+
+Core philosophy:
+
+* CLI remains stable, fast, deterministic
+* experimental features evolve separately
+
+## Philosophy
+
+PROJECT CONTROL is a deterministic developer tool.
+
+It prioritizes:
+
+* correctness over guesswork
+* simplicity over feature complexity
+* stability over experimentation
+
+Advanced analysis (AI, deep graph reasoning) is intentionally separated
+from the core engine.
