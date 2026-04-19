@@ -44,8 +44,29 @@ def _load_existing_snapshot() -> Optional[dict]:
         return None
 
 
+def _ensure_gitignore() -> None:
+    """Add .project-control/ to .gitignore if not already present."""
+    gitignore = PROJECT_DIR / ".gitignore"
+    entry = ".project-control/"
+
+    existing_lines: list[str] = []
+    if gitignore.exists():
+        existing_lines = gitignore.read_text(encoding="utf-8").splitlines()
+
+    if any(line.strip() == entry.rstrip("/") or line.strip() == entry for line in existing_lines):
+        return  # Already ignored
+
+    with gitignore.open("a", encoding="utf-8") as f:
+        if existing_lines and existing_lines[-1].strip() != "":
+            f.write("\n")
+        f.write(f"\n# Project Control artifacts\n{entry}\n")
+
+    print(f"  Added '{entry}' to .gitignore")
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     ensure_control_dirs()
+    _ensure_gitignore()
 
     if not PATTERNS_FILE.exists():
         with PATTERNS_FILE.open("w", encoding="utf-8") as f:
