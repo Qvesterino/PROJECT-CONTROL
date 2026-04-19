@@ -3,6 +3,10 @@
 **Find dead code. Understand your architecture. Stop guessing.**
 
 [![CI](https://github.com/danielhlavac/project-control/actions/workflows/ci.yml/badge.svg)](https://github.com/danielhlavac/project-control/actions/workflows/ci.yml)
+[![PyPI version](https://badge.fury.io/py/project-control.svg)](https://badge.fury.io/py/project-control)
+[![Python Versions](https://img.shields.io/pypi/pyversions/project-control.svg)](https://pypi.org/project/project-control/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Project Control is a deterministic analysis tool that tells you what is really happening inside your codebase.
 
@@ -82,29 +86,41 @@ If you want semantic code search and semantic ghost detection:
 
 ## Installation
 
-### 1. Clone and install
+### Option 1: Install from PyPI (recommended)
 
 ```bash
-git clone <your-repo-url>
-cd PROJECT_CONTROL
+pip install project-control
+```
+
+Or with embedding support for semantic analysis:
+
+```bash
+pip install project-control[embedding]
+```
+
+### Option 2: Install from source
+
+```bash
+git clone https://github.com/danielhlavac/project-control.git
+cd project-control
 pip install -e .
 ```
 
 This installs the `pc` command and core dependencies (`pyyaml`).
 
-### 2. Install with embedding support (optional)
+### Embedding support (optional)
 
-Skip this if you only need structural analysis.
+If you installed with embedding support, you'll need Ollama:
 
 ```bash
-pip install -e ".[embedding]"
 ollama serve
 ollama pull qwen3-embedding:8b
 ```
 
-### 3. Verify installation
+### Verify installation
 
 ```bash
+pc --version
 pc --help
 ```
 

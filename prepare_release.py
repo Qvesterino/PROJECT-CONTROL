@@ -16,7 +16,9 @@ PUBLIC_INCLUDE = [
     "README.md",
     "CONTRIBUTING.md",
     "CHANGELOG.md",
+    "PUBLISHING.md",
     "pyproject.toml",
+    "MANIFEST.in",
     ".gitignore",
     ".github/workflows/",
 ]
