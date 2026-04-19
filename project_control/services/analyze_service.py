@@ -6,9 +6,9 @@ from pathlib import Path
 from project_control.core.ghost import ghost
 from project_control.core.content_store import ContentStore
 from project_control.config.patterns_loader import load_patterns
-from project_control.ui.state import AppState
 from project_control.graph.ensure import ensure_graph
-from project_control.config.graph_config import GraphConfig, load_graph_config
+from project_control.services._config import config_with_state
+from project_control.ui.state import AppState
 
 
 def ghost_fast(project_root: Path) -> None:
@@ -29,7 +29,7 @@ def ghost_fast(project_root: Path) -> None:
 
 
 def ghost_structural(project_root: Path, state: AppState) -> None:
-    cfg = _config_with_state(project_root, state)
+    cfg = config_with_state(project_root, state)
     _, metrics_path, _ = ensure_graph(project_root, cfg, force=False)
     try:
         metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
@@ -44,19 +44,3 @@ def ghost_structural(project_root: Path, state: AppState) -> None:
     print(f"- Edges: {totals.get('edgeCount', '?')}")
     print(f"- Cycles: {len(cycles)}")
     print(f"- Orphans: {len(orphans)}")
-
-
-def _config_with_state(project_root: Path, state: AppState) -> GraphConfig:
-    cfg = load_graph_config(project_root, None)
-    languages = cfg.languages
-    languages["js_ts"]["enabled"] = state.project_mode in ("js_ts", "mixed")
-    languages["python"]["enabled"] = state.project_mode in ("python", "mixed")
-    return GraphConfig(
-        include_globs=list(cfg.include_globs),
-        exclude_globs=list(cfg.exclude_globs),
-        entrypoints=list(cfg.entrypoints),
-        alias=dict(cfg.alias),
-        orphan_allow_patterns=list(cfg.orphan_allow_patterns),
-        treat_dynamic_imports_as_edges=cfg.treat_dynamic_imports_as_edges,
-        languages=languages,
-    )
