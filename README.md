@@ -2,6 +2,8 @@
 
 **Find dead code. Understand your architecture. Stop guessing.**
 
+[![CI](https://github.com/danielhlavac/project-control/actions/workflows/ci.yml/badge.svg)](https://github.com/danielhlavac/project-control/actions/workflows/ci.yml)
+
 Project Control is a deterministic analysis tool that tells you what is really happening inside your codebase.
 
 ---

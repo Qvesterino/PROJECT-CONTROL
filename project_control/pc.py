@@ -10,9 +10,20 @@ import argparse
 from pathlib import Path
 from project_control.cli.router import dispatch
 
+# Version from pyproject.toml
+__version__ = "0.1.0"
+
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="PROJECT CONTROL CLI")
+    parser = argparse.ArgumentParser(
+        description="PROJECT CONTROL - Deterministic architectural analysis engine",
+        epilog="Find dead code. Understand your architecture. Stop guessing."
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}"
+    )
     subparsers = parser.add_subparsers(dest="command")
 
     subparsers.add_parser("init")

@@ -8,3 +8,8 @@ __pycache__/
 *.egg
 dist/
 build/
+
+# IDE and editor directories
+.qodo/
+.idea/
+.vscode/
