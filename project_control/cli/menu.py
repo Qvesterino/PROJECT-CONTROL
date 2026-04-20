@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 from project_control.ui.state import AppState, load_state, save_state
@@ -14,7 +16,15 @@ from project_control.services.explore_service import run_trace
 
 
 def clear_screen() -> None:
-    os.system("cls" if os.name == "nt" else "clear")
+    """Clear terminal screen in a cross-platform way."""
+    try:
+        if sys.platform == "win32":
+            subprocess.run(["cls"], shell=True, check=False)
+        else:
+            subprocess.run(["clear"], shell=True, check=False)
+    except Exception:
+        # Silently fail - screen clearing is not critical
+        pass
 
 
 # ── Labels ──────────────────────────────────────────────────────────

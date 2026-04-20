@@ -9,9 +9,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 from project_control.cli.router import dispatch
-
-# Version from pyproject.toml
-__version__ = "0.1.0"
+from project_control import __version__
 
 
 def build_parser() -> argparse.ArgumentParser:

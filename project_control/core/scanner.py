@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 from typing import List, TypedDict
+
+logger = logging.getLogger(__name__)
 
 
 class FileEntry(TypedDict):
@@ -51,22 +54,41 @@ def scan_project(project_root: str, ignore_dirs: List[str], extensions: List[str
             if ext_set and path.suffix not in ext_set:
                 continue
 
-            rel_path = str(path.relative_to(root_path))
-            data = path.read_bytes()
+            try:
+                rel_path = str(path.relative_to(root_path))
+            except ValueError as e:
+                logger.warning(f"Cannot get relative path for {path}: {e}")
+                continue
+
+            try:
+                data = path.read_bytes()
+            except (OSError, IOError) as e:
+                logger.warning(f"Failed to read file {path}: {e}")
+                continue
+
             digest = sha256(data).hexdigest()
             blob_path = content_dir / f"{digest}.blob"
-            if not blob_path.exists():
-                blob_path.write_bytes(data)
 
-            stat = path.stat()
-            files.append(
-                {
-                    "path": rel_path,
-                    "size": stat.st_size,
-                    "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
-                    "sha256": digest,
-                }
-            )
+            if not blob_path.exists():
+                try:
+                    blob_path.write_bytes(data)
+                except (OSError, IOError) as e:
+                    logger.warning(f"Failed to write blob {blob_path}: {e}")
+                    # Continue anyway - we can still process the file
+
+            try:
+                stat = path.stat()
+                files.append(
+                    {
+                        "path": rel_path,
+                        "size": stat.st_size,
+                        "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+                        "sha256": digest,
+                    }
+                )
+            except (OSError, IOError) as e:
+                logger.warning(f"Failed to stat file {path}: {e}")
+                continue
 
     files.sort(key=lambda entry: entry["path"])
     concatenated = "".join(f"{entry['path']}{entry['sha256']}" for entry in files)

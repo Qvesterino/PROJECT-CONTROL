@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "project-control"
-version = "0.1.0"
+version = "0.1.0"  # Keep in sync with project_control/__init__.py
 description = "Deterministic architectural analysis engine"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,6 +39,7 @@ Issues = "https://github.com/danielhlavac/project-control/issues"
 dependencies = [
     # Core dependencies
     "pyyaml>=6.0",
+    "requests>=2.31.0",
 ]
 
 [project.optional-dependencies]

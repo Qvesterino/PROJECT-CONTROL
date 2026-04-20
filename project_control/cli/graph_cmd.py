@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from project_control.config.graph_config import GraphConfig, load_graph_config, hash_config
+
+logger = logging.getLogger(__name__)
 from project_control.graph.builder import GraphBuilder, compute_snapshot_hash
 from project_control.graph.metrics import compute_metrics
 from project_control.graph.artifacts import write_artifacts, ensure_output_dir
@@ -113,8 +116,9 @@ def _load_or_build_graph(project_root: Path, snapshot: Dict, config: GraphConfig
             meta = data.get("meta", {})
             if meta.get("snapshotHash") == current_hash and meta.get("configHash") == config_hash:
                 return data
-        except Exception:
-            pass
+        except (json.JSONDecodeError, OSError, KeyError) as e:
+            logger.warning(f"Failed to load cached graph: {e}")
+            # Fall through to rebuild graph
 
     content_store = ContentStore(snapshot, project_root / ".project-control" / "snapshot.json")
     builder = GraphBuilder(project_root, snapshot, content_store, config)
@@ -134,7 +138,9 @@ def _resolve_target_node(project_root: Path, target: str, id_to_path: Dict[int, 
         try:
             candidates.append(str(normalized_target.relative_to(project_root).as_posix()))
         except ValueError:
-            pass
+            # Path is not relative to project_root (e.g., different drive on Windows)
+            # This is expected - we'll try other resolution methods
+            logger.debug(f"Path {target} is not relative to project root {project_root}")
     candidates.append(normalized_target.as_posix())
     candidates.append(normalized_target.as_posix().lstrip("./"))
 
