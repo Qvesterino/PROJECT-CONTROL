@@ -84,6 +84,33 @@ In the interactive menu (`pc ui`), you can use these keyboard shortcuts:
 | `Q` | Open Quick Actions menu |
 | `Enter` | Confirm selection / Continue |
 
+### Color Terminal Output
+
+PROJECT_CONTROL uses color-coded output for better readability:
+
+| Color | Usage |
+|-------|-------|
+| **Green** | Success messages, completed operations, healthy status |
+| **Yellow** | Warnings, cautions, issues that need attention |
+| **Red** | Errors, failed operations, critical issues |
+| **Cyan** | Information messages, neutral status |
+
+Color support is automatically detected and gracefully falls back to plain text on terminals that don't support ANSI escape codes (including some Windows console configurations).
+
+**Status Indicators:**
+- `[OK]` - Operation completed successfully
+- `[WARN]` - Warning or caution
+- `[FAIL]` / `[ERROR]` - Operation failed or error occurred
+- `[INFO]` - Informational message
+
+**Example Output:**
+```
+[OK] Snapshot created successfully!
+[WARN] Graph is 3 days old. Rebuild recommended.
+[ERROR] Snapshot not found. Run 'pc scan' first.
+[INFO] Processing 247 files...
+```
+
 ### Quick Actions Menu (Q)
 
 Access frequently used operations:

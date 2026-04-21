@@ -14,6 +14,10 @@ from project_control.services.scan_service import run_scan
 from project_control.services.graph_service import build_graph, show_report
 from project_control.services.analyze_service import ghost_fast, ghost_structural
 from project_control.services.explore_service import run_trace
+from project_control.services.report_service import (
+    view_ghost_report, view_graph_report, view_checklist, view_writers_report,
+    display_report_list, list_all_reports
+)
 from project_control.core.error_handler import ErrorHandler, ErrorContext
 from project_control.core.pre_flight import health_check
 from project_control.core.validator import (
@@ -21,6 +25,10 @@ from project_control.core.validator import (
     validate_graph,
 )
 from project_control.core.backup import BackupManager, BackupContext
+from project_control.utils.terminal import (
+    print_success, print_warning, print_error, print_info,
+    print_header, Status, Colors
+)
 
 logger = logging.getLogger(__name__)
 
@@ -115,10 +123,11 @@ def run_menu(project_root: Path) -> None:
         print("5) Settings    — change mode, profile, trace options")
         print("6) Health      — project health check")
         print("7) Tools       — backups, cache, diagnostics")
+        print("8) Reports     — view all reports (ghost, graph, checklist)")
         print("Q) Quick       — quick actions (full analysis, orphans, cycles)")
         print("0) Exit")
 
-        choice = input("\nSelect (0-7, Q): ").strip()
+        choice = input("\nSelect (0-8, Q): ").strip()
 
         try:
             if choice == "1":
@@ -135,6 +144,8 @@ def run_menu(project_root: Path) -> None:
                 _health_menu(project_root)
             elif choice == "7":
                 _tools_menu(project_root)
+            elif choice == "8":
+                _reports_menu(project_root)
             elif choice.lower() == "q":
                 _quick_actions_menu(project_root, state)
             elif choice == "0":
@@ -221,11 +232,11 @@ def _health_menu(project_root: Path) -> None:
         
         # Overall status
         if report.is_healthy():
-            status_symbol = "[OK]"
+            status_symbol = Status.OK
         elif report.has_warnings():
-            status_symbol = "[WARN]"
+            status_symbol = Status.WARN
         else:
-            status_symbol = "[ERROR]"
+            status_symbol = Status.FAIL
         status_color = report.overall_status.upper()
         print(f"\nOverall Status: {status_symbol} {status_color}")
         print()
@@ -233,7 +244,7 @@ def _health_menu(project_root: Path) -> None:
         # Show checks
         print("Checks:")
         for check in report.checks:
-            symbol = "[OK]" if check.is_healthy else "[FAIL]"
+            symbol = Status.OK if check.is_healthy else Status.FAIL
             print(f"  {symbol} {check.name}: {check.message}")
             if check.details:
                 print(f"    Details: {check.details}")
@@ -242,12 +253,12 @@ def _health_menu(project_root: Path) -> None:
         if report.errors:
             print("\nErrors:")
             for error in report.errors:
-                print(f"  [FAIL] {error}")
+                print(f"  {Status.FAIL} {error}")
         
         if report.warnings:
             print("\nWarnings:")
             for warning in report.warnings:
-                print(f"  [WARN] {warning}")
+                print(f"  {Status.WARN} {warning}")
         
         # Show suggestions
         if report.suggestions:
@@ -268,7 +279,7 @@ def _snapshot_menu(project_root: Path, state: AppState) -> None:
     if _confirm("Scan project files?"):
         with ErrorContext("Scanning project"):
             run_scan(project_root)
-            print("\n[OK] Snapshot created successfully!")
+            print_success("Snapshot created successfully!")
     input("\nPress Enter to return...")
 
 
@@ -285,7 +296,7 @@ def _graph_menu(project_root: Path, state: AppState) -> None:
             with ErrorContext("Building graph"):
                 with BackupContext(project_root, "before_graph_build", auto_cleanup=True):
                     build_graph(project_root, state)
-                print("\n[OK] Graph built successfully!")
+                print_success("Graph built successfully!")
     elif choice == "2":
         with ErrorContext("Showing graph report"):
             show_report(project_root, state)
@@ -343,7 +354,7 @@ def _explore_menu(project_root: Path, state: AppState) -> AppState:
         if new_target:
             state = add_to_favorites(state, new_target)
             save_state(project_root, state)
-            print(f"\n[OK] Added to favorites: {new_target}")
+            print_success(f"Added to favorites: {new_target}")
         input("\nPress Enter to return...")
         return state
 
@@ -565,7 +576,7 @@ def _create_backup_menu(project_root: Path) -> None:
     try:
         manager = BackupManager(project_root)
         backup = manager.create_backup(name=name or None, description=description)
-        print(f"\n[OK] Backup created: {backup.name}")
+        print_success(f"Backup created: {backup.name}")
         print(f"  Path: {backup.path}")
         print(f"  Size: {backup.size_bytes / (1024 * 1024):.2f} MB")
     except Exception as e:
@@ -641,10 +652,10 @@ def _delete_backup_menu(project_root: Path) -> None:
             index = int(choice) - 1
             if 0 <= index < len(backups):
                 backup = backups[index]
-                confirm = input(f"\n[WARN] Delete backup '{backup.name}'? (y/N): ").strip().lower()
+                confirm = input(f"\n{Status.WARN} Delete backup '{backup.name}'? (y/N): {Colors.RESET}").strip().lower()
                 if confirm == "y":
                     manager.delete_backup(backup)
-                    print(f"\n[OK] Backup deleted: {backup.name}")
+                    print_success(f"Backup deleted: {backup.name}")
                 else:
                     print("Deletion cancelled.")
             else:
@@ -679,7 +690,7 @@ def _cleanup_backups_menu(project_root: Path) -> None:
     try:
         manager = BackupManager(project_root)
         deleted = manager.cleanup_old_backups(keep=keep)
-        print(f"\n[OK] Cleanup complete: {deleted} old backup(s) deleted.")
+        print_success(f"Cleanup complete: {deleted} old backup(s) deleted.")
     except Exception as e:
         ErrorHandler.handle(e, "Cleaning up backups")
 
@@ -711,7 +722,7 @@ def _clear_cache_menu(project_root: Path) -> None:
     size_mb = total_size / (1024 * 1024)
     print(f"Current size: {size_mb:.2f} MB")
 
-    confirm = input("\n[WARN] Delete all cached data? (y/N): ").strip().lower()
+    confirm = input(f"\n{Status.WARN} Delete all cached data? (y/N): {Colors.RESET}").strip().lower()
     if confirm != "y":
         print("Operation cancelled.")
         input("\nPress Enter to return...")
@@ -723,7 +734,7 @@ def _clear_cache_menu(project_root: Path) -> None:
             import shutil
             shutil.rmtree(cache_dir)
             cache_dir.mkdir(parents=True, exist_ok=True)
-            print("\n[OK] Cache cleared successfully.")
+            print_success("Cache cleared successfully.")
     except Exception as e:
         ErrorHandler.handle(e, "Clearing cache")
 
@@ -751,15 +762,15 @@ def _show_diagnostics_menu(project_root: Path) -> None:
 
     control_dir = project_root / ".project-control"
     if control_dir.exists():
-        print(f"  Status:    [OK] Exists")
+        print(f"  Status:    {Status.OK} Exists")
 
         # Check files
         snapshot = control_dir / "snapshot.json"
         graph_out = control_dir / "out" / "graph.snapshot.json"
 
         print(f"\nFiles:")
-        print(f"  Snapshot:  {'[OK]' if snapshot.exists() else '[FAIL]'} {snapshot.name}")
-        print(f"  Graph:     {'[OK]' if graph_out.exists() else '[FAIL]'} {graph_out.name}")
+        print(f"  Snapshot:  {Status.OK if snapshot.exists() else Status.FAIL} {snapshot.name}")
+        print(f"  Graph:     {Status.OK if graph_out.exists() else Status.FAIL} {graph_out.name}")
 
         # Check backups
         backup_dir = control_dir / "backups"
@@ -769,18 +780,18 @@ def _show_diagnostics_menu(project_root: Path) -> None:
         else:
             print(f"  Backups:   0 found")
     else:
-        print(f"  Status:    [FAIL] Not initialized")
+        print(f"  Status:    {Status.FAIL} Not initialized")
 
     # Check external dependencies
     print(f"\nDependencies:")
     import shutil
 
     ripgrep = shutil.which("rg")
-    print(f"  Ripgrep:   {'✅' if ripgrep else '❌'} {ripgrep if ripgrep else 'Not found'}")
+    print(f"  Ripgrep:   {Status.OK if ripgrep else Status.FAIL} {ripgrep if ripgrep else 'Not found'}")
 
     # Check ollama (optional)
     ollama = shutil.which("ollama")
-    print(f"  Ollama:    {'[OK]' if ollama else '[WARN]'}  {ollama if ollama else 'Not found (optional)'}")
+    print(f"  Ollama:    {Status.OK if ollama else Status.WARN}  {ollama if ollama else 'Not found (optional)'}")
 
     print("\n" + "="*60)
 
@@ -842,7 +853,7 @@ def _quick_full_analysis(project_root: Path, state: AppState) -> None:
     try:
         with ErrorContext("Scanning project"):
             run_scan(project_root)
-            print("[OK] Scan complete")
+            print_success("Scan complete")
     except Exception as e:
         ErrorHandler.handle(e, "Scanning project")
         input("\nPress Enter to return...")
@@ -852,7 +863,7 @@ def _quick_full_analysis(project_root: Path, state: AppState) -> None:
     try:
         with ErrorContext("Running ghost analysis"):
             ghost_fast(project_root)
-            print("[OK] Ghost analysis complete")
+            print_success("Ghost analysis complete")
     except Exception as e:
         ErrorHandler.handle(e, "Running ghost analysis")
         input("\nPress Enter to return...")
@@ -863,7 +874,7 @@ def _quick_full_analysis(project_root: Path, state: AppState) -> None:
         with ErrorContext("Building graph"):
             with BackupContext(project_root, "full_analysis_graph_build"):
                 build_graph(project_root, state)
-            print("[OK] Graph built")
+            print_success("Graph built")
     except Exception as e:
         ErrorHandler.handle(e, "Building graph")
         input("\nPress Enter to return...")
@@ -877,7 +888,7 @@ def _quick_full_analysis(project_root: Path, state: AppState) -> None:
         ErrorHandler.handle(e, "Showing report")
 
     print("\n" + "="*60)
-    print("[OK] Full analysis complete!")
+    print_success("Full analysis complete!")
     print("="*60)
 
     input("\nPress Enter to return...")
@@ -926,7 +937,7 @@ def _quick_dependency_audit(project_root: Path, state: AppState) -> None:
 
     graph_path = project_root / ".project-control" / "out" / "graph.snapshot.json"
     if not graph_path.exists():
-        print("\n[WARN] Graph not found. Building...")
+        print_warning("Graph not found. Building...")
         try:
             with ErrorContext("Building graph"):
                 with BackupContext(project_root, "dependency_audit"):
@@ -944,7 +955,7 @@ def _quick_dependency_audit(project_root: Path, state: AppState) -> None:
         ErrorHandler.handle(e, "Running dependency audit")
 
     print("\n" + "="*60)
-    print("[OK] Dependency audit complete!")
+    print_success("Dependency audit complete!")
     print("="*60)
 
     input("\nPress Enter to return...")
@@ -978,14 +989,14 @@ def _quick_favorites_menu(project_root: Path, state: AppState) -> AppState:
             if target:
                 state = add_to_favorites(state, target)
                 save_state(project_root, state)
-                print(f"\n[OK] Added to favorites: {target}")
+                print_success(f"Added to favorites: {target}")
                 input("\nPress Enter...")
             else:
-                print("\n[WARN] Target cannot be empty.")
+                print_warning("Target cannot be empty.")
                 input("\nPress Enter...")
         elif choice == "2":
             if not state.favorites:
-                print("\n[WARN] No favorites available.")
+                print_warning("No favorites available.")
                 input("\nPress Enter...")
                 continue
 
@@ -1011,14 +1022,14 @@ def _quick_favorites_menu(project_root: Path, state: AppState) -> AppState:
                         ErrorHandler.handle(e, "Tracing favorite")
                     input("\nPress Enter...")
                 else:
-                    print("\n[WARN] Invalid selection.")
+                    print_warning("Invalid selection.")
                     input("\nPress Enter...")
             except ValueError:
-                print("\n[WARN] Invalid selection.")
+                print_warning("Invalid selection.")
                 input("\nPress Enter...")
         elif choice == "3":
             if not state.favorites:
-                print("\n[WARN] No favorites available.")
+                print_warning("No favorites available.")
                 input("\nPress Enter...")
                 continue
 
@@ -1036,13 +1047,13 @@ def _quick_favorites_menu(project_root: Path, state: AppState) -> AppState:
                     target = state.favorites[index]
                     state = remove_from_favorites(state, target)
                     save_state(project_root, state)
-                    print(f"\n[OK] Removed from favorites: {target}")
+                    print_success(f"Removed from favorites: {target}")
                     input("\nPress Enter...")
                 else:
-                    print("\n[WARN] Invalid selection.")
+                    print_warning("Invalid selection.")
                     input("\nPress Enter...")
             except ValueError:
-                print("\n[WARN] Invalid selection.")
+                print_warning("Invalid selection.")
                 input("\nPress Enter...")
         else:
             input("\nInvalid selection. Press Enter...")

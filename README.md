@@ -64,6 +64,7 @@ A detailed markdown report is generated at `.project-control/exports/ghost_candi
 | **Dependency Graph** | Builds a deterministic import graph for Python and JS/TS projects |
 | **Graph Trace** | Traces dependency paths to/from any symbol or file |
 | **Interactive UI** | Text-based menu with quick actions, favorites, and smart notifications |
+| **Color Terminal Output** | Cross-platform color support with graceful fallback for terminals without ANSI support |
 | **Quick Actions** | One-click full analysis, health checks, and common tasks |
 | **Backup & Rollback** | Automatic backups before destructive operations with restore capability |
 | **Favorites & History** | Save frequently traced targets and view recent actions |
