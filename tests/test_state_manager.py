@@ -289,3 +289,161 @@ class TestStateManager(TestCase):
         state = self.manager.load()
         self.assertIsInstance(state, AppState)
         self.assertEqual(state.ui.project_mode, "js_ts")  # Default
+
+    def test_export_state_default_path(self) -> None:
+        """Test exporting state to default path."""
+        # Create some state
+        state = AppState(ui=UIState(project_mode="python"))
+        self.manager.save(state)
+
+        # Export
+        export_path = self.manager.export_state()
+
+        self.assertTrue(export_path.exists())
+        self.assertTrue(export_path.name.startswith("state."))
+        self.assertTrue(export_path.name.endswith(".json"))
+
+    def test_export_state_custom_path(self) -> None:
+        """Test exporting state to custom path."""
+        # Create some state
+        state = AppState(ui=UIState(project_mode="python"))
+        self.manager.save(state)
+
+        # Export to custom path
+        custom_path = self.project_root / "custom_export.json"
+        export_path = self.manager.export_state(custom_path)
+
+        self.assertEqual(export_path, custom_path)
+        self.assertTrue(export_path.exists())
+
+    def test_export_state_content(self) -> None:
+        """Test that export contains correct data."""
+        state = AppState(
+            ui=UIState(project_mode="python", trace_depth=100),
+            user=UserPreferences(favorites=["test.py"], history=["action1"])
+        )
+        self.manager.save(state)
+
+        export_path = self.manager.export_state()
+        export_data = json.loads(export_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(export_data["ui"]["project_mode"], "python")
+        self.assertEqual(export_data["ui"]["trace_depth"], 100)
+        self.assertEqual(export_data["user"]["favorites"], ["test.py"])
+        self.assertIn("metadata", export_data)
+
+    def test_export_state_without_metadata(self) -> None:
+        """Test exporting without metadata."""
+        state = AppState(
+            metadata=ProjectMetadata(last_scan="2024-01-01")
+        )
+        self.manager.save(state)
+
+        export_path = self.manager.export_state(include_metadata=False)
+        export_data = json.loads(export_path.read_text(encoding="utf-8"))
+
+        self.assertNotIn("metadata", export_data)
+
+    def test_import_state_replace(self) -> None:
+        """Test importing state with replace mode."""
+        # Create initial state
+        initial_state = AppState(ui=UIState(project_mode="js_ts"))
+        self.manager.save(initial_state)
+
+        # Create export with different state
+        export_data = {
+            "version": "1.0",
+            "ui": {"project_mode": "python", "graph_profile": "strict",
+                   "trace_direction": "inbound", "trace_depth": 100, "trace_all_paths": True},
+            "tags": {"tags": {"important": ["file1.py"]}},
+            "user": {"favorites": ["new_fav.py"], "history": []},
+        }
+        export_path = self.project_root / "import_test.json"
+        export_path.write_text(json.dumps(export_data), encoding="utf-8")
+
+        # Import
+        self.manager.import_state(export_path, merge=False)
+
+        # Check state was replaced
+        loaded_state = self.manager.load()
+        self.assertEqual(loaded_state.ui.project_mode, "python")
+        self.assertEqual(loaded_state.ui.trace_depth, 100)
+        self.assertEqual(loaded_state.user.favorites, ["new_fav.py"])
+
+    def test_import_state_merge(self) -> None:
+        """Test importing state with merge mode."""
+        # Create initial state
+        initial_state = AppState(
+            ui=UIState(project_mode="js_ts"),
+            user=UserPreferences(favorites=["existing.py"], history=["existing_action"])
+        )
+        self.manager.save(initial_state)
+
+        # Create export to merge
+        export_data = {
+            "version": "1.0",
+            "ui": {"project_mode": "python", "graph_profile": "strict",
+                   "trace_direction": "inbound", "trace_depth": 100, "trace_all_paths": True},
+            "tags": {"tags": {"new_tag": ["file1.py"]}},
+            "user": {"favorites": ["new_fav.py"], "history": ["new_action"]},
+        }
+        export_path = self.project_root / "import_test.json"
+        export_path.write_text(json.dumps(export_data), encoding="utf-8")
+
+        # Import with merge
+        self.manager.import_state(export_path, merge=True)
+
+        # Check state was merged
+        loaded_state = self.manager.load()
+
+        # UI settings should be replaced
+        self.assertEqual(loaded_state.ui.project_mode, "python")
+
+        # Favorites should be combined (no duplicates)
+        self.assertIn("existing.py", loaded_state.user.favorites)
+        self.assertIn("new_fav.py", loaded_state.user.favorites)
+
+        # History should be prepended
+        self.assertEqual(loaded_state.user.history[0], "new_action")
+        self.assertIn("existing_action", loaded_state.user.history)
+
+    def test_import_nonexistent_file(self) -> None:
+        """Test importing from nonexistent file."""
+        with self.assertRaises(FileNotFoundError):
+            self.manager.import_state(Path("/nonexistent/file.json"))
+
+    def test_export_import_roundtrip(self) -> None:
+        """Test that export and import preserve state."""
+        # Create complex state
+        original_state = AppState(
+            ui=UIState(
+                project_mode="python",
+                graph_profile="strict",
+                trace_direction="inbound",
+                trace_depth=100,
+                trace_all_paths=True
+            ),
+            tags=TagState(tags={"tag1": ["file1.py"], "tag2": ["file2.js"]}),
+            user=UserPreferences(
+                favorites=["fav1.py", "fav2.ts"],
+                history=["action1", "action2"]
+            )
+        )
+        self.manager.save(original_state)
+
+        # Export
+        export_path = self.manager.export_state()
+
+        # Clear state
+        self.manager.save(AppState())
+
+        # Import
+        self.manager.import_state(export_path, merge=False)
+
+        # Verify state was restored
+        loaded_state = self.manager.load()
+        self.assertEqual(loaded_state.ui.project_mode, "python")
+        self.assertEqual(loaded_state.ui.graph_profile, "strict")
+        self.assertEqual(len(loaded_state.tags.tags), 2)
+        self.assertEqual(len(loaded_state.user.favorites), 2)
+        self.assertEqual(len(loaded_state.user.history), 2)

@@ -68,6 +68,49 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("ui")
 
+    # Preset management
+    preset_parser = subparsers.add_parser("preset", help="Manage project presets")
+    preset_subparsers = preset_parser.add_subparsers(dest="preset_cmd")
+
+    preset_list_parser = preset_subparsers.add_parser("list", help="List all available presets")
+    preset_list_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+
+    preset_apply_parser = preset_subparsers.add_parser("apply", help="Apply a preset")
+    preset_apply_parser.add_argument("name", help="Preset name to apply")
+    preset_apply_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+    preset_apply_parser.add_argument("--no-backup", action="store_true", help="Skip creating backup")
+
+    preset_save_parser = preset_subparsers.add_parser("save", help="Save custom preset")
+    preset_save_parser.add_argument("name", help="Preset name")
+    preset_save_parser.add_argument("--description", help="Preset description")
+    preset_save_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+
+    preset_delete_parser = preset_subparsers.add_parser("delete", help="Delete custom preset")
+    preset_delete_parser.add_argument("name", help="Preset name to delete")
+    preset_delete_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+
+    # State export/import
+    export_parser = subparsers.add_parser("export", help="Export project state")
+    export_subparsers = export_parser.add_subparsers(dest="export_cmd")
+
+    export_state_parser = export_subparsers.add_parser("state", help="Export state to file")
+    export_state_parser.add_argument("--path", help="Export path (default: .project-control/exports/state.<timestamp>.json)")
+    export_state_parser.add_argument("--no-metadata", action="store_true", help="Exclude project-specific metadata")
+    export_state_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+
+    import_parser = subparsers.add_parser("import", help="Import project state")
+    import_subparsers = import_parser.add_subparsers(dest="import_cmd")
+
+    import_state_parser = import_subparsers.add_parser("state", help="Import state from file")
+    import_state_parser.add_argument("path", help="Import file path")
+    import_state_parser.add_argument("--merge", action="store_true", help="Merge with existing state instead of replacing")
+    import_state_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+
+    # File explorer
+    explore_parser = subparsers.add_parser("explore", help="Interactive file explorer")
+    explore_parser.add_argument("path", nargs="?", default=".", help="Starting path")
+    explore_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+
     embed_parser = subparsers.add_parser("embed")
     embed_sub = embed_parser.add_subparsers(dest="embed_cmd")
     embed_build = embed_sub.add_parser("build")

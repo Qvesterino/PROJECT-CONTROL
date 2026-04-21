@@ -326,3 +326,90 @@ class StateManager:
             if old_file.exists():
                 old_file.unlink()
                 logger.info(f"Removed old state file: {old_file.name}")
+
+    def export_state(self, export_path: Optional[Path] = None, include_metadata: bool = True) -> Path:
+        """Export state to a file.
+
+        Args:
+            export_path: Path to export to. If None, uses default path.
+            include_metadata: Whether to include project metadata (project_root, timestamps)
+
+        Returns:
+            Path to the exported file
+        """
+        if export_path is None:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            export_path = self.control_dir / "exports" / f"state.{timestamp}.json"
+
+        export_path.parent.mkdir(parents=True, exist_ok=True)
+
+        state = self.load()
+
+        # Create export data
+        export_data = {
+            "version": state.version,
+            "ui": state.ui.__dict__,
+            "tags": state.tags.__dict__,
+            "user": state.user.__dict__,
+        }
+
+        # Optionally exclude project-specific metadata for portability
+        if include_metadata:
+            export_data["metadata"] = {
+                "last_scan": state.metadata.last_scan,
+                "last_graph_build": state.metadata.last_graph_build,
+                "last_analysis": state.metadata.last_analysis,
+                # Exclude project_root for portability
+            }
+
+        export_path.write_text(
+            json.dumps(export_data, indent=2, sort_keys=True),
+            encoding="utf-8"
+        )
+
+        return export_path
+
+    def import_state(self, import_path: Path, merge: bool = False) -> None:
+        """Import state from a file.
+
+        Args:
+            import_path: Path to the state file to import
+            merge: If True, merge with existing state. If False, replace entirely.
+        """
+        if not import_path.exists():
+            raise FileNotFoundError(f"Import file not found: {import_path}")
+
+        import_data = json.loads(import_path.read_text(encoding="utf-8"))
+
+        if merge:
+            # Load current state and merge
+            current_state = self.load()
+
+            # Merge UI settings (import takes precedence)
+            if "ui" in import_data:
+                current_state.ui = UIState(**import_data["ui"])
+
+            # Merge tags (import takes precedence)
+            if "tags" in import_data:
+                current_state.tags = TagState(**import_data["tags"])
+
+            # Merge user preferences (combine favorites and history)
+            if "user" in import_data:
+                user_data = import_data["user"]
+                if "favorites" in user_data:
+                    # Combine favorites, avoid duplicates
+                    for fav in user_data["favorites"]:
+                        if fav not in current_state.user.favorites:
+                            current_state.user.favorites.append(fav)
+                if "history" in user_data:
+                    # Prepend import history
+                    current_state.user.history = user_data["history"] + current_state.user.history
+                    # Keep only last 10
+                    current_state.user.history = current_state.user.history[:10]
+
+            self.save(current_state)
+        else:
+            # Replace entirely
+            state = AppState.from_dict(import_data)
+            self.save(state)

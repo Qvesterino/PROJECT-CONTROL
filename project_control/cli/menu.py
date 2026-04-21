@@ -112,22 +112,25 @@ def _graph_status(project_root: Path) -> str:
 def run_menu(project_root: Path) -> None:
     """Main menu loop with error handling."""
     state = load_state(project_root)
-    
+
     while True:
         clear_screen()
         _header(project_root, state)
-        print("1) Snapshot    — scan project files")
-        print("2) Graph       — build & view dependency graph")
-        print("3) Analyze     — ghost detectors & structural metrics")
-        print("4) Explore     — trace symbol/file dependencies")
-        print("5) Settings    — change mode, profile, trace options")
-        print("6) Health      — project health check")
-        print("7) Tools       — backups, cache, diagnostics")
-        print("8) Reports     — view all reports (ghost, graph, checklist)")
-        print("Q) Quick       — quick actions (full analysis, orphans, cycles)")
+        print("1) Snapshot     — scan project files")
+        print("2) Graph        — build & view dependency graph")
+        print("3) Analyze      — ghost detectors & structural metrics")
+        print("4) Explore      — trace symbol/file dependencies")
+        print("5) Settings     — change mode, profile, trace options")
+        print("6) Health       — project health check")
+        print("7) Tools        — backups, cache, diagnostics")
+        print("8) Reports      — view all reports (ghost, graph, checklist)")
+        print("P) Presets      — project templates & configurations")
+        print("X) Export/Imp   — export/import project state")
+        print("B) Browse       — interactive file explorer")
+        print("Q) Quick        — quick actions (full analysis, orphans, cycles)")
         print("0) Exit")
 
-        choice = input("\nSelect (0-8, Q): ").strip()
+        choice = input("\nSelect (0-8, P, X, B, Q): ").strip().lower()
 
         try:
             if choice == "1":
@@ -146,7 +149,13 @@ def run_menu(project_root: Path) -> None:
                 _tools_menu(project_root)
             elif choice == "8":
                 _reports_menu(project_root)
-            elif choice.lower() == "q":
+            elif choice == "p":
+                _presets_menu(project_root)
+            elif choice == "x":
+                _export_import_menu(project_root)
+            elif choice == "b":
+                _file_explorer_menu(project_root)
+            elif choice == "q":
                 _quick_actions_menu(project_root, state)
             elif choice == "0":
                 save_state(project_root, state)
@@ -1081,3 +1090,333 @@ def _confirm(summary: str) -> bool:
     print(summary)
     resp = input("Proceed? [y/N]: ").strip().lower()
     return resp == "y"
+
+
+# ── Presets Menu ─────────────────────────────────────────────────────────
+
+def _presets_menu(project_root: Path) -> None:
+    """Project presets management menu."""
+    from project_control.config.presets import PresetManager
+
+    manager = PresetManager(project_root)
+
+    while True:
+        clear_screen()
+        print("\n" + "="*60)
+        print("  PROJECT PRESETS")
+        print("="*60)
+
+        # Show current preset
+        current = manager.get_current_preset_name()
+        if current:
+            print(f"\nCurrent preset: {current}")
+        else:
+            print("\nCurrent configuration: Custom")
+
+        print("\nActions:")
+        print("1) List Presets      — Show all available presets")
+        print("2) Apply Preset       — Apply a preset to project")
+        print("3) Save Custom        — Save current config as custom preset")
+        print("4) Delete Custom      — Delete a custom preset")
+        print("B) Back              — Return to main menu")
+
+        choice = input("\nSelect (1-4, B): ").strip().lower()
+
+        if choice == "1":
+            _preset_list_submenu(manager)
+        elif choice == "2":
+            _preset_apply_submenu(manager)
+        elif choice == "3":
+            _preset_save_submenu(manager)
+        elif choice == "4":
+            _preset_delete_submenu(manager)
+        elif choice == "b":
+            return
+        else:
+            input("Invalid selection. Press Enter...")
+
+
+def _preset_list_submenu(manager: PresetManager) -> None:
+    """List all presets."""
+    clear_screen()
+    print("\n" + "="*60)
+    print("  AVAILABLE PRESETS")
+    print("="*60)
+
+    presets = manager.list_presets()
+    for preset in presets:
+        category_mark = " [builtin]" if preset["category"] == "builtin" else " [custom]"
+        print(f"\n  {preset['name']}{category_mark}")
+        print(f"    {preset['description']}")
+
+    input("\nPress Enter to return...")
+
+
+def _preset_apply_submenu(manager: PresetManager) -> None:
+    """Apply a preset."""
+    clear_screen()
+    print("\n" + "="*60)
+    print("  APPLY PRESET")
+    print("="*60)
+
+    presets = manager.list_presets()
+    print("\nAvailable presets:")
+    for i, preset in enumerate(presets, 1):
+        print(f"  {i}) {preset['name']} - {preset['description']}")
+
+    choice = input("\nSelect preset (number): ").strip()
+    try:
+        index = int(choice) - 1
+        if 0 <= index < len(presets):
+            preset_name = presets[index]["name"]
+            summary = f"This will apply the '{preset_name}' preset to your project."
+            if _confirm(summary):
+                if manager.apply_preset(preset_name, backup=True):
+                    print_success(f"Preset '{preset_name}' applied successfully!")
+                    print_info("Backup created in .project-control/backups/")
+                else:
+                    print_error(f"Failed to apply preset '{preset_name}'")
+        else:
+            print_error("Invalid selection")
+    except ValueError:
+        print_error("Please enter a valid number")
+
+    input("\nPress Enter to return...")
+
+
+def _preset_save_submenu(manager: PresetManager) -> None:
+    """Save current config as custom preset."""
+    clear_screen()
+    print("\n" + "="*60)
+    print("  SAVE CUSTOM PRESET")
+    print("="*60)
+
+    name = input("\nPreset name: ").strip()
+    if not name:
+        print_error("Preset name is required")
+        input("\nPress Enter to return...")
+        return
+
+    description = input("Description (optional): ").strip()
+
+    if manager.save_custom_preset(name, description or f"Custom preset: {name}"):
+        print_success(f"Preset '{name}' saved successfully!")
+    else:
+        print_error(f"Failed to save preset '{name}'")
+
+    input("\nPress Enter to return...")
+
+
+def _preset_delete_submenu(manager: PresetManager) -> None:
+    """Delete a custom preset."""
+    clear_screen()
+    print("\n" + "="*60)
+    print("  DELETE CUSTOM PRESET")
+    print("="*60)
+
+    presets = [p for p in manager.list_presets() if p["category"] == "custom"]
+
+    if not presets:
+        print_info("No custom presets found.")
+        input("\nPress Enter to return...")
+        return
+
+    print("\nCustom presets:")
+    for i, preset in enumerate(presets, 1):
+        print(f"  {i}) {preset['name']} - {preset['description']}")
+
+    choice = input("\nSelect preset to delete (number): ").strip()
+    try:
+        index = int(choice) - 1
+        if 0 <= index < len(presets):
+            preset_name = presets[index]["name"]
+            summary = f"This will delete the custom preset '{preset_name}'."
+            if _confirm(summary):
+                if manager.delete_custom_preset(preset_name):
+                    print_success(f"Preset '{preset_name}' deleted successfully!")
+                else:
+                    print_error(f"Failed to delete preset '{preset_name}'")
+        else:
+            print_error("Invalid selection")
+    except ValueError:
+        print_error("Please enter a valid number")
+
+    input("\nPress Enter to return...")
+
+
+# ── Export/Import Menu ───────────────────────────────────────────────────
+
+def _export_import_menu(project_root: Path) -> None:
+    """Export/Import settings menu."""
+    from project_control.persistence.state_manager import StateManager
+
+    manager = StateManager(project_root)
+
+    while True:
+        clear_screen()
+        print("\n" + "="*60)
+        print("  EXPORT / IMPORT STATE")
+        print("="*60)
+
+        print("\nActions:")
+        print("1) Export State       — Export current settings to file")
+        print("2) Import State       — Import settings from file")
+        print("B) Back              — Return to main menu")
+
+        choice = input("\nSelect (1-2, B): ").strip().lower()
+
+        if choice == "1":
+            _export_state_submenu(manager)
+        elif choice == "2":
+            _import_state_submenu(manager)
+        elif choice == "b":
+            return
+        else:
+            input("Invalid selection. Press Enter...")
+
+
+def _export_state_submenu(manager: StateManager) -> None:
+    """Export state to file."""
+    clear_screen()
+    print("\n" + "="*60)
+    print("  EXPORT STATE")
+    print("="*60)
+
+    print("\nExport options:")
+    print("1) Export with metadata (includes project-specific info)")
+    print("2) Export without metadata (portable, git-friendly)")
+
+    choice = input("\nSelect (1-2): ").strip()
+    include_metadata = choice != "2"
+
+    custom_path = input("\nCustom path (leave empty for default): ").strip()
+    export_path = Path(custom_path) if custom_path else None
+
+    try:
+        result_path = manager.export_state(export_path, include_metadata=include_metadata)
+        print_success(f"State exported to: {result_path}")
+    except Exception as e:
+        print_error(f"Export failed: {e}")
+
+    input("\nPress Enter to return...")
+
+
+def _import_state_submenu(manager: StateManager) -> None:
+    """Import state from file."""
+    clear_screen()
+    print("\n" + "="*60)
+    print("  IMPORT STATE")
+    print("="*60)
+
+    import_path_str = input("\nPath to import file: ").strip()
+    if not import_path_str:
+        print_error("Path is required")
+        input("\nPress Enter to return...")
+        return
+
+    import_path = Path(import_path_str)
+    if not import_path.exists():
+        print_error(f"File not found: {import_path}")
+        input("\nPress Enter to return...")
+        return
+
+    print("\nImport mode:")
+    print("1) Replace  — Replace all settings")
+    print("2) Merge    — Merge with existing settings")
+
+    mode_choice = input("\nSelect (1-2): ").strip()
+    merge = mode_choice == "2"
+
+    summary = f"This will {'merge' if merge else 'replace'} settings from {import_path.name}."
+    if _confirm(summary):
+        try:
+            manager.import_state(import_path, merge=merge)
+            print_success(f"State {'merged' if merge else 'imported'} successfully!")
+        except Exception as e:
+            print_error(f"Import failed: {e}")
+
+    input("\nPress Enter to return...")
+
+
+# ── File Explorer Menu ───────────────────────────────────────────────────
+
+def _file_explorer_menu(project_root: Path) -> None:
+    """Interactive file explorer menu."""
+    from project_control.ui.file_explorer import FileExplorer
+
+    explorer = FileExplorer(project_root)
+
+    while True:
+        clear_screen()
+
+        # Show current path
+        rel_path = explorer.get_current_path().relative_to(project_root)
+        print("\n" + "="*60)
+        print(f"  FILE EXPLORER - {rel_path}")
+        print("="*60)
+
+        # Show directory listing
+        output = explorer.render_file_list()
+        _safe_print(output)
+
+        print("\nActions:")
+        print("[path]  — Change to directory (e.g., 'src', '..')")
+        print("D [path] — Show file/directory details")
+        print("S [term] — Search files")
+        print("U       — Go up one level")
+        print("R       — Refresh")
+        print("B) Back — Return to main menu")
+
+        choice = input("\nCommand: ").strip()
+
+        if choice.lower() == "b":
+            return
+        elif choice.lower() == "u":
+            explorer.go_up()
+        elif choice.lower() == "r":
+            continue  # Just refresh
+        elif choice.lower().startswith("s "):
+            # Search
+            term = choice[2:].strip()
+            if term:
+                results = explorer.search_files(term)
+                clear_screen()
+                print(f"\nSearch results for '{term}':")
+                print("="*60)
+                if results:
+                    for r in results:
+                        print(f"  {r.path} ({r.size} bytes)")
+                else:
+                    print("  No results found.")
+                input("\nPress Enter to continue...")
+        elif choice.lower().startswith("d "):
+            # Details
+            path = choice[2:].strip()
+            if path:
+                clear_screen()
+                details = explorer.render_file_details(path)
+                _safe_print(details)
+                input("\nPress Enter to continue...")
+        elif choice:
+            # Try to change directory
+            if explorer.change_directory(choice):
+                pass  # Will refresh on next loop
+            else:
+                print_error(f"Cannot navigate to: {choice}")
+                input("\nPress Enter to continue...")
+
+
+def _safe_print(text: str) -> None:
+    """Print text safely, handling Unicode encoding issues."""
+    import sys
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        if sys.platform == "win32":
+            safe_text = text.encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
+            print(safe_text)
+        else:
+            try:
+                print(text.encode("utf-8", errors="replace").decode("utf-8"))
+            except Exception:
+                print(text.encode("ascii", errors="replace").decode("ascii"))

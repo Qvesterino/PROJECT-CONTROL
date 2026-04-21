@@ -275,6 +275,22 @@ def dispatch(args: argparse.Namespace) -> int:
                 print(f"❌ Embedding search failed: {e}")
                 return EXIT_VALIDATION_ERROR
 
+    # Preset commands
+    if args.command == "preset":
+        return _handle_preset_command(args)
+
+    # Export commands
+    if args.command == "export":
+        return _handle_export_command(args)
+
+    # Import commands
+    if args.command == "import":
+        return _handle_import_command(args)
+
+    # Explore command
+    if args.command == "explore":
+        return _handle_explore_command(args)
+
     print(f"Unknown command: {args.command}")
     return EXIT_VALIDATION_ERROR
 
@@ -286,3 +302,199 @@ def run_scan(project_root: Path) -> None:
     snapshot = create_snapshot(project_root, patterns.get("ignore_dirs", []), patterns.get("extensions", []))
     save_snapshot(snapshot, project_root)
     print(f"Scan complete. {len(snapshot.get('files', []))} files indexed.")
+
+
+# ── Preset Commands ───────────────────────────────────────────────────────
+
+def _handle_preset_command(args: argparse.Namespace) -> int:
+    """Handle preset subcommands."""
+    from project_control.config.presets import PresetManager
+
+    project_root = Path(getattr(args, "project_root", ".")).resolve()
+    manager = PresetManager(project_root)
+
+    if getattr(args, "preset_cmd", None) == "list":
+        presets = manager.list_presets()
+        print("Available Presets:")
+        print("=" * 60)
+        for preset in presets:
+            category_mark = " [builtin]" if preset["category"] == "builtin" else " [custom]"
+            print(f"  • {preset['name']}{category_mark}")
+            print(f"    {preset['description']}")
+        print()
+
+        # Show current preset
+        current = manager.get_current_preset_name()
+        if current:
+            print(f"Current preset: {current}")
+        else:
+            print("Current configuration doesn't match any preset")
+        return EXIT_OK
+
+    if getattr(args, "preset_cmd", None) == "apply":
+        name = getattr(args, "name", None)
+        if not name:
+            print("Error: Preset name is required")
+            return EXIT_VALIDATION_ERROR
+
+        backup = not getattr(args, "no_backup", False)
+        if manager.apply_preset(name, backup=backup):
+            print(f"[OK] Applied preset: {name}")
+            if backup:
+                print("  (Backup created in .project-control/backups/)")
+            return EXIT_OK
+        else:
+            print(f"[ERROR] Preset not found: {name}")
+            return EXIT_VALIDATION_ERROR
+
+    if getattr(args, "preset_cmd", None) == "save":
+        name = getattr(args, "name", None)
+        if not name:
+            print("Error: Preset name is required")
+            return EXIT_VALIDATION_ERROR
+
+        description = getattr(args, "description", "") or f"Custom preset: {name}"
+        if manager.save_custom_preset(name, description):
+            print(f"[OK] Saved custom preset: {name}")
+            print(f"  Description: {description}")
+            return EXIT_OK
+        else:
+            print(f"[ERROR] Failed to save preset: {name}")
+            return EXIT_VALIDATION_ERROR
+
+    if getattr(args, "preset_cmd", None) == "delete":
+        name = getattr(args, "name", None)
+        if not name:
+            print("Error: Preset name is required")
+            return EXIT_VALIDATION_ERROR
+
+        if manager.delete_custom_preset(name):
+            print(f"[OK] Deleted custom preset: {name}")
+            return EXIT_OK
+        else:
+            print(f"[ERROR] Cannot delete preset '{name}' (not found or is built-in)")
+            return EXIT_VALIDATION_ERROR
+
+    print("Error: No preset subcommand specified")
+    print("Use: pc preset {list|apply|save|delete}")
+    return EXIT_VALIDATION_ERROR
+
+
+# ── Export Commands ───────────────────────────────────────────────────────
+
+def _handle_export_command(args: argparse.Namespace) -> int:
+    """Handle export subcommands."""
+    from project_control.persistence.state_manager import StateManager
+
+    project_root = Path(getattr(args, "project_root", ".")).resolve()
+    manager = StateManager(project_root)
+
+    if getattr(args, "export_cmd", None) == "state":
+        export_path = getattr(args, "path", None)
+        if export_path:
+            export_path = Path(export_path).resolve()
+
+        include_metadata = not getattr(args, "no_metadata", False)
+
+        try:
+            result_path = manager.export_state(export_path, include_metadata=include_metadata)
+            print(f"[OK] State exported to: {result_path}")
+            return EXIT_OK
+        except Exception as e:
+            print(f"[ERROR] Export failed: {e}")
+            return EXIT_VALIDATION_ERROR
+
+    print("Error: No export subcommand specified")
+    print("Use: pc export {state}")
+    return EXIT_VALIDATION_ERROR
+
+
+# ── Import Commands ───────────────────────────────────────────────────────
+
+def _handle_import_command(args: argparse.Namespace) -> int:
+    """Handle import subcommands."""
+    from project_control.persistence.state_manager import StateManager
+
+    project_root = Path(getattr(args, "project_root", ".")).resolve()
+    manager = StateManager(project_root)
+
+    if getattr(args, "import_cmd", None) == "state":
+        import_path = Path(getattr(args, "path", None))
+        if not import_path or not import_path.exists():
+            print(f"[ERROR] Import file not found: {import_path}")
+            return EXIT_VALIDATION_ERROR
+
+        merge = getattr(args, "merge", False)
+
+        try:
+            manager.import_state(import_path, merge=merge)
+            mode = "merged" if merge else "imported"
+            print(f"[OK] State {mode} from: {import_path}")
+            return EXIT_OK
+        except Exception as e:
+            print(f"[ERROR] Import failed: {e}")
+            return EXIT_VALIDATION_ERROR
+
+    print("Error: No import subcommand specified")
+    print("Use: pc import {state}")
+    return EXIT_VALIDATION_ERROR
+
+
+# ── Explore Command ───────────────────────────────────────────────────────
+
+def _handle_explore_command(args: argparse.Namespace) -> int:
+    """Handle explore command."""
+    from project_control.ui.file_explorer import FileExplorer
+
+    project_root = Path(getattr(args, "project_root", ".")).resolve()
+    start_path = Path(getattr(args, "path", ".")).resolve()
+
+    # Resolve start_path relative to project_root if needed
+    try:
+        start_path = start_path.relative_to(project_root)
+    except ValueError:
+        # If not relative, use as-is if it's within project_root
+        if not str(start_path).startswith(str(project_root)):
+            print(f"[ERROR] Path must be within project root: {project_root}")
+            return EXIT_VALIDATION_ERROR
+
+    start_path = project_root / start_path
+
+    try:
+        explorer = FileExplorer(project_root)
+
+        if start_path.is_dir():
+            explorer.change_directory(str(start_path.relative_to(project_root)))
+            output = explorer.render_file_list()
+            _safe_print(output)
+        elif start_path.is_file():
+            rel_path = str(start_path.relative_to(project_root))
+            output = explorer.render_file_details(rel_path)
+            _safe_print(output)
+        else:
+            print(f"[ERROR] Path not found: {start_path}")
+            return EXIT_VALIDATION_ERROR
+
+        return EXIT_OK
+    except Exception as e:
+        print(f"[ERROR] Explore failed: {e}")
+        return EXIT_VALIDATION_ERROR
+
+
+def _safe_print(text: str) -> None:
+    """Print text safely, handling Unicode encoding issues on Windows."""
+    import sys
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        # Fallback for Windows console with limited encoding
+        if sys.platform == "win32":
+            # Encode with error replacement
+            safe_text = text.encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
+            print(safe_text)
+        else:
+            # For other platforms, try UTF-8
+            try:
+                print(text.encode("utf-8", errors="replace").decode("utf-8"))
+            except Exception:
+                print(text.encode("ascii", errors="replace").decode("ascii"))

@@ -1,26 +1,26 @@
+writers:
+- scale
+- emissive
+- opacity
+- position
 entrypoints:
-  - project_control.pc
-
-ignore_patterns:
-  - __pycache__
-  - .project-control
-  - exports
-  - Audit
-  - documentation
-  - .qodo
-  - tmp_
-  - test_
-
-search_ignore_patterns:
-  - __pycache__
-  - .project-control
-  - exports
-
+- index.js
+- index.tsx
+- main.tsx
+- App.tsx
+ignore_dirs:
+- .git
+- .project-control
+- node_modules
+- .next
+- dist
+- build
+- .cache
+- coverage
 extensions:
-  - .py
-# ... existing patterns ...
-
-# Semantic analysis configuration
-embedding:
-  semantic_orphan_threshold: 0.65   # Files with avg similarity < this are orphans
-  semantic_duplicate_threshold: 0.92  # Files with similarity > this are duplicates
+- .js
+- .jsx
+- .ts
+- .tsx
+- .json
+- .md
