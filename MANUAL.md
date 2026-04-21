@@ -73,6 +73,56 @@ Notes:
 ## Interactive UI
 - pc ui --> Launches interactive text-based menu with scan, ghost, graph report, and trace options
 
+### Keyboard Shortcuts
+
+In the interactive menu (`pc ui`), you can use these keyboard shortcuts:
+
+| Shortcut | Action |
+|----------|--------|
+| `0` | Return to previous menu / Exit |
+| `1-7` | Select menu option by number |
+| `Q` | Open Quick Actions menu |
+| `Enter` | Confirm selection / Continue |
+
+### Quick Actions Menu (Q)
+
+Access frequently used operations:
+
+| Option | Action |
+|--------|--------|
+| `1` | Full Analysis — scan → ghost → graph → report |
+| `2` | Health Check — validate everything |
+| `3` | Find Orphans — quick orphan scan |
+| `4` | Find Cycles — quick cycle detection |
+| `5` | Dependency Audit — analyze dependency graph |
+| `6` | Favorites — manage favorite trace targets |
+| `7` | History — view recent actions |
+
+### Tools Menu (7)
+
+Access utility functions:
+
+| Option | Action |
+|--------|--------|
+| `1` | List Backups — show all available backups |
+| `2` | Create Manual Backup — create a named backup |
+| `3` | Restore Backup — restore from a backup |
+| `4` | Delete Backup — delete a specific backup |
+| `5` | Cleanup Old Backups — remove old backups (keep latest 5) |
+| `6` | Clear Graph Cache — remove .project-control/out/ |
+| `7` | Show Diagnostics — display system information |
+
+### Favorites & History
+
+- **Favorites**: Save frequently traced targets for quick access
+  - In Explore menu, press `f` to add current target to favorites
+  - In Quick Actions → Favorites, press `[1-N]` to trace a favorite
+  - Favorites persist across sessions
+
+- **History**: Automatically tracks your last 10 actions
+  - View history in Quick Actions → History
+  - Most recent action shown in header notifications
+
 
 ____
 

@@ -14,6 +14,14 @@ class AppState:
     trace_direction: str = "both"  # inbound | outbound | both
     trace_depth: int = 50
     trace_all_paths: bool = False
+    favorites: list[str] = None  # List of frequently traced targets
+    history: list[str] = None  # List of recent actions
+
+    def __post_init__(self):
+        if self.favorites is None:
+            self.favorites = []
+        if self.history is None:
+            self.history = []
 
 
 CONFIG_FILE = "config.json"
@@ -37,6 +45,8 @@ def load_state(project_root: Path) -> AppState:
         trace_direction=data.get("trace_direction", "both"),
         trace_depth=int(data.get("trace_depth", 50)),
         trace_all_paths=bool(data.get("trace_all_paths", False)),
+        favorites=data.get("favorites", []),
+        history=data.get("history", []),
     )
 
 
@@ -50,5 +60,52 @@ def save_state(project_root: Path, state: AppState) -> None:
         "trace_direction": state.trace_direction,
         "trace_depth": state.trace_depth,
         "trace_all_paths": state.trace_all_paths,
+        "favorites": state.favorites,
+        "history": state.history,
     }
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def add_to_history(state: AppState, action: str) -> AppState:
+    """Add action to history, keeping only last 10."""
+    new_history = [action] + state.history[:9]  # Keep last 10
+    return AppState(
+        project_mode=state.project_mode,
+        graph_profile=state.graph_profile,
+        trace_direction=state.trace_direction,
+        trace_depth=state.trace_depth,
+        trace_all_paths=state.trace_all_paths,
+        favorites=state.favorites,
+        history=new_history,
+    )
+
+
+def add_to_favorites(state: AppState, target: str) -> AppState:
+    """Add target to favorites if not already present."""
+    if target in state.favorites:
+        return state
+    new_favorites = state.favorites + [target]
+    return AppState(
+        project_mode=state.project_mode,
+        graph_profile=state.graph_profile,
+        trace_direction=state.trace_direction,
+        trace_depth=state.trace_depth,
+        trace_all_paths=state.trace_all_paths,
+        favorites=new_favorites,
+        history=state.history,
+    )
+
+
+def remove_from_favorites(state: AppState, target: str) -> AppState:
+    """Remove target from favorites."""
+    new_favorites = [f for f in state.favorites if f != target]
+    return AppState(
+        project_mode=state.project_mode,
+        graph_profile=state.graph_profile,
+        trace_direction=state.trace_direction,
+        trace_depth=state.trace_depth,
+        trace_all_paths=state.trace_all_paths,
+        favorites=new_favorites,
+        history=state.history,
+    )
+

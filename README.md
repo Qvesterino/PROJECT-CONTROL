@@ -63,7 +63,10 @@ A detailed markdown report is generated at `.project-control/exports/ghost_candi
 | **Ghost Analysis** | Detects orphan files, legacy snippets, session files, duplicates, and semantic outliers |
 | **Dependency Graph** | Builds a deterministic import graph for Python and JS/TS projects |
 | **Graph Trace** | Traces dependency paths to/from any symbol or file |
-| **Interactive UI** | Text-based menu for guided analysis |
+| **Interactive UI** | Text-based menu with quick actions, favorites, and smart notifications |
+| **Quick Actions** | One-click full analysis, health checks, and common tasks |
+| **Backup & Rollback** | Automatic backups before destructive operations with restore capability |
+| **Favorites & History** | Save frequently traced targets and view recent actions |
 | **Embedding Search** | Semantic code search powered by local Ollama (optional) |
 
 ---
