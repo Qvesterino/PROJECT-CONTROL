@@ -1,7 +1,7 @@
 {
   "snapshot_version": 1,
-  "snapshot_id": "289743b89567ab0012ecbb031746f03b114f09bae3f24ea3305b17646beb6808",
-  "file_count": 1654,
+  "snapshot_id": "a91ec07649a21efab288e946655a2f58b9762396b3ace4df5f6e359e60afdc2d",
+  "file_count": 1659,
   "files": [
     {
       "path": ".venv-1\\Lib\\site-packages\\__editable___project_control_0_1_0_finder.py",
@@ -9436,10 +9436,16 @@
       "sha256": "953408cd2570f0c83dc2fe39f7e4e388e41eeb05738aa69196a5f6ffcf6ba79e"
     },
     {
+      "path": "prepare_release.py",
+      "size": 5321,
+      "modified": "2026-04-19T17:24:03.685952+00:00",
+      "sha256": "0f8c47b0c95b8701b99de88f82512c54755070d41c93dfe7315b143a320e79bf"
+    },
+    {
       "path": "project_control\\__init__.py",
-      "size": 0,
-      "modified": "2026-02-15T16:28:27.597751+00:00",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "size": 124,
+      "modified": "2026-04-19T20:24:09.636307+00:00",
+      "sha256": "efffe1eaba17d90b4731bd6bf733fe3f9ed7dcf06760182c92202c52e3d06e9f"
     },
     {
       "path": "project_control\\analysis\\__init__.py",
@@ -9497,21 +9503,21 @@
     },
     {
       "path": "project_control\\cli\\graph_cmd.py",
-      "size": 10296,
-      "modified": "2026-04-18T18:57:14.181891+00:00",
-      "sha256": "eb6277dbd6f63ab18af0d5251d61e10fbc9f5e3c9c6f315478cd99d048d9e627"
+      "size": 10710,
+      "modified": "2026-04-19T20:21:03.575814+00:00",
+      "sha256": "bcfab06436761405a3aa681b3668d38fae1ee0f91903519bd61831d43b81712d"
     },
     {
       "path": "project_control\\cli\\menu.py",
-      "size": 4603,
-      "modified": "2026-02-24T13:37:01.468439+00:00",
-      "sha256": "5a430444c55d4922ea0d2d201a99049cb6ce5025a7cae9d1ed1091b7eafe46c1"
+      "size": 14635,
+      "modified": "2026-04-21T10:07:18.972831+00:00",
+      "sha256": "5e4eac9d7a51c9fd8dc04b464f9c70dac77f39b3de764fea9300bddbd9e01e47"
     },
     {
       "path": "project_control\\cli\\router.py",
-      "size": 9352,
-      "modified": "2026-04-19T08:53:58.024899+00:00",
-      "sha256": "59f7547dcfeb277dccb91dc43d909801ffda82a22517577070055a2cd23a830a"
+      "size": 10858,
+      "modified": "2026-04-21T09:59:36.182794+00:00",
+      "sha256": "13ea038654996001a07527a88a87fcea1f9b5194b765d38bc251ce4a4d769598"
     },
     {
       "path": "project_control\\config\\__init__.py",
@@ -9556,6 +9562,12 @@
       "sha256": "f46a4de41bb90d16fa680a9e918e853f3752ccf00b9ef983a58cdde996b01213"
     },
     {
+      "path": "project_control\\core\\error_handler.py",
+      "size": 10509,
+      "modified": "2026-04-21T09:41:51.252589+00:00",
+      "sha256": "76689ab0101da345c1c8a81e06c9d01b2f13d9fbad93a983703a66a32107be52"
+    },
+    {
       "path": "project_control\\core\\exit_codes.py",
       "size": 85,
       "modified": "2026-04-19T07:08:20.521258+00:00",
@@ -9569,9 +9581,9 @@
     },
     {
       "path": "project_control\\core\\ghost_service.py",
-      "size": 3156,
-      "modified": "2026-04-18T20:39:31.857965+00:00",
-      "sha256": "848558a632845187bd5c82cb9cd40a300eda9c5be4be847628638b0370c50779"
+      "size": 4281,
+      "modified": "2026-04-21T09:51:29.418168+00:00",
+      "sha256": "c38f1b9dc2ae1ebfdb1240c85f3341aac8c0ca0e3309935af533e13780989b3c"
     },
     {
       "path": "project_control\\core\\import_parser.py",
@@ -9586,22 +9598,34 @@
       "sha256": "c72407bd5f4b14d06bdeab43ea43b041d5c3be9888f3a205ee47fce3c13fb5c7"
     },
     {
+      "path": "project_control\\core\\pre_flight.py",
+      "size": 20092,
+      "modified": "2026-04-21T09:48:10.149184+00:00",
+      "sha256": "3bef1a10e045baa32cbdce4cc7330e765b43f77e95715fa4715c72beb78493ec"
+    },
+    {
       "path": "project_control\\core\\scanner.py",
-      "size": 2470,
-      "modified": "2026-02-15T12:37:51.926507+00:00",
-      "sha256": "61571c4523c3aadd39c4f18f52849195ffc67c84d94e61e7ab7886fef1eab0b6"
+      "size": 3250,
+      "modified": "2026-04-19T20:23:45.363347+00:00",
+      "sha256": "0378ff57606f94e9696359f70d5686f7206d7bfed8e60ab041bbf1b24cb58e1b"
     },
     {
       "path": "project_control\\core\\snapshot_service.py",
-      "size": 1504,
-      "modified": "2026-02-15T16:28:47.385723+00:00",
-      "sha256": "8233fc081b2e798a3f15b314a271c998cfa7422524edcb163c50b21a20c450eb"
+      "size": 3682,
+      "modified": "2026-04-21T09:50:46.933295+00:00",
+      "sha256": "8aed9ed5dfe950549b587e0b6349b4175a655fa346c5b382fee9190653fc103e"
     },
     {
       "path": "project_control\\core\\snapshot_validator.py",
       "size": 3166,
       "modified": "2026-02-18T08:01:47.964416+00:00",
       "sha256": "171bf4a7d545e90b7ddfefdc04cf2c8d0b8ee38b3b6c1366a1a50a781dc0e6a6"
+    },
+    {
+      "path": "project_control\\core\\validator.py",
+      "size": 18100,
+      "modified": "2026-04-21T09:45:53.647086+00:00",
+      "sha256": "acc699c2e3cd611951d5074974cc151015afb2bb1817ee0f57a741fadbde0ce0"
     },
     {
       "path": "project_control\\core\\writers.py",
@@ -9809,9 +9833,9 @@
     },
     {
       "path": "project_control\\pc.py",
-      "size": 3621,
-      "modified": "2026-04-18T20:44:43.080585+00:00",
-      "sha256": "b3398f2d00b341cca1a4bdc2e13a48c5abb38090e97e584b6f66bbdf6db0805b"
+      "size": 3925,
+      "modified": "2026-04-19T20:24:23.848226+00:00",
+      "sha256": "8ab3153bae8e31e1e855c841c27f56313f7cd1a54711251ff5d4356bb77f4d4d"
     },
     {
       "path": "project_control\\persistence\\__init__.py",
@@ -9886,6 +9910,12 @@
       "sha256": "1f8a3f25510861048deb9f72876e695da50f1e06fbcee7673a16740e96ab6901"
     },
     {
+      "path": "test_health.py",
+      "size": 1148,
+      "modified": "2026-04-21T10:07:48.957463+00:00",
+      "sha256": "0456b3a066ff368e3207a427d97241351f1c515d6b2a6b35022570ebf811ca2f"
+    },
+    {
       "path": "tests\\__init__.py",
       "size": 40,
       "modified": "2026-02-21T18:21:24.686736+00:00",
@@ -9928,5 +9958,5 @@
       "sha256": "0af2e2df2f0295507492f1466cbc832a30177fe93b692e69b11dbf95ddd55986"
     }
   ],
-  "generated_at": "2026-04-19T09:33:21.144968+00:00"
+  "generated_at": "2026-04-21T10:08:29.567849+00:00"
 }

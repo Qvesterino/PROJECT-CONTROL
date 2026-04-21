@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import yaml
 from pathlib import Path
 from typing import Optional
@@ -13,9 +14,12 @@ from project_control.core.ghost_service import run_ghost, write_ghost_report
 from project_control.core.markdown_renderer import render_writer_report
 from project_control.core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
 from project_control.core.writers import run_writers_analysis
+from project_control.core.error_handler import ErrorHandler, ErrorContext
 from project_control.utils.fs_helpers import run_rg
 from project_control.cli.graph_cmd import graph_build, graph_report, graph_trace
 from project_control.cli.menu import run_menu
+
+logger = logging.getLogger(__name__)
 
 PROJECT_DIR = Path.cwd()
 CONTROL_DIR = PROJECT_DIR / ".project-control"
@@ -81,72 +85,101 @@ def cmd_init(args: argparse.Namespace) -> int:
 
 
 def cmd_scan(args: argparse.Namespace) -> int:
-    ensure_control_dirs()
-    run_scan(PROJECT_DIR)
-    return EXIT_OK
+    """Scan project and create snapshot with error handling."""
+    try:
+        with ErrorContext("Scanning project"):
+            ensure_control_dirs()
+            run_scan(PROJECT_DIR)
+        return EXIT_OK
+    except SystemExit:
+        raise
+    except Exception as e:
+        return ErrorHandler.handle(e, "Scan command")
 
 
 def cmd_checklist(args: argparse.Namespace) -> int:
-    snapshot = _load_existing_snapshot()
-    if snapshot is None:
+    """Generate checklist from snapshot with error handling."""
+    try:
+        with ErrorContext("Generating checklist"):
+            snapshot = _load_existing_snapshot()
+            if snapshot is None:
+                return EXIT_OK
+
+            ensure_control_dirs()
+
+            output = ["# PROJECT CHECKLIST\n"]
+            for file in snapshot["files"]:
+                output.append(f"- [ ] {file['path']}")
+
+            checklist_path = EXPORTS_DIR / "checklist.md"
+            checklist_path.write_text("\n".join(output), encoding="utf-8")
+
+            print(f"Checklist generated: {checklist_path}")
         return EXIT_OK
-
-    ensure_control_dirs()
-
-    output = ["# PROJECT CHECKLIST\n"]
-    for file in snapshot["files"]:
-        output.append(f"- [ ] {file['path']}")
-
-    checklist_path = EXPORTS_DIR / "checklist.md"
-    checklist_path.write_text("\n".join(output), encoding="utf-8")
-
-    print(f"Checklist generated: {checklist_path}")
-    return EXIT_OK
+    except SystemExit:
+        raise
+    except Exception as e:
+        return ErrorHandler.handle(e, "Checklist command")
 
 
 def cmd_find(args: argparse.Namespace) -> int:
+    """Find symbol usage with error handling."""
     if not args.symbol:
         print("Provide symbol to search.")
         return EXIT_VALIDATION_ERROR
 
-    ensure_control_dirs()
+    try:
+        with ErrorContext("Searching for symbol"):
+            ensure_control_dirs()
 
-    result = run_rg(args.symbol)
-    output_path = EXPORTS_DIR / f"find_{args.symbol}.md"
+            result = run_rg(args.symbol)
+            output_path = EXPORTS_DIR / f"find_{args.symbol}.md"
 
-    output_path.write_text(
-        f"# Usage of: {args.symbol}\n\n{result or 'No matches found.'}",
-        encoding="utf-8",
-    )
+            output_path.write_text(
+                f"# Usage of: {args.symbol}\n\n{result or 'No matches found.'}",
+                encoding="utf-8",
+            )
 
-    print(f"Search results saved: {output_path}")
-    return EXIT_OK
+            print(f"Search results saved: {output_path}")
+        return EXIT_OK
+    except SystemExit:
+        raise
+    except Exception as e:
+        return ErrorHandler.handle(e, "Find command")
 
 
 def cmd_ghost(args: argparse.Namespace) -> int:
-    """Run shallow ghost analysis using canonical ghost core."""
-    ghost_data = run_ghost(args, PROJECT_DIR)
-    if ghost_data is None:
+    """Run shallow ghost analysis using canonical ghost core with error handling."""
+    try:
+        with ErrorContext("Running ghost analysis"):
+            ghost_data = run_ghost(args, PROJECT_DIR)
+            if ghost_data is None:
+                return EXIT_OK
+
+            result = ghost_data["result"]
+            counts = ghost_data["counts"]
+
+            # Write markdown report
+            write_ghost_report(result, PROJECT_DIR)
+
+            # Print summary
+            print("\nGhost Results")
+            print("-------------")
+            print(f"Orphans:   {counts.get('orphans', 0)}")
+            print(f"Legacy:    {counts.get('legacy', 0)}")
+            print(f"Sessions:  {counts.get('sessions', 0)}")
+            print(f"Duplicates: {counts.get('duplicates', 0)}")
+            print(f"Semantic:  {counts.get('semantic', 0)}")
+
+            if ghost_data.get("limit_violation"):
+                print(f"\n⚠️  {ghost_data['limit_violation']['message']}")
+                return ghost_data["limit_violation"]["exit_code"]
+
         return EXIT_OK
-
-    result = ghost_data["result"]
-    counts = ghost_data["counts"]
-
-    # Write markdown report
-    write_ghost_report(result, PROJECT_DIR)
-
-    # Print summary
-    print("\nGhost Results")
-    print("-------------")
-    print(f"Orphans:   {counts.get('orphans', 0)}")
-    print(f"Legacy:    {counts.get('legacy', 0)}")
-    print(f"Sessions:  {counts.get('sessions', 0)}")
-    print(f"Duplicates: {counts.get('duplicates', 0)}")
-    print(f"Semantic:  {counts.get('semantic', 0)}")
-
-    if ghost_data.get("limit_violation"):
-        print(f"\n⚠️  {ghost_data['limit_violation']['message']}")
-        return ghost_data["limit_violation"]["exit_code"]
+    except SystemExit:
+        raise
+    except Exception as e:
+        return ErrorHandler.handle(e, "Ghost command")
 
     return EXIT_OK
 
@@ -248,7 +281,8 @@ def dispatch(args: argparse.Namespace) -> int:
 
 # Backward compat — used by cmd_scan
 def run_scan(project_root: Path) -> None:
-    from project_control.core.scanner import scan_project
-    snapshot = scan_project(project_root)
+    """Run scan with configuration."""
+    patterns = load_patterns(project_root)
+    snapshot = create_snapshot(project_root, patterns.get("ignore_dirs", []), patterns.get("extensions", []))
     save_snapshot(snapshot, project_root)
     print(f"Scan complete. {len(snapshot.get('files', []))} files indexed.")

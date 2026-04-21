@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -13,6 +14,14 @@ from project_control.services.scan_service import run_scan
 from project_control.services.graph_service import build_graph, show_report
 from project_control.services.analyze_service import ghost_fast, ghost_structural
 from project_control.services.explore_service import run_trace
+from project_control.core.error_handler import ErrorHandler, ErrorContext
+from project_control.core.pre_flight import health_check
+from project_control.core.validator import (
+    validate_snapshot,
+    validate_graph,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def clear_screen() -> None:
@@ -37,28 +46,64 @@ DIRECTION_LABELS = {"inbound": "Inbound", "outbound": "Outbound", "both": "Both"
 # ── Status helpers ──────────────────────────────────────────────────
 
 def _snapshot_status(project_root: Path) -> str:
+    """Get snapshot status with validation."""
     path = project_root / ".project-control" / "snapshot.json"
     if not path.exists():
         return "MISSING"
+    
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
+        result = validate_snapshot(data, path)
+        
+        if not result.is_valid:
+            return "INVALID"
+        
         count = data.get("file_count", "?")
-        return f"OK ({count} files)"
-    except Exception:
+        status = f"OK ({count} files)"
+        
+        if result.has_warnings():
+            status += " [!]"
+        
+        return status
+    except json.JSONDecodeError:
+        return "CORRUPTED"
+    except Exception as e:
+        logger.error(f"Error checking snapshot status: {e}")
         return "ERROR"
 
 
 def _graph_status(project_root: Path) -> str:
+    """Get graph status with validation."""
     path = project_root / ".project-control" / "out" / "graph.snapshot.json"
     if not path.exists():
         return "MISSING"
-    return "OK"
+    
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        result = validate_graph(data, path)
+        
+        if not result.is_valid:
+            return "INVALID"
+        
+        status = "OK"
+        
+        if result.has_warnings():
+            status += " [!]"
+        
+        return status
+    except json.JSONDecodeError:
+        return "CORRUPTED"
+    except Exception as e:
+        logger.error(f"Error checking graph status: {e}")
+        return "ERROR"
 
 
 # ── Main loop ───────────────────────────────────────────────────────
 
 def run_menu(project_root: Path) -> None:
+    """Main menu loop with error handling."""
     state = load_state(project_root)
+    
     while True:
         clear_screen()
         _header(project_root, state)
@@ -67,24 +112,36 @@ def run_menu(project_root: Path) -> None:
         print("3) Analyze   — ghost detectors & structural metrics")
         print("4) Explore   — trace symbol/file dependencies")
         print("5) Settings  — change mode, profile, trace options")
+        print("6) Health    — project health check")
         print("0) Exit")
-        choice = input("\nSelect (0-5): ").strip()
-        if choice == "1":
-            _snapshot_menu(project_root, state)
-        elif choice == "2":
-            _graph_menu(project_root, state)
-        elif choice == "3":
-            _analyze_menu(project_root, state)
-        elif choice == "4":
-            _explore_menu(project_root, state)
-        elif choice == "5":
-            state = _settings_menu(project_root, state)
-        elif choice == "0":
-            save_state(project_root, state)
-            print("Goodbye.")
-            return
-        else:
-            input("Invalid selection. Press Enter...")
+        
+        choice = input("\nSelect (0-6): ").strip()
+        
+        try:
+            if choice == "1":
+                _snapshot_menu(project_root, state)
+            elif choice == "2":
+                _graph_menu(project_root, state)
+            elif choice == "3":
+                _analyze_menu(project_root, state)
+            elif choice == "4":
+                _explore_menu(project_root, state)
+            elif choice == "5":
+                state = _settings_menu(project_root, state)
+            elif choice == "6":
+                _health_menu(project_root)
+            elif choice == "0":
+                save_state(project_root, state)
+                print("Goodbye.")
+                return
+            else:
+                input("Invalid selection. Press Enter...")
+        except SystemExit:
+            # Re-raise to exit cleanly
+            raise
+        except Exception as e:
+            ErrorHandler.handle(e, "Menu operation")
+            input("\nPress Enter to continue...")
 
 
 def _header(project_root: Path, state: AppState) -> None:
@@ -100,43 +157,110 @@ def _header(project_root: Path, state: AppState) -> None:
     print()
 
 
+# ── Health Menu ───────────────────────────────────────────────────────
+
+def _health_menu(project_root: Path) -> None:
+    """Display project health check."""
+    print("\n" + "="*60)
+    print("  PROJECT HEALTH CHECK")
+    print("="*60)
+    
+    with ErrorContext("Running health check"):
+        report = health_check(project_root)
+        
+        # Overall status
+        if report.is_healthy():
+            status_symbol = "[OK]"
+        elif report.has_warnings():
+            status_symbol = "[WARN]"
+        else:
+            status_symbol = "[ERROR]"
+        status_color = report.overall_status.upper()
+        print(f"\nOverall Status: {status_symbol} {status_color}")
+        print()
+        
+        # Show checks
+        print("Checks:")
+        for check in report.checks:
+            symbol = "[OK]" if check.is_healthy else "[FAIL]"
+            print(f"  {symbol} {check.name}: {check.message}")
+            if check.details:
+                print(f"    Details: {check.details}")
+        
+        # Show errors and warnings
+        if report.errors:
+            print("\nErrors:")
+            for error in report.errors:
+                print(f"  [FAIL] {error}")
+        
+        if report.warnings:
+            print("\nWarnings:")
+            for warning in report.warnings:
+                print(f"  [WARN] {warning}")
+        
+        # Show suggestions
+        if report.suggestions:
+            print("\nSuggestions:")
+            for suggestion in report.suggestions:
+                print(f"  {suggestion}")
+        
+        print("\n" + "="*60)
+    
+    input("\nPress Enter to return...")
+
+
 # ── Sub-menus ───────────────────────────────────────────────────────
 
 def _snapshot_menu(project_root: Path, state: AppState) -> None:
+    """Snapshot menu with error handling."""
     print()
     if _confirm("Scan project files?"):
-        run_scan(project_root)
+        with ErrorContext("Scanning project"):
+            run_scan(project_root)
+            print("\n✓ Snapshot created successfully!")
     input("\nPress Enter to return...")
 
 
 def _graph_menu(project_root: Path, state: AppState) -> None:
+    """Graph menu with error handling."""
     print("\nGraph:")
     print("1) Build / Rebuild graph")
     print("2) Show graph report")
     print("0) Back")
     choice = input("\nSelect (0-2): ").strip()
+    
     if choice == "1":
         if _confirm("Build graph with current config?"):
-            build_graph(project_root, state)
+            with ErrorContext("Building graph"):
+                build_graph(project_root, state)
+                print("\n✓ Graph built successfully!")
     elif choice == "2":
-        show_report(project_root, state)
+        with ErrorContext("Showing graph report"):
+            show_report(project_root, state)
+    
     input("\nPress Enter to return...")
 
 
 def _analyze_menu(project_root: Path, state: AppState) -> None:
+    """Analyze menu with error handling."""
     print("\nAnalyze:")
     print("1) Ghost detectors (shallow)")
     print("2) Structural metrics (from graph)")
     print("0) Back")
     choice = input("\nSelect (0-2): ").strip()
+    
     if choice == "1":
-        ghost_fast(project_root)
+        with ErrorContext("Running ghost analysis"):
+            ghost_fast(project_root)
     elif choice == "2":
-        ghost_structural(project_root, state)
+        with ErrorContext("Running structural analysis"):
+            ghost_structural(project_root, state)
+    
     input("\nPress Enter to return...")
 
 
 def _explore_menu(project_root: Path, state: AppState) -> None:
+    """Explore menu with error handling."""
     print("\nTrace:")
     dir_label = DIRECTION_LABELS.get(state.trace_direction, state.trace_direction)
     print(f"  Current: direction={dir_label}, depth={state.trace_depth}, all={state.trace_all_paths}")
@@ -144,7 +268,10 @@ def _explore_menu(project_root: Path, state: AppState) -> None:
     target = input("Target (path or symbol, 0=back): ").strip()
     if not target or target == "0":
         return
-    run_trace(project_root, target, state)
+    
+    with ErrorContext("Tracing dependencies"):
+        run_trace(project_root, target, state)
+    
     input("\nPress Enter to return...")
 
 
