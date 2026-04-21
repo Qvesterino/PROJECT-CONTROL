@@ -9,6 +9,8 @@ from hashlib import sha256
 from pathlib import Path
 from typing import List, TypedDict
 
+from project_control.utils.progress import ProgressBar
+
 logger = logging.getLogger(__name__)
 
 
@@ -44,7 +46,9 @@ def scan_project(project_root: str, ignore_dirs: List[str], extensions: List[str
     content_dir = root_path / ".project-control" / "content"
     content_dir.mkdir(parents=True, exist_ok=True)
 
-    files: List[FileEntry] = []
+    # Phase 1: Collect file paths
+    logger.info("Collecting file paths...")
+    file_paths: List[Path] = []
 
     for root, dirs, filenames in os.walk(root_path):
         dirs[:] = [d for d in dirs if d not in ignore_set]
@@ -53,17 +57,30 @@ def scan_project(project_root: str, ignore_dirs: List[str], extensions: List[str
             path = Path(root) / name
             if ext_set and path.suffix not in ext_set:
                 continue
+            file_paths.append(path)
 
+    # Phase 2: Process files with progress bar
+    files: List[FileEntry] = []
+    total_files = len(file_paths)
+
+    if total_files > 0:
+        print(f"Scanning {total_files} files...")
+        progress = ProgressBar(total_files, "", show_eta=True)
+        logger.info(f"Processing {total_files} files...")
+
+        for idx, path in enumerate(file_paths, 1):
             try:
                 rel_path = str(path.relative_to(root_path))
             except ValueError as e:
                 logger.warning(f"Cannot get relative path for {path}: {e}")
+                progress.update(idx)
                 continue
 
             try:
                 data = path.read_bytes()
             except (OSError, IOError) as e:
                 logger.warning(f"Failed to read file {path}: {e}")
+                progress.update(idx)
                 continue
 
             digest = sha256(data).hexdigest()
@@ -88,8 +105,15 @@ def scan_project(project_root: str, ignore_dirs: List[str], extensions: List[str
                 )
             except (OSError, IOError) as e:
                 logger.warning(f"Failed to stat file {path}: {e}")
-                continue
 
+            # Update progress
+            progress.update(idx)
+
+        progress.finish(f"Scanned {len(files)} files")
+    else:
+        logger.info("No files found matching criteria")
+
+    # Sort and create snapshot
     files.sort(key=lambda entry: entry["path"])
     concatenated = "".join(f"{entry['path']}{entry['sha256']}" for entry in files)
     snapshot_id = sha256(concatenated.encode("utf-8")).hexdigest()

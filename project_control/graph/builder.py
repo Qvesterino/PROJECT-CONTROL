@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
@@ -13,6 +14,9 @@ from project_control.config.graph_config import GraphConfig, hash_config
 from project_control.graph.extractors.registry import build_registry
 from project_control.graph.resolver import DEFAULT_JS_EXTENSIONS, PythonResolver, SpecifierResolver
 from project_control.core.content_store import ContentStore
+from project_control.utils.progress import ProgressBar, Spinner
+
+logger = logging.getLogger(__name__)
 
 
 class GraphBuilder:
@@ -24,13 +28,22 @@ class GraphBuilder:
         self.extractor_registry = build_registry(config)
 
     def build(self) -> Dict:
+        # Collect nodes
+        logger.info("Collecting graph nodes...")
         nodes = self._collect_nodes()
         path_to_id = {node["path"]: node["id"] for node in nodes}
+        logger.info(f"Collected {len(nodes)} nodes")
 
+        # Build resolvers
         resolver = SpecifierResolver(self.project_root, path_to_id.keys(), self.config.alias, extension_order=self.config.languages.get("js_ts", {}).get("include_exts", DEFAULT_JS_EXTENSIONS))
         py_resolver = PythonResolver(self.project_root, path_to_id.keys())
-        edges = self._collect_edges(nodes, path_to_id, resolver, py_resolver)
 
+        # Collect edges with progress bar
+        logger.info("Collecting graph edges...")
+        edges = self._collect_edges(nodes, path_to_id, resolver, py_resolver)
+        logger.info(f"Collected {len(edges)} edges")
+
+        # Resolve entrypoints
         entrypoints = self._resolve_entrypoints(path_to_id, edges)
 
         meta = {
@@ -90,22 +103,31 @@ class GraphBuilder:
         js_exts = set(self.config.languages.get("js_ts", {}).get("include_exts", []))
         py_exts = set(self.config.languages.get("python", {}).get("include_exts", []))
 
-        for path in node_paths:
+        # Use progress bar for edge collection
+        progress = ProgressBar(len(node_paths), "Building dependency graph", show_eta=True)
+
+        for idx, path in enumerate(node_paths, 1):
             ext = Path(path).suffix
             extractor = extractor_by_ext.get(ext)
             if extractor is None:
+                progress.update(idx)
                 continue
             try:
                 content = self.content_store.get_text(path)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to get content for {path}: {e}")
+                progress.update(idx)
                 continue
+
             records = extractor.extract(path, content)
             from_id = path_to_id[path]
+
             for record in records:
                 if ext in py_exts:
                     resolved_path, is_external = py_resolver.resolve(path, record.specifier)
                 else:
                     resolved_path, is_external = resolver.resolve(path, record.specifier)
+
                 to_id = path_to_id.get(resolved_path) if resolved_path else None
                 edge = {
                     "fromId": from_id,
@@ -119,6 +141,10 @@ class GraphBuilder:
                     "resolvedPath": resolved_path if resolved_path else None,
                 }
                 edges.append(edge)
+
+            progress.update(idx)
+
+        progress.finish(f"Built {len(edges)} dependencies")
 
         id_to_path = {node["id"]: node["path"] for node in nodes}
         edges.sort(

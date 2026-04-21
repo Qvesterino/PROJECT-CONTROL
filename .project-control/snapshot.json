@@ -1,6 +1,6 @@
 {
   "snapshot_version": 1,
-  "snapshot_id": "a91ec07649a21efab288e946655a2f58b9762396b3ace4df5f6e359e60afdc2d",
+  "snapshot_id": "956e55ec260a2fbeea5f59919cadf23a93931cdac0e3d437e3cd48cab353c933",
   "file_count": 1659,
   "files": [
     {
@@ -9605,9 +9605,9 @@
     },
     {
       "path": "project_control\\core\\scanner.py",
-      "size": 3250,
-      "modified": "2026-04-19T20:23:45.363347+00:00",
-      "sha256": "0378ff57606f94e9696359f70d5686f7206d7bfed8e60ab041bbf1b24cb58e1b"
+      "size": 4011,
+      "modified": "2026-04-21T10:19:59.852417+00:00",
+      "sha256": "1f6745c631298e8d35833cd810a18a300515c496f5f37fc9cfd3d48984ad7464"
     },
     {
       "path": "project_control\\core\\snapshot_service.py",
@@ -9773,9 +9773,9 @@
     },
     {
       "path": "project_control\\graph\\builder.py",
-      "size": 6783,
-      "modified": "2026-02-24T08:49:10.706026+00:00",
-      "sha256": "079c8cb1896def2fa01d5d910707b1a0c17348a0d00a45d67d395888de01c924"
+      "size": 7634,
+      "modified": "2026-04-21T10:21:34.288205+00:00",
+      "sha256": "87928a29c09e8c4be08acb50a3c3cd56dee1240b2382ed5cfe5ff630e47f048a"
     },
     {
       "path": "project_control\\graph\\ensure.py",
@@ -9910,10 +9910,10 @@
       "sha256": "1f8a3f25510861048deb9f72876e695da50f1e06fbcee7673a16740e96ab6901"
     },
     {
-      "path": "test_health.py",
-      "size": 1148,
-      "modified": "2026-04-21T10:07:48.957463+00:00",
-      "sha256": "0456b3a066ff368e3207a427d97241351f1c515d6b2a6b35022570ebf811ca2f"
+      "path": "project_control\\utils\\progress.py",
+      "size": 13933,
+      "modified": "2026-04-21T10:19:10.066682+00:00",
+      "sha256": "4787aad56ff4241103cad89c94a68d613716bf649c5f350a411637f0b5a6f15a"
     },
     {
       "path": "tests\\__init__.py",
@@ -9958,5 +9958,5 @@
       "sha256": "0af2e2df2f0295507492f1466cbc832a30177fe93b692e69b11dbf95ddd55986"
     }
   ],
-  "generated_at": "2026-04-21T10:08:29.567849+00:00"
+  "generated_at": "2026-04-21T10:21:47.678956+00:00"
 }
