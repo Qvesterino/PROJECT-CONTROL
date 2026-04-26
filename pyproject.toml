@@ -40,6 +40,9 @@ dependencies = [
     # Core dependencies
     "pyyaml>=6.0",
     "requests>=2.31.0",
+    # UI/CLI dependencies
+    "rich>=13.0.0",
+    "readchar>=4.0.0",
 ]
 
 [project.optional-dependencies]

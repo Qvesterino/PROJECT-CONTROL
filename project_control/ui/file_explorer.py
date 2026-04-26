@@ -392,3 +392,447 @@ class FileExplorer:
                         continue
 
         return results
+
+
+# ── Interactive File Explorer with Keyboard Navigation ──────────────────────
+
+try:
+    from readchar import readkey, key
+    READCHAR_AVAILABLE = True
+except ImportError:
+    READCHAR_AVAILABLE = False
+
+try:
+    from rich.console import Console
+    from rich.table import Table as RichTable
+    from rich.panel import Panel
+    from rich.text import Text
+    from rich.style import Style
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
+
+class InteractiveFileExplorer:
+    """Fully interactive file explorer with keyboard navigation."""
+
+    def __init__(
+        self,
+        project_root: Path,
+        graph_data: Optional[Dict[str, Any]] = None,
+        metrics_data: Optional[Dict[str, Any]] = None,
+        max_visible: int = 20
+    ):
+        """Initialize interactive file explorer.
+
+        Args:
+            project_root: Root path of the project
+            graph_data: Optional pre-loaded graph data
+            metrics_data: Optional pre-loaded metrics data
+            max_visible: Maximum number of files to show at once
+        """
+        if not READCHAR_AVAILABLE or not RICH_AVAILABLE:
+            raise ImportError(
+                "InteractiveFileExplorer requires 'readchar' and 'rich' packages. "
+                "Install them with: pip install readchar rich"
+            )
+
+        self.explorer = FileExplorer(project_root, graph_data, metrics_data)
+        self.console = Console()
+        self.max_visible = max_visible
+
+        # Interactive state
+        self.selected_index: int = 0  # Currently selected file index
+        self.scroll_offset: int = 0  # Scroll position
+        self.files: List[FileInfo] = []  # Current file list
+        self.running: bool = True
+
+        # Help text
+        self.help_text = [
+            "[bold]Navigation:[/bold]",
+            "  ↑/↓ or j/k - Move selection",
+            "  Enter       - Enter directory / View file details",
+            "  Backspace   - Go up directory",
+            "  Home/End    - Jump to top/bottom",
+            "  Page Up/Down- Scroll one page",
+            "  /           - Search files",
+            "  q/ESC       - Quit",
+            "",
+            "[bold]Actions:[/bold]",
+            "  d           - View file details",
+            "  r           - Refresh current view",
+            "  h           - Show this help",
+        ]
+
+        # Refresh file list
+        self._refresh_file_list()
+
+    def _refresh_file_list(self) -> None:
+        """Refresh the file list from current directory."""
+        self.files = self.explorer.list_directory()
+        # Reset selection
+        self.selected_index = 0
+        self.scroll_offset = 0
+
+    def run(self) -> None:
+        """Run the interactive file explorer loop."""
+        self._render()
+        while self.running:
+            try:
+                ch = readkey()
+                self._handle_input(ch)
+                if self.running:
+                    self._render()
+            except KeyboardInterrupt:
+                self.running = False
+                print("\nExiting...")
+            except EOFError:
+                self.running = False
+
+    def _handle_input(self, key_char: str) -> None:
+        """Handle keyboard input.
+
+        Args:
+            key_char: The character read from stdin
+        """
+        # Arrow keys and vim-like navigation
+        if key_char in (key.UP, 'k'):
+            self._move_selection(-1)
+        elif key_char in (key.DOWN, 'j'):
+            self._move_selection(1)
+        elif key_char == key.PAGE_UP:
+            self._move_selection(-self.max_visible)
+        elif key_char == key.PAGE_DOWN:
+            self._move_selection(self.max_visible)
+        elif key_char == key.HOME:
+            self._jump_to_top()
+        elif key_char == key.END:
+            self._jump_to_bottom()
+        # Enter to enter directory or view details
+        elif key_char == key.ENTER:
+            self._enter_selected()
+        # Backspace to go up
+        elif key_char == key.BACKSPACE:
+            self._go_up()
+        # Quit
+        elif key_char in ('q', key.ESC):
+            self.running = False
+        # File details
+        elif key_char == 'd':
+            self._show_details()
+        # Refresh
+        elif key_char == 'r':
+            self._refresh_file_list()
+        # Help
+        elif key_char == 'h':
+            self._show_help()
+        # Search
+        elif key_char == '/':
+            self._search_mode()
+
+    def _move_selection(self, delta: int) -> None:
+        """Move selection by delta.
+
+        Args:
+            delta: Amount to move (positive = down, negative = up)
+        """
+        new_index = max(0, min(len(self.files) - 1, self.selected_index + delta))
+
+        # Update scroll offset if needed
+        if new_index < self.scroll_offset:
+            self.scroll_offset = new_index
+        elif new_index >= self.scroll_offset + self.max_visible:
+            self.scroll_offset = new_index - self.max_visible + 1
+
+        self.selected_index = new_index
+
+    def _jump_to_top(self) -> None:
+        """Jump to first file."""
+        self.selected_index = 0
+        self.scroll_offset = 0
+
+    def _jump_to_bottom(self) -> None:
+        """Jump to last file."""
+        self.selected_index = len(self.files) - 1
+        if len(self.files) > self.max_visible:
+            self.scroll_offset = len(self.files) - self.max_visible
+
+    def _enter_selected(self) -> None:
+        """Enter selected directory or view file details."""
+        if not self.files:
+            return
+
+        selected_file = self.files[self.selected_index]
+
+        if selected_file.is_dir:
+            # Enter directory
+            if self.explorer.change_directory(selected_file.name):
+                self._refresh_file_list()
+            else:
+                self._show_message(f"Cannot enter directory: {selected_file.name}", "error")
+        else:
+            # Show file details
+            self._show_file_details(selected_file)
+
+    def _go_up(self) -> None:
+        """Go up one directory level."""
+        if self.explorer.go_up():
+            self._refresh_file_list()
+        else:
+            self._show_message("Already at project root", "warning")
+
+    def _show_details(self) -> None:
+        """Show details for selected file."""
+        if not self.files:
+            return
+
+        selected_file = self.files[self.selected_index]
+        self._show_file_details(selected_file)
+
+    def _show_file_details(self, file_info: FileInfo) -> None:
+        """Show detailed information about a file.
+
+        Args:
+            file_info: File to show details for
+        """
+        if file_info.is_dir:
+            details = f"\n[bold]Directory:[/bold] {file_info.name}\n"
+            details += f"[dim]Path:[/dim] {file_info.path}\n"
+            details += f"[dim]Modified:[/dim] {file_info.modified}\n"
+        else:
+            details = self.explorer.render_file_details(file_info.path)
+            # Convert to Rich format
+            details = self._convert_to_rich_format(details)
+
+        # Clear screen and show details
+        self.console.clear()
+        panel = Panel(
+            details,
+            title=f"[bold blue]File Details[/bold blue]",
+            border_style="blue",
+            padding=(1, 2)
+        )
+        self.console.print(panel)
+        self.console.print("\n[dim]Press any key to continue...[/dim]")
+
+        readkey()  # Wait for any key
+
+    def _show_help(self) -> None:
+        """Show help screen."""
+        self.console.clear()
+        help_panel = Panel(
+            "\n".join(self.help_text),
+            title="[bold cyan]Keyboard Shortcuts[/bold cyan]",
+            border_style="cyan",
+            padding=(1, 2)
+        )
+        self.console.print(help_panel)
+        self.console.print("\n[dim]Press any key to continue...[/dim]")
+        readkey()
+
+    def _search_mode(self) -> None:
+        """Enter search mode."""
+        self.console.print("\n[bold yellow]Search:[/bold yellow] ", end="")
+
+        # Simple search using input
+        try:
+            search_term = input("")
+            if search_term.strip():
+                results = self.explorer.search_files(search_term)
+                if results:
+                    self._show_search_results(results, search_term)
+                else:
+                    self._show_message(f"No results for: {search_term}", "info")
+        except (KeyboardInterrupt, EOFError):
+            pass
+
+    def _show_search_results(self, results: List[FileInfo], search_term: str) -> None:
+        """Show search results.
+
+        Args:
+            results: List of matching files
+            search_term: The search term used
+        """
+        self.console.clear()
+        self.console.print(f"\n[bold]Search Results:[/bold] {search_term} ({len(results)} found)\n")
+
+        table = RichTable(show_header=True, header_style="bold magenta")
+        table.add_column("Name", style="cyan")
+        table.add_column("Path", style="dim")
+        table.add_column("Size", style="green")
+        table.add_column("Modified", style="yellow")
+
+        for file_info in results[:50]:  # Show max 50 results
+            table.add_row(
+                file_info.name,
+                file_info.path,
+                self.explorer._format_size(file_info.size),
+                file_info.modified
+            )
+
+        self.console.print(table)
+        self.console.print("\n[dim]Press any key to continue...[/dim]")
+        readkey()
+
+    def _show_message(self, message: str, msg_type: str = "info") -> None:
+        """Show a temporary message.
+
+        Args:
+            message: Message to display
+            msg_type: Type of message (info, warning, error)
+        """
+        colors = {
+            "info": "blue",
+            "warning": "yellow",
+            "error": "red"
+        }
+        color = colors.get(msg_type, "white")
+
+        # Render current screen with message overlay
+        self._render()
+        self.console.print(f"\n[{color}]{message}[/{color}]")
+        self.console.print("[dim]Press any key to continue...[/dim]")
+        readkey()
+
+    def _convert_to_rich_format(self, text: str) -> str:
+        """Convert plain text to Rich markup.
+
+        Args:
+            text: Plain text to convert
+
+        Returns:
+            Text with Rich markup
+        """
+        # Simple conversion - add some basic styling
+        lines = text.split('\n')
+        rich_lines = []
+
+        for line in lines:
+            if line.startswith('='):
+                # Headers
+                rich_lines.append(f"[bold cyan]{line}[/bold cyan]")
+            elif line.startswith('-'):
+                # Separators
+                rich_lines.append(f"[dim]{line}[/dim]")
+            elif 'YES' in line:
+                rich_lines.append(line.replace('YES', '[green]YES[/green]').replace('NO', '[red]NO[/red]'))
+            else:
+                rich_lines.append(line)
+
+        return '\n'.join(rich_lines)
+
+    def _render(self) -> None:
+        """Render the file explorer UI."""
+        self.console.clear()
+
+        # Header
+        current_rel_path = self.explorer.get_current_path().relative_to(self.explorer.project_root)
+        header_text = Text.assemble(
+            ("FILE EXPLORER", "bold blue"),
+            (" - ", "dim"),
+            (str(current_rel_path), "cyan"),
+        )
+        header = Panel(
+            header_text,
+            style="blue",
+            padding=(0, 1)
+        )
+        self.console.print(header)
+
+        # File table
+        table = RichTable(show_header=True, header_style="bold magenta")
+        table.add_column("", width=3)  # Selection indicator
+        table.add_column("Name", style="cyan")
+        table.add_column("Type", width=8, justify="center")
+        table.add_column("Size", width=10, justify="right")
+        table.add_column("Modified", width=16)
+        table.add_column("Status", width=15)
+
+        # Calculate visible range
+        visible_start = self.scroll_offset
+        visible_end = min(len(self.files), visible_start + self.max_visible)
+
+        # Add rows
+        for i in range(visible_start, visible_end):
+            file_info = self.files[i]
+            is_selected = (i == self.selected_index)
+
+            # Selection indicator
+            if is_selected:
+                indicator = Text("►", style="bold yellow")
+                row_style = Style(bgcolor="yellow", color="black")
+            else:
+                indicator = Text(" ")
+                row_style = None
+
+            # File name styling
+            if file_info.is_dir:
+                name_style = "bold blue"
+            else:
+                name_style = "cyan"
+
+            # Determine type
+            if file_info.is_dir:
+                file_type = Text("DIR", style="bold blue")
+                size_str = Text("-")
+            else:
+                file_type = Text(file_info.extensions[0] if file_info.extensions else "FILE", style="dim")
+                size_str = Text(self.explorer._format_size(file_info.size), style="green")
+
+            # Get status indicators
+            status_parts = []
+            if not file_info.is_dir:
+                dep_info = self.explorer.get_dependency_info(file_info.path)
+                if dep_info.is_orphan:
+                    status_parts.append(("ORPHAN", "bold red"))
+                elif dep_info.in_cycle:
+                    status_parts.append(("CYCLE", "bold yellow"))
+                if not dep_info.inbound and not dep_info.is_orphan:
+                    status_parts.append(("NO-REFS", "dim"))
+
+            status_text = Text()
+            for i, (text, style) in enumerate(status_parts):
+                if i > 0:
+                    status_text.append(", ", style="dim")
+                status_text.append(text, style=style)
+
+            if not status_parts:
+                status_text = Text("-", style="dim")
+
+            # Add row
+            name = Text(file_info.name, style=name_style)
+            modified = Text(file_info.modified, style="yellow")
+
+            if row_style:
+                table.add_row(
+                    indicator,
+                    name,
+                    file_type,
+                    size_str,
+                    modified,
+                    status_text,
+                    style=row_style
+                )
+            else:
+                table.add_row(
+                    indicator,
+                    name,
+                    file_type,
+                    size_str,
+                    modified,
+                    status_text
+                )
+
+        self.console.print(table)
+
+        # Footer with info
+        file_count = len(self.files)
+        selected_text = f"Selected: {self.selected_index + 1}/{file_count}" if self.files else "No files"
+        footer = Text.assemble(
+            ("[h]elp  ", "dim"),
+            ("[q]uit  ", "dim"),
+            ("[/]search  ", "dim"),
+            ("[Enter]open  ", "dim"),
+            (f"  |  {selected_text}", "cyan"),
+        )
+        self.console.print(footer)

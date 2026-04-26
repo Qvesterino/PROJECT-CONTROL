@@ -1,26 +1,267 @@
+# PROJECT CONTROL PATTERNS
+
+# ========================================
+# DIAGNOSTIC PATTERNS (used by pc patterns)
+# ========================================
+
+patterns:
+  # --- Debug/Test Code Left Behind ---
+  debug_code:
+    - 'console\.log'
+    - 'console\.warn'
+    - 'console\.error'
+    - 'debugger'
+    - 'print\('
+    - 'pprint\.pprint'
+    - 'logger\.debug'
+    - 'TODO'
+    - 'FIXME'
+    - 'XXX'
+    - 'HACK'
+    - 'WTF'
+    - 'NOTE'
+    - '@deprecated'
+
+  # --- Hardcoded Values & Secrets ---
+  hardcoded_secrets:
+    - 'password\s*=\s*["\x27]'
+    - 'secret\s*=\s*["\x27]'
+    - 'api_key\s*=\s*["\x27]'
+    - 'apikey\s*=\s*["\x27]'
+    - 'api-secret\s*=\s*["\x27]'
+    - 'private_key\s*=\s*["\x27]'
+    - 'private_key_id\s*=\s*["\x27]'
+    - 'aws_access_key_id\s*=\s*["\x27]'
+    - 'aws_secret_access_key\s*=\s*["\x27]'
+    - 'token\s*=\s*["\x27][^"\x27]{20,}["\x27]'
+    - 'jwt\s*=\s*["\x27][^"\x27]{20,}["\x27]'
+    - 'bearer\s+["\x27][^"\x27]{20,}["\x27]'
+    - 'auth_token\s*=\s*["\x27]'
+    - 'client_secret\s*=\s*["\x27]'
+
+  hardcoded_urls:
+    - 'localhost'
+    - '127\.0\.0\.1'
+    - '0\.0\.0\.0'
+    - 'example\.com'
+    - 'test\.com'
+    - 'dummy\.com'
+    - 'placeholder\.com'
+    - 'http://localhost:'
+    - 'https://localhost:'
+    - 'http://127\.0\.0\.1:'
+    - 'https://127\.0\.0\.1:'
+
+  hardcoded_credentials:
+    - 'admin123'
+    - 'password123'
+    - 'test123'
+    - 'admin1234'
+    - 'password'
+    - 'qwerty'
+    - 'letmein'
+    - 'admin'
+    - 'root'
+    - 'toor'
+
+  # --- Deprecated Metrics & APIs ---
+  legacy_metrics:
+    - 'energy'
+    - 'clarity'
+    - 'instability'
+    - 'cyclomatic_complexity'
+    - 'maintainability_index'
+    - 'halstead_metrics'
+
+  deprecated_apis:
+    - 'XMLHttpRequest'
+    - 'ActiveXObject'
+    - 'document\.all'
+    - 'document\.layers'
+    - 'document\.styleSheets\['
+    - '\.style\.cssText\s*='
+    - 'escape\('
+    - 'unescape\('
+    - 'eval\('
+    - 'setTimeout\(.*["\x27]string["\x27]'
+    - 'setInterval\(.*["\x27]string["\x27]'
+
+  # --- Performance Issues ---
+  performance_issues:
+    - 'for\s*\(\s*var\s+\w+\s*=\s*0\s*;\s*\w+\s*<\s*.*length\s*;\s*\w+\+\+\s*\)\s*\{\s*for\s*\('
+    - 'while\s*\(\s*\w+\s*<\s*.*length\s*\)'
+    - '\.innerHTML\s*=\s*["\x27]\s*<[^>]+>\s*["\x27]'
+    - '\.innerHTML\s*\+='
+    - 'document\.write\('
+    - 'new\s+Array\s*\('
+    - '\.split\(["\x27]["\x27])'
+    - '\.match\(\)'
+    - '\.test\(\)'
+    - '\.exec\(\)'
+
+  # --- Code Smells ---
+  code_smells:
+    - 'class\s+\w+\s*\{[^}]{500,}\}'
+    - 'def\s+\w+\([^)]*\):[^:]{200,}'
+    - 'function\s+\w+\([^)]*\)[^{]{200,}\{'
+    - 'if\s*\([^)]{50,}\)'
+    - 'for\s*\([^)]{50,}\)'
+    - '\.then\([^)]{50,}\)'
+
+  # --- Anti-Patterns ---
+  anti_patterns:
+    - 'var\s+\w+\s*=.*='
+    - 'return\s*\(\s*\w+\s*\)'
+    - 'if\s*\(\s*\w+\s*==\s*true\s*\)'
+    - 'if\s*\(\s*\w+\s*!=\s*true\s*\)'
+    - 'if\s*\(\s*\w+\s*==\s*false\s*\)'
+    - 'if\s*\(\s*\w+\s*!=\s*false\s*\)'
+    - '\+\s*["\x27]["\x27]'
+    - '["\x27]["\x27]\s*\+'
+    - 'new\s+String\('
+    - 'new\s+Number\('
+    - 'new\s+Boolean\('
+    - 'Math\.floor\(Math\.random\(\)'
+
+  # --- Error Handling Issues ---
+  error_handling_issues:
+    - 'except\s*:\s*$'
+    - 'except\s*:\s*pass\s*$'
+    - 'catch\s*\(\s*\w+\s*\)\s*\{\s*\}'
+    - 'catch\s*\(\s*\w+\s*\)\s*\{\s*//\s*'
+    - '\.catch\(\s*\(\s*\)\s*=>\s*\{'
+    - '\.catch\(\s*\(\s*\w+\s*\)\s*=>\s*\{'
+    - 'try\s*\{[^}]*\}\s*except\s*:\s*[^}]{0,5}\}'
+    - 'try\s*\{[^}]*\}\s*catch\s*\([^)]*\)\s*\{\s*\}'
+
+  # --- Security Issues ---
+  security_issues:
+    - '<script[^>]*>.*</script>'
+    - 'eval\(.*\$'
+    - 'Function\(.*\$'
+    - 'document\.write\(.*\$'
+    - 'innerHTML\s*=\s*[^;]*\$'
+    - 'onclick\s*=\s*[^;]*\$'
+    - 'onerror\s*=\s*[^;]*\$'
+    - 'onmouseover\s*=\s*[^;]*\$'
+    - 'exec\('
+    - 'os\.system\(.*\$'
+    - 'subprocess\.call\(.*shell=True'
+    - 'subprocess\.Popen\(.*shell=True'
+    - 'pickle\.loads\(.*\$'
+    - 'yaml\.load\(.*\$'
+    - 'input\(.*\$'
+
+  # --- Magic Numbers & Magic Strings ---
+  magic_numbers:
+    - '\s(0|1|2|3|4|5|6|7|8|9|10|100|1000|3600|86400)(?![a-zA-Z0-9_])'
+    - '\s(0\.1|0\.5|1\.0|2\.0)(?![a-zA-Z0-9_])'
+    - '\s(3\.14|3\.14159)(?![a-zA-Z0-9_])'
+
+  magic_strings:
+    - '==\s*["\x27]\w{3,}["\x27]'
+    - '!=\s*["\x27]\w{3,}["\x27]'
+    - '===\s*["\x27]\w{3,}["\x27]'
+    - '!==\s*["\x27]\w{3,}["\x27]'
+
+  # --- Global State Issues ---
+  global_state:
+    - 'window\.\w+\s*='
+    - 'global\.\w+\s*='
+    - '\$_SESSION\['
+    - '\$_GET\['
+    - '\$_POST\['
+    - '\$_REQUEST\['
+    - 'globals\(\)'
+    - 'locals\(\)'
+
+  # --- Dead Code Indicators ---
+  dead_code_indicators:
+    - 'def\s+_\w+\('
+    - '#TODO:remove'
+    - '#TODO:delete'
+    - '#FIXME:remove'
+    - '#FIXME:delete'
+    - '#HACK:remove'
+    - '#HACK:delete'
+    - '#DEPRECATED'
+    - '#deprecated'
+    - '#UNUSED'
+
+  # --- Unused Imports (Python) ---
+  unused_imports_python:
+    - '^import\s+\w+$'
+    - '^from\s+\w+\s+import\s+\w+$'
+    - '^import\s+\w+,\s*\w+,$'
+
+  # --- Unused Imports (JS/TS) ---
+  unused_imports_js:
+    - '^import\s+\{\s*\w+\s*\}\s+from'
+    - '^import\s+\w+\s+from'
+    - '^const\s+\w+\s*=\s*require\('
+    - '^require\('
+
+  # --- SQL Injection Risks ---
+  sql_injection_risks:
+    - 'execute\(["\x27]'
+    - 'query\(["\x27]'
+    - 'raw\(["\x27]'
+    - '\$\w+\s*=\s*["\x27]'
+    - '\$_GET\[[^]]*\]'
+    - '\$_POST\[[^]]*\]'
+    - '\$_REQUEST\[[^]]*\]'
+
+  # --- Cross-Site Scripting (XSS) Risks ---
+  xss_risks:
+    - 'dangerouslySetInnerHTML'
+    - 'v-html\s*='
+    - '\.innerHTML\s*=\s*[^;]*(\+|\$\{)'
+    - 'document\.write\([^;]*(\+|\$\{)'
+
+# ========================================
+# PROJECT CONFIGURATION (used by other parts of the system)
+# ========================================
+
 writers:
-- scale
-- emissive
-- opacity
-- position
+  - scale
+  - emissive
+  - opacity
+  - position
+
 entrypoints:
-- index.js
-- index.tsx
-- main.tsx
-- App.tsx
+  - index.js
+  - index.tsx
+  - main.tsx
+  - App.tsx
+  - main.py
+  - __main__.py
+
 ignore_dirs:
-- .git
-- .project-control
-- node_modules
-- .next
-- dist
-- build
-- .cache
-- coverage
+  - .git
+  - .project-control
+  - node_modules
+  - .next
+  - dist
+  - build
+  - .cache
+  - coverage
+  - __pycache__
+  - .pytest_cache
+  - venv
+  - .venv
+  - env
+  - .env
+  - .idea
+  - .vscode
+  - .DS_Store
+
 extensions:
-- .js
-- .jsx
-- .ts
-- .tsx
-- .json
-- .md
+  - .js
+  - .jsx
+  - .ts
+  - .tsx
+  - .json
+  - .md
+  - .py
+  - .yaml
+  - .yml

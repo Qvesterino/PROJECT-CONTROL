@@ -21,6 +21,15 @@ pc ghost
 pc graph report
 ```
 
+Or use the new diagnostic commands:
+
+```bash
+pc dead        # Find dead code
+pc unused      # Find unused systems
+pc patterns    # Detect suspicious patterns
+pc search TODO # Smart search
+```
+
 That's it. You now understand your codebase.
 
 ---
@@ -61,6 +70,10 @@ A detailed markdown report is generated at `.project-control/exports/ghost_candi
 |---------|-------------|
 | **Snapshot Scan** | Recursively indexes files with SHA256 hashing and content deduplication |
 | **Ghost Analysis** | Detects orphan files, legacy snippets, session files, duplicates, and semantic outliers |
+| **Dead Code Radar** | Finds files with zero or minimal usage (ripgrep-based) |
+| **Unused System Scan** | Identifies unused systems (Manager, Controller, Service, etc.) |
+| **Suspicious Patterns** | Detects forbidden or problematic code patterns (debug code, hardcoded values, etc.) |
+| **Smart Search** | Power-user code search with advanced filters (invert, files-only) |
 | **Dependency Graph** | Builds a deterministic import graph for Python and JS/TS projects |
 | **Graph Trace** | Traces dependency paths to/from any symbol or file |
 | **Interactive UI** | Text-based menu with quick actions, favorites, and smart notifications |
@@ -163,6 +176,12 @@ pc graph report
 
 # Trace a symbol or file
 pc graph trace src/utils.py
+
+# NEW: Diagnostic commands
+pc dead                # Dead Code Radar
+pc unused              # Unused System Scan
+pc patterns            # Suspicious Patterns
+pc search "TODO"       # Smart Search
 ```
 
 ### Or use the interactive UI
@@ -192,6 +211,19 @@ pc ui
 | `pc ghost --max-high 10` | Fail if more than 10 HIGH severity issues found |
 | `pc find <symbol>` | Search for symbol usage across project |
 | `pc writers` | Analyze writer patterns in codebase |
+
+### Diagnostic Commands
+
+| Command | Description |
+|---------|-------------|
+| `pc dead` | Dead Code Radar — finds files with zero or minimal usage |
+| `pc dead --threshold 2` | Set max usage count for low-usage detection |
+| `pc unused` | Unused System Scan — finds systems (Manager, Controller, etc.) that aren't used |
+| `pc patterns` | Suspicious Patterns — detects forbidden or problematic code patterns |
+| `pc patterns --file <path>` | Use custom patterns YAML file |
+| `pc search <pattern>` | Smart Search — power-user code search |
+| `pc search <pattern> --files-only` | Return only file paths (no line details) |
+| `pc search <pattern> --not` | Find files that DO NOT match the pattern |
 
 ### Dependency Graph
 
@@ -256,7 +288,7 @@ All outputs are stored in `.project-control/`:
 ```
 .project-control/
 ├── snapshot.json              # File metadata (from pc scan)
-├── patterns.yaml              # Configuration
+├── patterns.yaml              # Configuration (includes diagnostic patterns)
 ├── content/                   # Deduplicated file blobs
 ├── exports/
 │   ├── ghost_candidates.md    # Ghost analysis report
@@ -270,6 +302,8 @@ All outputs are stored in `.project-control/`:
 │   └── graph.trace.txt        # Trace output
 └── embeddings/                # Embedding cache (optional)
 ```
+
+**Note:** New diagnostic commands (`pc dead`, `pc unused`, `pc patterns`, `pc search`) output directly to terminal and don't create export files.
 
 ---
 
@@ -333,13 +367,21 @@ project_control/
 │   ├── legacy_detector.py     # Legacy detection
 │   ├── session_detector.py    # Session detection
 │   ├── duplicate_detector.py  # Duplicate detection
-│   └── semantic_detector.py   # Semantic detection
+│   ├── semantic_detector.py   # Semantic detection
+│   ├── dead_analyzer.py       # Dead code analyzer
+│   ├── unused_analyzer.py     # Unused systems analyzer
+│   ├── patterns_analyzer.py   # Suspicious patterns analyzer
+│   └── search_analyzer.py     # Smart search analyzer
 ├── graph/
 │   ├── builder.py             # Graph builder
 │   ├── metrics.py             # Metrics computation
 │   ├── trace.py               # Path tracing
 │   ├── artifacts.py           # Output writing
 │   └── extractors/            # Language-specific import extractors
+├── utils/
+│   ├── fs_helpers.py          # Filesystem helpers
+│   ├── rg_helper.py           # Ripgrep wrapper with JSON output
+│   └── renderers.py           # CLI output rendering
 ├── embedding/                 # Embedding system (optional)
 └── experimental/
     └── ghost_deep/            # Preserved deep ghost code (not active)

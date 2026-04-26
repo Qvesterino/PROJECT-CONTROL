@@ -28,6 +28,28 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("scan")
     subparsers.add_parser("checklist")
 
+    # New diagnostic commands
+    dead_parser = subparsers.add_parser("dead", help="Dead Code Radar - finds unused files")
+    dead_parser.add_argument("--threshold", type=int, default=2, help="Max usage count for low-usage files")
+    dead_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+    dead_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+
+    unused_parser = subparsers.add_parser("unused", help="Unused System Scan - finds unused systems")
+    unused_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+    unused_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+
+    patterns_parser = subparsers.add_parser("patterns", help="Suspicious Patterns - detects forbidden patterns")
+    patterns_parser.add_argument("--file", type=str, help="Path to patterns YAML file")
+    patterns_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+    patterns_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+
+    search_parser = subparsers.add_parser("search", help="Smart Search - power-user code search")
+    search_parser.add_argument("pattern", nargs="+", help="Pattern(s) to search for")
+    search_parser.add_argument("--not", action="store_true", dest="invert", help="Find files that DO NOT match")
+    search_parser.add_argument("--files-only", action="store_true", help="Return only file paths")
+    search_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+    search_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+
     find_parser = subparsers.add_parser("find")
     find_parser.add_argument("symbol", nargs="?")
 

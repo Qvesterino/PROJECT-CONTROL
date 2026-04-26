@@ -17,6 +17,12 @@ from project_control.core.writers import run_writers_analysis
 from project_control.core.error_handler import ErrorHandler, ErrorContext
 from project_control.utils.fs_helpers import run_rg
 from project_control.cli.graph_cmd import graph_build, graph_report, graph_trace
+from project_control.utils.renderers import render_dead, render_unused, render_patterns, render_search
+from project_control.analysis.dead_analyzer import analyze_dead_code
+from project_control.analysis.unused_analyzer import analyze_unused_systems
+from project_control.analysis.patterns_analyzer import analyze_patterns
+from project_control.analysis.search_analyzer import smart_search
+import json
 from project_control.cli.menu import run_menu
 
 logger = logging.getLogger(__name__)
@@ -195,6 +201,93 @@ def cmd_writers(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_dead(args: argparse.Namespace) -> int:
+    """Dead Code Radar - finds files with zero or minimal usage."""
+    try:
+        threshold = getattr(args, "threshold", 2)
+        json_output = getattr(args, "json", False)
+        no_color = getattr(args, "no_color", False)
+
+        result = analyze_dead_code(PROJECT_DIR, low_usage_threshold=threshold)
+
+        if json_output:
+            print(json.dumps(result, indent=2))
+        else:
+            output = render_dead(result, colored=not no_color)
+            _safe_print(output)
+
+        return EXIT_OK
+    except Exception as e:
+        logger.error(f"Dead code analysis failed: {e}")
+        return EXIT_VALIDATION_ERROR
+
+
+def cmd_unused(args: argparse.Namespace) -> int:
+    """Unused System Scan - finds systems that exist but aren't used."""
+    try:
+        json_output = getattr(args, "json", False)
+        no_color = getattr(args, "no_color", False)
+        result = analyze_unused_systems(PROJECT_DIR)
+
+        if json_output:
+            print(json.dumps(result, indent=2))
+        else:
+            output = render_unused(result, colored=not no_color)
+            _safe_print(output)
+
+        return EXIT_OK
+    except Exception as e:
+        logger.error(f"Unused systems analysis failed: {e}")
+        return EXIT_VALIDATION_ERROR
+
+
+def cmd_patterns(args: argparse.Namespace) -> int:
+    """Suspicious Patterns - detects forbidden code patterns."""
+    try:
+        patterns_file = getattr(args, "file", None)
+        json_output = getattr(args, "json", False)
+        no_color = getattr(args, "no_color", False)
+        result = analyze_patterns(PROJECT_DIR, patterns_file=patterns_file)
+
+        if json_output:
+            print(json.dumps(result, indent=2))
+        else:
+            output = render_patterns(result, colored=not no_color)
+            _safe_print(output)
+
+        return EXIT_OK
+    except Exception as e:
+        logger.error(f"Patterns analysis failed: {e}")
+        return EXIT_VALIDATION_ERROR
+
+
+def cmd_search(args: argparse.Namespace) -> int:
+    """Smart Search - power-user code search."""
+    try:
+        patterns = getattr(args, "pattern", [])
+        invert = getattr(args, "invert", False)
+        files_only = getattr(args, "files_only", False)
+        json_output = getattr(args, "json", False)
+        no_color = getattr(args, "no_color", False)
+
+        if not patterns:
+            print("Error: At least one pattern is required")
+            return EXIT_VALIDATION_ERROR
+
+        result = smart_search(patterns, PROJECT_DIR, invert=invert, files_only=files_only)
+
+        if json_output:
+            print(json.dumps(result, indent=2))
+        else:
+            output = render_search(result, colored=not no_color)
+            _safe_print(output)
+
+        return EXIT_OK
+    except Exception as e:
+        logger.error(f"Search failed: {e}")
+        return EXIT_VALIDATION_ERROR
+
+
 def dispatch(args: argparse.Namespace) -> int:
     if args.command == "init":
         return cmd_init(args)
@@ -208,6 +301,14 @@ def dispatch(args: argparse.Namespace) -> int:
         return cmd_ghost(args)
     if args.command == "writers":
         return cmd_writers(args)
+    if args.command == "dead":
+        return cmd_dead(args)
+    if args.command == "unused":
+        return cmd_unused(args)
+    if args.command == "patterns":
+        return cmd_patterns(args)
+    if args.command == "search":
+        return cmd_search(args)
     if args.command == "ui":
         run_menu(PROJECT_DIR)
         return EXIT_OK
