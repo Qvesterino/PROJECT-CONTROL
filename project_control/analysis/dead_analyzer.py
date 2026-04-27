@@ -1,4 +1,10 @@
-"""Dead code analyzer - finds files with zero or minimal usage."""
+"""Dead code analyzer - finds files with zero or minimal usage.
+
+Matches the final_analyzer_design.md specification:
+- Pure ripgrep-based analysis
+- Simple basename matching
+- Deterministic output
+"""
 
 from __future__ import annotations
 
@@ -6,15 +12,18 @@ import logging
 from pathlib import Path
 from typing import TypedDict
 
-from project_control.utils.rg_helper import run_rg_json
+from project_control.utils.rg_helper import run_rg_files_only
 
 LOGGER = logging.getLogger(__name__)
 
 
 class DeadCodeResult(TypedDict):
-    """Structured result from dead code analysis."""
-    high: list[dict]  # orphan files (0-1 usage)
-    medium: list[dict]  # low usage files
+    """Structured result from dead code analysis.
+    
+    Matches design spec: high/medium contain file paths (strings), not dicts.
+    """
+    high: list[str]  # orphan files (0-1 usage)
+    medium: list[str]  # low usage files
     stats: dict
 
 
@@ -101,82 +110,62 @@ def _should_ignore_file(file_path: Path) -> bool:
 
 
 def analyze_dead_code(
-    project_root: str | Path = ".",
+    files: list[str],
     low_usage_threshold: int = 2,
-    extensions: list[str] | None = None,
 ) -> DeadCodeResult:
     """
-    Analyze project for dead/unused code.
+    Analyze files for dead/unused code using ripgrep.
+
+    Matches final_analyzer_design.md specification:
+    - Input: list of file paths
+    - Logic: basename matching via ripgrep
+    - Output: {"high": [paths], "medium": [paths], "stats": {...}}
 
     Args:
-        project_root: Root directory to analyze.
-        low_usage_threshold: Max usage count to consider as "low usage".
-        extensions: File extensions to include (e.g., [".py", ".js", ".ts"]).
+        files: List of file paths to analyze.
+        low_usage_threshold: Max usage count to consider as "low usage" (default: 2).
 
     Returns:
         Structured result with high/medium priority files and stats.
     """
-    root = Path(project_root)
-    if extensions is None:
-        extensions = [".py", ".js", ".ts", ".jsx", ".tsx"]
-
-    high: list[dict] = []
-    medium: list[dict] = []
-    total_files = 0
+    high: list[str] = []
+    medium: list[str] = []
+    total_files = len(files)
     dead_files = 0
 
-    # Collect all relevant files
-    files_to_check = []
-    for ext in extensions:
-        files_to_check.extend(root.rglob(f"*{ext}"))
-
-    total_files = len(files_to_check)
-
-    for file_path in files_to_check:
+    for file_path in files:
         # Skip ignored files
-        if _should_ignore_file(file_path):
+        if _should_ignore_file(Path(file_path)):
             continue
 
-        # Search for file name usage in project
-        file_name = file_path.stem  # filename without extension
-        file_name_with_ext = file_path.name  # filename with extension
+        # Get basename for search (per design spec)
+        name = Path(file_path).name  # basename with extension
+        name_without_ext = Path(file_path).stem  # basename without extension
 
+        # Search for file name usage using ripgrep -l (files only mode)
         # Search for both with and without extension
-        matches = run_rg_json(
-            [file_name, file_name_with_ext],
-            extra_args=["--type", "py", "--type", "js", "--type", "ts"],
+        matches = run_rg_files_only(
+            [name, name_without_ext],
+            extra_args=None,  # Search all file types
         )
 
-        # Filter out matches from the file itself (self-reference)
-        external_matches = [
-            m for m in matches
-            if Path(m["file"]) != file_path
-        ]
-
-        usage_count = len(external_matches)
+        # Count usage (number of files that reference this file)
+        # Note: run_rg_files_only returns list of unique file paths
+        usage_count = len(matches)
 
         if usage_count <= 1:
-            # Orphan candidate
-            high.append({
-                "file": str(file_path.relative_to(root)),
-                "usage": usage_count,
-                "reason": "Orphan" if usage_count == 0 else "Near-orphan",
-            })
+            # Orphan (0-1 references)
+            high.append(file_path)
             dead_files += 1
         elif usage_count <= low_usage_threshold:
             # Low usage
-            medium.append({
-                "file": str(file_path.relative_to(root)),
-                "usage": usage_count,
-                "reason": "Low usage",
-            })
+            medium.append(file_path)
 
     return {
-        "high": sorted(high, key=lambda x: x["file"]),
-        "medium": sorted(medium, key=lambda x: x["file"]),
+        "high": sorted(high),
+        "medium": sorted(medium),
         "stats": {
-            "total_files": total_files,
-            "dead_files": dead_files,
-            "low_usage_files": len(medium),
+            "total": total_files,
+            "dead": dead_files,
         },
     }

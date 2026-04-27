@@ -87,6 +87,12 @@ def render_unused(result: dict, colored: bool = True) -> str:
 
     Args:
         result: UnusedSystemsResult from unused_analyzer.
+                Expected format: {
+                    "high": [{"file": str, "score": int, "reasons": [str]}, ...],
+                    "medium": [...],
+                    "low": [...],
+                    "stats": {"total_systems": int, "high_priority": int, ...}
+                }
         colored: If True, use colored output (default: True).
 
     Returns:
@@ -102,38 +108,114 @@ def render_unused(result: dict, colored: bool = True) -> str:
         lines.append("Unused Systems Scan")
         lines.append("=" * 50)
 
-    unused = result.get("unused_systems", [])
+    high = result.get("high", [])
+    medium = result.get("medium", [])
+    low = result.get("low", [])
     stats = result.get("stats", {})
 
-    # Unused systems section
+    # HIGH priority section (score 4)
     if colored:
-        lines.append(f"\n{Colors.BOLD}{Colors.YELLOW}Unused Systems{Colors.RESET}: {len(unused)}")
+        lines.append(f"\n{Colors.BOLD}{Colors.RED}HIGH (Completely Unused){Colors.RESET}: {len(high)}")
     else:
-        lines.append(f"\nUnused Systems: {len(unused)}")
+        lines.append(f"\nHIGH (Completely Unused): {len(high)}")
 
-    if unused:
-        for item in unused:
+    if high:
+        for item in high:
             if colored:
-                lines.append(f"  {Colors.YELLOW}*{Colors.RESET} {item['file']}")
+                lines.append(f"  {Colors.RED}*{Colors.RESET} {item['file']}")
                 lines.append(f"    {Colors.DIM}System:{Colors.RESET} {item['system_name']}")
+                lines.append(f"    {Colors.DIM}Score:{Colors.RESET} {item['score']}/4")
+                if item.get("reasons"):
+                    lines.append(f"    {Colors.DIM}Reasons:{Colors.RESET}")
+                    for reason in item["reasons"]:
+                        lines.append(f"      - {reason}")
             else:
                 lines.append(f"  * {item['file']}")
                 lines.append(f"    System: {item['system_name']}")
+                lines.append(f"    Score: {item['score']}/4")
+                if item.get("reasons"):
+                    lines.append(f"    Reasons:")
+                    for reason in item["reasons"]:
+                        lines.append(f"      - {reason}")
     else:
         if colored:
-            lines.append(f"  {Colors.GREEN}*{Colors.RESET} No unused systems found")
+            lines.append(f"  {Colors.GREEN}*{Colors.RESET} None found")
         else:
-            lines.append("  * No unused systems found")
+            lines.append("  * None found")
+
+    # MEDIUM priority section (score 2-3)
+    if colored:
+        lines.append(f"\n{Colors.BOLD}{Colors.YELLOW}MEDIUM (Barely Used){Colors.RESET}: {len(medium)}")
+    else:
+        lines.append(f"\nMEDIUM (Barely Used): {len(medium)}")
+
+    if medium:
+        for item in medium:
+            if colored:
+                lines.append(f"  {Colors.YELLOW}*{Colors.RESET} {item['file']}")
+                lines.append(f"    {Colors.DIM}System:{Colors.RESET} {item['system_name']}")
+                lines.append(f"    {Colors.DIM}Score:{Colors.RESET} {item['score']}/4")
+                if item.get("reasons"):
+                    lines.append(f"    {Colors.DIM}Reasons:{Colors.RESET}")
+                    for reason in item["reasons"]:
+                        lines.append(f"      - {reason}")
+            else:
+                lines.append(f"  * {item['file']}")
+                lines.append(f"    System: {item['system_name']}")
+                lines.append(f"    Score: {item['score']}/4")
+                if item.get("reasons"):
+                    lines.append(f"    Reasons:")
+                    for reason in item["reasons"]:
+                        lines.append(f"      - {reason}")
+    else:
+        if colored:
+            lines.append(f"  {Colors.GREEN}*{Colors.RESET} None found")
+        else:
+            lines.append("  * None found")
+
+    # LOW priority section (score 1)
+    if colored:
+        lines.append(f"\n{Colors.BOLD}{Colors.CYAN}LOW (Suspicious){Colors.RESET}: {len(low)}")
+    else:
+        lines.append(f"\nLOW (Suspicious): {len(low)}")
+
+    if low:
+        for item in low:
+            if colored:
+                lines.append(f"  {Colors.CYAN}*{Colors.RESET} {item['file']}")
+                lines.append(f"    {Colors.DIM}System:{Colors.RESET} {item['system_name']}")
+                lines.append(f"    {Colors.DIM}Score:{Colors.RESET} {item['score']}/4")
+                if item.get("reasons"):
+                    lines.append(f"    {Colors.DIM}Reasons:{Colors.RESET}")
+                    for reason in item["reasons"]:
+                        lines.append(f"      - {reason}")
+            else:
+                lines.append(f"  * {item['file']}")
+                lines.append(f"    System: {item['system_name']}")
+                lines.append(f"    Score: {item['score']}/4")
+                if item.get("reasons"):
+                    lines.append(f"    Reasons:")
+                    for reason in item["reasons"]:
+                        lines.append(f"      - {reason}")
+    else:
+        if colored:
+            lines.append(f"  {Colors.GREEN}*{Colors.RESET} None found")
+        else:
+            lines.append("  * None found")
 
     # Stats
     if colored:
         lines.append(f"\n{Colors.DIM}{'-' * 50}{Colors.RESET}")
-        lines.append(f"{Colors.CYAN}Total systems:{Colors.RESET} {stats.get('total_systems', 0)}")
-        lines.append(f"{Colors.YELLOW}Unused count:{Colors.RESET} {stats.get('unused_count', 0)}")
+        lines.append(f"{Colors.CYAN}Total systems analyzed:{Colors.RESET} {stats.get('total_systems', 0)}")
+        lines.append(f"{Colors.RED}High priority (unused):{Colors.RESET} {stats.get('high_priority', 0)}")
+        lines.append(f"{Colors.YELLOW}Medium priority (barely used):{Colors.RESET} {stats.get('medium_priority', 0)}")
+        lines.append(f"{Colors.CYAN}Low priority (suspicious):{Colors.RESET} {stats.get('low_priority', 0)}")
     else:
         lines.append("\n" + "-" * 50)
-        lines.append(f"Total systems: {stats.get('total_systems', 0)}")
-        lines.append(f"Unused count: {stats.get('unused_count', 0)}")
+        lines.append(f"Total systems analyzed: {stats.get('total_systems', 0)}")
+        lines.append(f"High priority (unused): {stats.get('high_priority', 0)}")
+        lines.append(f"Medium priority (barely used): {stats.get('medium_priority', 0)}")
+        lines.append(f"Low priority (suspicious): {stats.get('low_priority', 0)}")
 
     return "\n".join(lines)
 

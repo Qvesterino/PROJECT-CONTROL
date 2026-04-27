@@ -17,7 +17,8 @@ from project_control.core.writers import run_writers_analysis
 from project_control.core.error_handler import ErrorHandler, ErrorContext
 from project_control.utils.fs_helpers import run_rg
 from project_control.cli.graph_cmd import graph_build, graph_report, graph_trace
-from project_control.utils.renderers import render_dead, render_unused, render_patterns, render_search
+from project_control.utils.renderers import render_unused, render_patterns, render_search
+from project_control.render.dead_renderer import render_dead
 from project_control.analysis.dead_analyzer import analyze_dead_code
 from project_control.analysis.unused_analyzer import analyze_unused_systems
 from project_control.analysis.patterns_analyzer import analyze_patterns
@@ -206,19 +207,30 @@ def cmd_dead(args: argparse.Namespace) -> int:
     try:
         threshold = getattr(args, "threshold", 2)
         json_output = getattr(args, "json", False)
-        no_color = getattr(args, "no_color", False)
 
-        result = analyze_dead_code(PROJECT_DIR, low_usage_threshold=threshold)
+        # Load snapshot to get file list
+        snapshot = load_snapshot(PROJECT_DIR)
+        if snapshot is None:
+            print("Error: No snapshot found. Run 'pc scan' first.")
+            return EXIT_VALIDATION_ERROR
+
+        # Extract file paths from snapshot
+        files = [f.get("path") for f in snapshot.get("files", [])]
+
+        # Run analysis
+        result = analyze_dead_code(files, low_usage_threshold=threshold)
 
         if json_output:
             print(json.dumps(result, indent=2))
         else:
-            output = render_dead(result, colored=not no_color)
+            output = render_dead(result)
             _safe_print(output)
 
         return EXIT_OK
     except Exception as e:
         logger.error(f"Dead code analysis failed: {e}")
+        import traceback
+        traceback.print_exc()
         return EXIT_VALIDATION_ERROR
 
 

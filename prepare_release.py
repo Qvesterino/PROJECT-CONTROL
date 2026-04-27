@@ -14,6 +14,11 @@ PUBLIC_INCLUDE = [
     "tests/",
     "LICENSE",
     "README.md",
+    "AGENTS.md",
+    "MEMORY.md",
+    "IDENTITY.md",
+    "ERROR_HANDLING_IMPLEMENTATION.md",
+    "SOUL.md",
     "CONTRIBUTING.md",
     "CHANGELOG.md",
     "PUBLISHING.md",
@@ -29,6 +34,7 @@ PUBLIC_EXCLUDE = [
     ".project-control/",
     "documentation/",
     "plans/",
+    "tmp/",
     "filetree.txt",
     "MANUAL.md",
     "deep dive audit.md",
@@ -46,20 +52,20 @@ def prepare_public_release(source_dir: Path, target_dir: Path):
         source_dir: Zdrojový adresár (aktuálne PROJECT_CONTROL)
         target_dir: Cieľový adresár pre verejné vydanie
     """
-    print(f"📦 Príprava verejného vydania...")
-    print(f"📂 Zdroj: {source_dir}")
-    print(f"📂 Cieľ: {target_dir}")
+    print(f"[INFO] Príprava verejného vydania...")
+    print(f"[INFO] Zdroj: {source_dir}")
+    print(f"[INFO] Cieľ: {target_dir}")
     print()
 
     # Vytvor cieľový adresár
     if target_dir.exists():
-        print(f"⚠️  Cieľový adresár už existuje: {target_dir}")
+        print(f"[WARN] Cieľový adresár už existuje: {target_dir}")
         response = input("Chceš ho zmazať a znovu vytvoriť? (y/N): ")
         if response.lower() == 'y':
             shutil.rmtree(target_dir)
-            print(f"🗑️  Zmazaný existujúci adresár")
+            print(f"[INFO] Zmazaný existujúci adresár")
         else:
-            print("❌ Zrušené")
+            print("[INFO] Zrušené")
             return
 
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -71,22 +77,22 @@ def prepare_public_release(source_dir: Path, target_dir: Path):
         if source_path.exists():
             if source_path.is_dir():
                 shutil.copytree(source_path, target_dir / item)
-                print(f"✅ Adresár: {item}")
+                print(f"[OK] Adresár: {item}")
             else:
                 shutil.copy2(source_path, target_dir / item)
-                print(f"✅ Súbor: {item}")
+                print(f"[OK] Súbor: {item}")
             copied_count += 1
         else:
-            print(f"⚠️  Neexistuje: {item}")
+            print(f"[WARN] Neexistuje: {item}")
 
     print()
-    print(f"📊 Štatistika:")
+    print(f"[INFO] Štatistika:")
     print(f"   - Skopírovaných položiek: {copied_count}")
     print(f"   - Vylúčených interných položiek: {len(PUBLIC_EXCLUDE)}")
     print()
 
     # Vypíš zoznam vylúčených súborov
-    print("🚫 Vylúčené interné súbory:")
+    print("[INFO] Vylúčené interné súbory:")
     for item in PUBLIC_EXCLUDE:
         print(f"   - {item}")
     print()
@@ -94,7 +100,7 @@ def prepare_public_release(source_dir: Path, target_dir: Path):
     # Vytvor README pre verejné vydanie
     create_public_readme(target_dir)
 
-    print(f"✅ Verejné vydanie pripravené v: {target_dir}")
+    print(f"[OK] Verejné vydanie pripravené v: {target_dir}")
     print()
     print("Ďalšie kroky:")
     print("1. Skontroluj obsah v cieľovom adresári")
@@ -115,7 +121,7 @@ def create_public_readme(target_dir: Path):
         
         # Skontrolujme, či už obsahuje inštalačnú sekciu
         if "## Installation" in content or "## Inštalácia" in content:
-            print("ℹ️  README už obsahuje inštalačnú sekciu")
+            print("[INFO] README už obsahuje inštalačnú sekciu")
             return
     
     # Vytvoríme základnú inštalačnú sekciu
@@ -137,8 +143,32 @@ pip install -e .
 
 ## Quick Start
 
+Initialize and scan your project:
+
 ```bash
-pc --help
+cd /path/to/your/project
+pc init
+pc scan
+```
+
+Run diagnostic analysis:
+
+```bash
+# Find dead code
+pc dead
+
+# Find unused systems
+pc unused
+
+# Detect suspicious patterns
+pc patterns
+
+# Smart search
+pc search "TODO"
+
+# Build dependency graph
+pc graph build
+pc graph report
 ```
 
 ## License
@@ -149,26 +179,36 @@ MIT License - see [LICENSE](LICENSE) file for details.
     if readme_path.exists():
         with open(readme_path, 'a', encoding='utf-8') as f:
             f.write(installation_section)
-        print("✅ Doplnená inštalačná sekcia do README")
+        print("[OK] Doplnená inštalačná sekcia do README")
     else:
         # Vytvoríme základné README
-        basic_readme = """# PROJECT_CONTROL
+        basic_readme = """# PROJECT CONTROL
+
+**Find dead code. Understand your architecture. Stop guessing.**
 
 Deterministic architectural analysis engine for Python projects.
 
 ## Features
 
-- Static code analysis
-- Import graph visualization
-- Architecture validation
-- Duplicate detection
-- Orphan detection
-- Semantic analysis (with optional embedding support)
+- **Dead Code Radar** — Find files with zero or minimal usage
+- **Unused System Scan** — Identify unused systems (Manager, Controller, Service, etc.)
+- **Suspicious Patterns** — Detect forbidden or problematic code patterns
+- **Smart Search** — Power-user code search with advanced filters
+- **Dependency Graph** — Build and visualize import dependency graphs
+- **Ghost Analysis** — Detect orphan files, legacy snippets, sessions, duplicates
+- **Static Code Analysis** — Comprehensive architectural analysis
+- **Architecture Validation** — Layer boundaries and architecture rules
+- **Semantic Analysis** — Optional embedding-powered semantic detection
+
+## Requirements
+
+- Python 3.10+
+- ripgrep (`rg`) — required for search and orphan detection
 
 """
         with open(readme_path, 'w', encoding='utf-8') as f:
             f.write(basic_readme + installation_section)
-        print("✅ Vytvorené základné README")
+        print("[OK] Vytvorené základné README")
 
 if __name__ == "__main__":
     # Získaj aktuálny adresár
