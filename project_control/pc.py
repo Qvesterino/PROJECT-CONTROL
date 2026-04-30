@@ -59,6 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
     ghost_parser.add_argument("--max-medium", type=int, default=-1)
     ghost_parser.add_argument("--max-low", type=int, default=-1)
     ghost_parser.add_argument("--max-info", type=int, default=-1)
+    ghost_parser.add_argument("--tree", action="store_true", help="Export results as ASCII tree files")
 
     subparsers.add_parser("writers")
 

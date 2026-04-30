@@ -1,0 +1,47 @@
+DEMO: ASCII Tree Formatter Output
+======================================
+
+Príklad výstupu pre orphans (osirotelé súbory):
+
+Orphans
++--- src
+|   |--- old_utils.py
+|   \--- deprecated
+|       \--- legacy_functions.py
+\--- tests
+    |--- test_old_feature.py
+    \--- test_deprecated.py
+
+Príklad výstupu pre duplicates (duplikáty):
+
+Duplicates
+\--- src
+    +--- helpers_v1.py
+    +--- helpers_v2.py
+    \--- utils
+        +--- string_utils.py
+        \--- str_utils.py
+
+
+Použitie:
+---------
+1. Spustiť scan:           pc scan
+2. Spustiť ghost s tree:   pc ghost --tree
+
+Výsledné súbory budú v:
+- .project-control/exports/ghost_orphans_tree.txt
+- .project-control/exports/ghost_legacy_tree.txt
+- .project-control/exports/ghost_sessions_tree.txt
+- .project-control/exports/ghost_duplicates_tree.txt
+- .project-control/exports/ghost_semantic_tree.txt
+
+
+ASCII štýl:
+------------
+Formát je inšpirovaný Windows príkazom 'tree' s použitím:
+- '+---' pre vnútorné položky
+- '\---' pre poslednú položku na úrovni
+- '|   ' pre vertikálne spojovníky
+- '    ' pre odsadenie
+
+To robí výstup ľahko čitateľným a čo najviac podobným Windows tree príkazu!

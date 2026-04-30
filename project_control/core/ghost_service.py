@@ -17,6 +17,7 @@ from project_control.core.error_handler import (
 )
 from project_control.core.pre_flight import pre_flight_ghost
 from project_control.config.patterns_loader import load_patterns
+from project_control.utils.tree_formatter import format_file_tree
 
 logger = logging.getLogger(__name__)
 
@@ -117,3 +118,55 @@ def write_ghost_report(result: Dict[str, Any], project_root: Path) -> None:
         logger.info(f"Ghost report written to {ghost_report_path}")
     except (OSError, IOError) as e:
         raise OperationError(f"Failed to write ghost report: {e}")
+
+
+def write_ghost_tree_report(result: Dict[str, Any], project_root: Path) -> None:
+    """Write ghost results as ASCII tree files.
+
+    Creates separate tree files for each ghost category (orphans, legacy, etc.)
+    in the exports directory.
+
+    Args:
+        result: Ghost analysis result dictionary
+        project_root: Root directory of the project
+
+    Raises:
+        OperationError: If tree report writing fails
+    """
+    try:
+        exports_dir = _ensure_control_dirs(project_root)
+
+        # Write tree for each category
+        for key in SECTION_KEYS:
+            items = result.get(key, [])
+            if not items:
+                continue
+
+            # Convert items to list of strings (handle both string and dict items)
+            paths: List[str] = []
+            for item in items:
+                if isinstance(item, str):
+                    paths.append(item)
+                elif isinstance(item, dict):
+                    # For dict items, try to get 'path' or similar field
+                    path = item.get("path") or item.get("file") or str(item)
+                    paths.append(path)
+                else:
+                    paths.append(str(item))
+
+            # Format as tree
+            display_name = SECTION_DISPLAY_NAMES.get(key, key)
+            tree_text = format_file_tree(
+                paths,
+                root_label=display_name,
+                show_counts=True
+            )
+
+            # Write to file
+            filename = f"ghost_{key}_tree.txt"
+            tree_path = exports_dir / filename
+            tree_path.write_text(tree_text, encoding="utf-8")
+            logger.info(f"Ghost tree report written to {tree_path}")
+
+    except (OSError, IOError) as e:
+        raise OperationError(f"Failed to write ghost tree report: {e}")

@@ -10,7 +10,7 @@ from typing import Optional
 
 from project_control.config.patterns_loader import load_patterns
 from project_control.core.exit_codes import EXIT_OK, EXIT_VALIDATION_ERROR
-from project_control.core.ghost_service import run_ghost, write_ghost_report
+from project_control.core.ghost_service import run_ghost, write_ghost_report, write_ghost_tree_report
 from project_control.core.markdown_renderer import render_writer_report
 from project_control.core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
 from project_control.core.writers import run_writers_analysis
@@ -169,6 +169,10 @@ def cmd_ghost(args: argparse.Namespace) -> int:
             # Write markdown report
             write_ghost_report(result, PROJECT_DIR)
 
+            # Write ASCII tree report if --tree flag is set
+            if getattr(args, "tree", False):
+                write_ghost_tree_report(result, PROJECT_DIR)
+
             # Print summary
             print("\nGhost Results")
             print("-------------")
@@ -177,6 +181,12 @@ def cmd_ghost(args: argparse.Namespace) -> int:
             print(f"Sessions:  {counts.get('sessions', 0)}")
             print(f"Duplicates: {counts.get('duplicates', 0)}")
             print(f"Semantic:  {counts.get('semantic', 0)}")
+
+            if getattr(args, "tree", False):
+                print("\n📄 Tree reports saved to:")
+                for key in ["orphans", "legacy", "sessions", "duplicates", "semantic"]:
+                    if counts.get(key, 0) > 0:
+                        print(f"   - ghost_{key}_tree.txt")
 
             if ghost_data.get("limit_violation"):
                 print(f"\n⚠️  {ghost_data['limit_violation']['message']}")
