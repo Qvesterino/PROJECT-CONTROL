@@ -121,50 +121,46 @@ def run_menu(project_root: Path) -> None:
     while True:
         clear_screen()
         _header(project_root, state)
-        print("1) Snapshot     — scan project files")
-        print("2) Graph        — build & view dependency graph")
-        print("3) Analyze      — ghost detectors & structural metrics")
-        print("4) Explore      — trace symbol/file dependencies")
-        print("5) Settings     — change mode, profile, trace options")
-        print("6) Health       — project health check")
-        print("7) Tools        — backups, cache, diagnostics")
-        print("8) Reports      — view all reports (ghost, graph, checklist)")
-        print("P) Presets      — project templates & configurations")
-        print("X) Export/Imp   — export/import project state")
-        print("B) Browse       — interactive file explorer")
-        print("Q) Quick        — quick actions (full analysis, orphans, cycles)")
-        print("H) Help & Docs  — show help and documentation")
-        print("0) Exit")
+        
+        # Quick Actions section (moved to top for better UX)
+        print("\n[Quick Actions]")
+        print("  1) Full Analysis      — Scan → Find Issues → Dependencies")
+        print("  2) Quick Health Check — Validate everything")
+        print("  3) Quick Reports      — View all findings")
+        
+        # Main Tools section
+        print("\n[Main Tools]")
+        print("  4) Scan Project       — Index all files")
+        print("  5) Find Issues        — Dead code, orphans, duplicates")
+        print("  6) Dependencies       — Trace imports & modules")
+        
+        # Advanced section
+        print("\n[Advanced]")
+        print("  S) Settings           — Configuration")
+        print("  H) Help & Docs        — Getting started")
+        print("  0) Exit")
 
-        choice = input("\nSelect (0-8, P, X, B, Q, H): ").strip().lower()
+        choice = input("\nSelect (1-6, S, H, 0, or ? for help): ").strip().lower()
 
         try:
             if choice == "1":
-                _snapshot_menu(project_root, state)
+                _quick_full_analysis(project_root, state)
             elif choice == "2":
-                _graph_menu(project_root, state)
+                _quick_health_check(project_root)
             elif choice == "3":
-                _analyze_menu(project_root, state)
-            elif choice == "4":
-                state = _explore_menu(project_root, state)
-            elif choice == "5":
-                state = _settings_menu(project_root, state)
-            elif choice == "6":
-                _health_menu(project_root)
-            elif choice == "7":
-                _tools_menu(project_root)
-            elif choice == "8":
                 _reports_menu(project_root)
-            elif choice == "p":
-                _presets_menu(project_root)
-            elif choice == "x":
-                _export_import_menu(project_root)
-            elif choice == "b":
-                _file_explorer_menu(project_root)
-            elif choice == "q":
-                _quick_actions_menu(project_root, state)
+            elif choice == "4":
+                _snapshot_menu(project_root, state)
+            elif choice == "5":
+                _analyze_menu(project_root, state)
+            elif choice == "6":
+                state = _explore_menu(project_root, state)
+            elif choice == "s":
+                state = _settings_menu(project_root, state)
             elif choice == "h":
                 show_help_menu(project_root)
+            elif choice == "?":
+                _main_menu_help()
             elif choice == "0":
                 save_state(project_root, state)
                 print("Goodbye.")
@@ -390,29 +386,271 @@ def _settings_menu(project_root: Path, state: AppState) -> AppState:
     while True:
         mode_label = MODE_LABELS.get(state.project_mode, state.project_mode)
         profile_label = PROFILE_LABELS.get(state.graph_profile, state.graph_profile)
-        dir_label = DIRECTION_LABELS.get(state.trace_direction, state.trace_direction)
 
-        print("\nSettings:")
-        print(f"1) Mode:           {mode_label}")
-        print(f"2) Graph profile:  {profile_label}")
-        print(f"3) Trace direction: {dir_label}")
-        print(f"4) Trace depth:    {state.trace_depth}")
-        print(f"5) Trace all paths: {'Yes' if state.trace_all_paths else 'No'}")
-        print("0) Back (saves automatically)")
-        choice = input("\nSelect (0-5): ").strip()
+        print("\n[Configuration]")
+        print("="*60)
+        print("\nBasic:")
+        print(f"  1) Project Type:  [{mode_label}]")
+        print(f"  2) Strictness:    [{profile_label}]")
+        print(f"  3) Output Format: [Both (Reports + Trees)]")
+        print("\nAdvanced:")
+        print(f"  4) Trace Options  — direction, depth, all paths")
+        print("\n[?] Help — What do these mean?")
+        print("[0] Back to main menu (saves automatically)")
+        
+        choice = input("\nSelect (1-4, ?, 0): ").strip()
 
         if choice == "1":
-            state = _change_mode(project_root, state)
+            state = _change_mode_simple(project_root, state)
         elif choice == "2":
-            state = _change_profile(project_root, state)
+            state = _change_profile_simple(project_root, state)
         elif choice == "3":
-            state = _change_direction(project_root, state)
+            _output_format_info(project_root)
         elif choice == "4":
-            state = _change_depth(project_root, state)
-        elif choice == "5":
-            state = _toggle_all_paths(project_root, state)
+            state = _trace_options_menu(project_root, state)
+        elif choice == "?":
+            _settings_help()
         elif choice == "0":
             return state
+        else:
+            input("Invalid selection. Press Enter...")
+
+
+def _change_mode_simple(project_root: Path, state: AppState) -> AppState:
+    """Simplified mode selection for new settings menu."""
+    print("\n[Project Type]")
+    print("="*60)
+    print("What kind of project is this?")
+    print()
+    print("1) JavaScript/TypeScript  — JS, TS, JSX, TSX files")
+    print("2) Python                — .py files")
+    print("3) Mixed                 — Both JS/TS and Python")
+    print()
+    print("Most projects are auto-detected. Choose this only if")
+    print("auto-detection is wrong.")
+    print()
+    
+    choice = input("Select (1-3, or 0 to cancel): ").strip()
+    mapping = {"1": "js_ts", "2": "python", "3": "mixed"}
+    
+    if choice in mapping:
+        new_mode = mapping[choice]
+        label = MODE_LABELS[new_mode]
+        state = AppState(
+            project_mode=new_mode,
+            graph_profile=state.graph_profile,
+            trace_direction=state.trace_direction,
+            trace_depth=state.trace_depth,
+            trace_all_paths=state.trace_all_paths,
+        )
+        save_state(project_root, state)
+        print_success(f"Project type set to {label}")
+    elif choice == "0":
+        print_info("Cancelled")
+    else:
+        print_warning("Invalid selection")
+    
+    input("\nPress Enter...")
+    return state
+
+
+def _change_profile_simple(project_root: Path, state: AppState) -> AppState:
+    """Simplified profile selection for new settings menu."""
+    print("\n[Strictness Level]")
+    print("="*60)
+    print("How strict should the analysis be?")
+    print()
+    print("1) Pragmatic (Recommended)")
+    print("   - Balanced approach")
+    print("   - Some false positives allowed")
+    print("   - Good for everyday use")
+    print()
+    print("2) Strict")
+    print("   - More rigorous analysis")
+    print("   - Fewer false positives")
+    print("   - More noise, but more accurate")
+    print()
+    
+    choice = input("Select (1-2, or 0 to cancel): ").strip()
+    mapping = {"1": "pragmatic", "2": "strict"}
+    
+    if choice in mapping:
+        new_profile = mapping[choice]
+        label = PROFILE_LABELS[new_profile]
+        state = AppState(
+            project_mode=state.project_mode,
+            graph_profile=new_profile,
+            trace_direction=state.trace_direction,
+            trace_depth=state.trace_depth,
+            trace_all_paths=state.trace_all_paths,
+        )
+        save_state(project_root, state)
+        print_success(f"Strictness set to {label}")
+    elif choice == "0":
+        print_info("Cancelled")
+    else:
+        print_warning("Invalid selection")
+    
+    input("\nPress Enter...")
+    return state
+
+
+def _output_format_info(project_root: Path) -> None:
+    """Show output format information."""
+    print("\n[Output Format]")
+    print("="*60)
+    print("Currently generating: Both Reports and ASCII Trees")
+    print()
+    print("What you get:")
+    print("  • Markdown Reports  — Detailed, readable analysis")
+    print("  • ASCII Tree Files  — Visual file structure (easy to read)")
+    print("  • JSON Files        — For automation and tools")
+    print()
+    print("Location: .project-control/exports/")
+    print()
+    print("All formats are generated automatically. No need to choose.")
+    
+    input("\nPress Enter...")
+
+
+def _trace_options_menu(project_root: Path, state: AppState) -> AppState:
+    """Advanced trace options menu."""
+    while True:
+        dir_label = DIRECTION_LABELS.get(state.trace_direction, state.trace_direction)
+        
+        print("\n[Trace Options (Advanced)]")
+        print("="*60)
+        print(f"1) Direction:  [{dir_label}]")
+        print(f"   Inbound  = Who depends on this?")
+        print(f"   Outbound = What does this depend on?")
+        print(f"   Both     = Both directions")
+        print()
+        print(f"2) Depth:     [{state.trace_depth}]")
+        print("   How many levels to trace")
+        print()
+        print(f"3) All Paths: [{'Yes' if state.trace_all_paths else 'No'}]")
+        print("   Show all paths or just one per target")
+        print()
+        print("[0] Back to settings")
+        
+        choice = input("\nSelect (1-3, or 0): ").strip()
+        
+        if choice == "1":
+            state = _change_direction(project_root, state)
+            input("\nPress Enter...")
+        elif choice == "2":
+            state = _change_depth(project_root, state)
+            input("\nPress Enter...")
+        elif choice == "3":
+            state = _toggle_all_paths(project_root, state)
+            input("\nPress Enter...")
+        elif choice == "0":
+            return state
+        else:
+            input("Invalid selection. Press Enter...")
+
+
+def _settings_help() -> None:
+    """Show help for settings menu."""
+    print("\n[?] Configuration Help")
+    print("="*60)
+    print()
+    print("[PROJECT TYPE]")
+    print("   Determines which language features to analyze.")
+    print("   Auto-detected by default. Change only if wrong.")
+    print()
+    print("[STRICTNESS]")
+    print("   Controls how strict the analysis is.")
+    print("   Pragmatic = Balanced, good for everyday use")
+    print("   Strict     = More rigorous, more accurate")
+    print()
+    print("[OUTPUT FORMAT]")
+    print("   What kind of reports to generate.")
+    print("   Currently generates all formats automatically.")
+    print()
+    print("[TRACE OPTIONS]")
+    print("   Advanced settings for dependency tracing.")
+    print("   Direction, depth, and path options.")
+    print()
+    print("All settings are saved automatically.")
+    
+    input("\nPress Enter...")
+
+
+def _main_menu_help() -> None:
+    """Show help for main menu."""
+    print("\n[?] Main Menu Help")
+    print("="*60)
+    print()
+    print("[QUICK ACTIONS]")
+    print("   Fast workflows for common tasks.")
+    print("   Full Analysis = Scan → Find Issues → Dependencies")
+    print("   Health Check = Validate everything")
+    print("   Quick Reports = View all findings")
+    print()
+    print("[MAIN TOOLS]")
+    print("   Individual tools for specific tasks.")
+    print("   Scan Project = Index your files")
+    print("   Find Issues  = Dead code, orphans, duplicates")
+    print("   Dependencies = Trace imports & modules")
+    print()
+    print("[ADVANCED]")
+    print("   Settings and help for power users.")
+    print("   Settings  = Configuration options")
+    print("   Help      = Documentation and tutorials")
+    print()
+    print("[TIP] Use 'Full Analysis' for a complete overview!")
+    
+    input("\nPress Enter...")
+
+
+def _reports_menu(project_root: Path) -> None:
+    """View all available reports."""
+    print("\n[Quick Reports]")
+    print("="*60)
+    
+    # Check what reports exist
+    control_dir = project_root / ".project-control"
+    exports_dir = control_dir / "exports"
+    
+    reports = []
+    
+    if exports_dir.exists():
+        # Check for various reports
+        ghost_report = exports_dir / "ghost_candidates.md"
+        if ghost_report.exists():
+            reports.append(("Ghost Analysis", ghost_report))
+        
+        graph_report = exports_dir / "graph.report.md"
+        if graph_report.exists():
+            reports.append(("Graph Report", graph_report))
+        
+        checklist = exports_dir / "checklist.md"
+        if checklist.exists():
+            reports.append(("File Checklist", checklist))
+        
+        # Check for tree files
+        tree_files = list(exports_dir.glob("*_tree.txt"))
+        if tree_files:
+            reports.append((f"ASCII Trees ({len(tree_files)} files)", exports_dir))
+    
+    if not reports:
+        print("\nNo reports found yet.")
+        print("Run 'Full Analysis' or 'Find Issues' to generate reports.")
+    else:
+        print(f"\nFound {len(reports)} report(s):\n")
+        for i, (name, path) in enumerate(reports, 1):
+            if path.is_file():
+                size = path.stat().st_size / 1024
+                print(f"{i}) {name}")
+                print(f"   {path.name} ({size:.1f} KB)")
+            else:
+                print(f"{i}) {name}")
+                print(f"   Multiple files in {path.name}")
+    
+    print("\nAll reports are in: .project-control/exports/")
+    
+    input("\nPress Enter to return...")
 
 
 def _change_mode(project_root: Path, state: AppState) -> AppState:

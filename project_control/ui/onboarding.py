@@ -15,7 +15,7 @@ def show_onboarding(project_root: Path) -> None:
     clear_screen()
     
     print()
-    print_header("Welcome to PROJECT CONTROL! 🎉")
+    print_header("Welcome to PROJECT CONTROL!")
     print()
     
     print("PROJECT CONTROL is your architectural analysis engine.")
@@ -33,14 +33,14 @@ def show_onboarding(project_root: Path) -> None:
     
     print_info("MAIN FEATURES")
     print()
-    print("  • Scan      — Index all project files")
-    print("  • Ghost     — Find orphans, duplicates, and dead code")
-    print("  • Graph     — Build and analyze dependency graphs")
-    print("  • Trace     — Follow import paths between modules")
-    print("  • Dead      — Find unused files with low usage")
-    print("  • Unused    — Detect unused systems/modules")
-    print("  • Search    — Smart code search across your project")
-    print("  • Explore   — Interactive file browser")
+    print("  * Scan      - Index all project files")
+    print("  * Ghost     - Find orphans, duplicates, and dead code")
+    print("  * Graph     - Build and analyze dependency graphs")
+    print("  * Trace     - Follow import paths between modules")
+    print("  * Dead      - Find unused files with low usage")
+    print("  * Unused    - Detect unused systems/modules")
+    print("  * Search    - Smart code search across your project")
+    print("  * Explore   - Interactive file browser")
     print()
     
     print_info("GETTING HELP")

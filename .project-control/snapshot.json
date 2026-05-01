@@ -1,7 +1,7 @@
 {
   "snapshot_version": 1,
-  "snapshot_id": "a9d765c4fc2a06e3cedea0acfd8b7ca2e022a63f9e3a520df6135bb1e0088d63",
-  "file_count": 585,
+  "snapshot_id": "36b0a0b1ff4c30cc2aff0de95ae483675edbbe2dbe6817bbd4b96f342818f364",
+  "file_count": 591,
   "files": [
     {
       "path": ".github\\workflows\\ci.yml",
@@ -2471,9 +2471,9 @@
     },
     {
       "path": "AUDITY\\navhry na zlep\u0161enie\\final_analyzer_design.md",
-      "size": 11343,
-      "modified": "2026-04-26T12:00:03.515553+00:00",
-      "sha256": "8608479ae8ec59d7cebca49f6042226c329a6187b70fb9526d5095b2e82c25ae"
+      "size": 20219,
+      "modified": "2026-04-26T12:50:59.304437+00:00",
+      "sha256": "00fa5d952f7e238bbbbeeb90adccb0063ae601f03a053bc58111598eda35ac6c"
     },
     {
       "path": "AUDITY\\navhry na zlep\u0161enie\\maly refactor.md",
@@ -2537,15 +2537,21 @@
     },
     {
       "path": "README.md",
-      "size": 12541,
-      "modified": "2026-04-26T07:53:16.621266+00:00",
-      "sha256": "5977c6417144baae1043d52e0cea66a8e2576a8f9d00a35790a07cea55072fdc"
+      "size": 13558,
+      "modified": "2026-05-01T05:36:06.280903+00:00",
+      "sha256": "6b3e1f29869687458833f6ee34bd2a5d1defad6d0d98b9f29e0df763e4cbaa17"
     },
     {
       "path": "SOUL.md",
       "size": 3762,
       "modified": "2026-04-21T08:58:11.094227+00:00",
       "sha256": "0f5b0a58552cee674bfd12195ee11851359211eb5fc40e8587ccce6e03df3462"
+    },
+    {
+      "path": "UX_IMPROVEMENTS.md",
+      "size": 9262,
+      "modified": "2026-04-30T20:49:03.209610+00:00",
+      "sha256": "2cdd233d2d92974126174f74c8e2f91dcdeec8914fa1267ad249430b8506af17"
     },
     {
       "path": "documentation\\Audit_report.md",
@@ -2915,9 +2921,9 @@
     },
     {
       "path": "project_control\\analysis\\unused_analyzer.py",
-      "size": 3205,
-      "modified": "2026-04-26T08:22:12.367672+00:00",
-      "sha256": "a16898e1bb1bfe86d55e88d9fd4c3dc044a12a24c0dabf139055ff5bbd23b9a5"
+      "size": 10082,
+      "modified": "2026-04-26T12:35:38.897814+00:00",
+      "sha256": "7ad88df8634471d4df6847d0aef834c98285eb47b308a13ce8e16420027f89c4"
     },
     {
       "path": "project_control\\cli\\__init__.py",
@@ -2933,15 +2939,15 @@
     },
     {
       "path": "project_control\\cli\\menu.py",
-      "size": 49611,
-      "modified": "2026-04-21T14:55:23.913542+00:00",
-      "sha256": "36b22c3d3f80ceb144733832de15f477298a303b023e75ded9d688e65f695be9"
+      "size": 57820,
+      "modified": "2026-05-01T06:11:11.934937+00:00",
+      "sha256": "097b4f003cf7d16d16965051d2fa8f255b31535095750989967dc7df4721557e"
     },
     {
       "path": "project_control\\cli\\router.py",
-      "size": 23226,
-      "modified": "2026-04-26T12:04:28.639164+00:00",
-      "sha256": "9296a8a2aa4a4bb3da73027c6e9e22da1dc95ebe9f85e2514917d8951672363e"
+      "size": 27661,
+      "modified": "2026-05-01T05:23:32.494883+00:00",
+      "sha256": "8c423281262ed47213dce4afd3392c32f69d95322fd2e939368f8605033e7612"
     },
     {
       "path": "project_control\\config\\__init__.py",
@@ -3017,9 +3023,9 @@
     },
     {
       "path": "project_control\\core\\ghost_service.py",
-      "size": 4281,
-      "modified": "2026-04-21T09:51:29.418168+00:00",
-      "sha256": "c38f1b9dc2ae1ebfdb1240c85f3341aac8c0ca0e3309935af533e13780989b3c"
+      "size": 6120,
+      "modified": "2026-04-30T20:06:05.164950+00:00",
+      "sha256": "4abb36b74501f9b6010f2e0979ab56c2301daaa23536f9f128ae79830ce2c0ee"
     },
     {
       "path": "project_control\\core\\import_parser.py",
@@ -3269,9 +3275,9 @@
     },
     {
       "path": "project_control\\pc.py",
-      "size": 8514,
-      "modified": "2026-04-26T08:54:18.421992+00:00",
-      "sha256": "e3850ba30665eafe95be0a78a03258260c4eaf525bec885ea81e5fbc8ac9c1ad"
+      "size": 9046,
+      "modified": "2026-05-01T05:19:28.309510+00:00",
+      "sha256": "be5bc1e3a496e632e7f0ece40947a2e46d8bd0ea8ea1b7d9b5a8870e23510da9"
     },
     {
       "path": "project_control\\persistence\\__init__.py",
@@ -3382,10 +3388,16 @@
       "sha256": "3d2883e26299c780d1b2deb6c44e252b22ceecb6493171fd5423c12c2a45eea3"
     },
     {
+      "path": "project_control\\ui\\onboarding.py",
+      "size": 5080,
+      "modified": "2026-05-01T06:05:15.657363+00:00",
+      "sha256": "c0a3ebb6093d9e4a3f6e4f4fbe07514c45e32e43ef39623a0fe4fba93feb2870"
+    },
+    {
       "path": "project_control\\ui\\state.py",
-      "size": 3583,
-      "modified": "2026-04-21T12:02:39.792733+00:00",
-      "sha256": "9dd3db6680d4eef71cbbaa7d4579e36b4b2f283e2b38038893591185f089ab3e"
+      "size": 3902,
+      "modified": "2026-05-01T04:59:56.758674+00:00",
+      "sha256": "a7e2927568383518790faf1901760bcea8e6f0ff7e973373c7539026d050c6a6"
     },
     {
       "path": "project_control\\usecases\\__init__.py",
@@ -3413,9 +3425,9 @@
     },
     {
       "path": "project_control\\utils\\renderers.py",
-      "size": 9185,
-      "modified": "2026-04-26T08:58:00.616189+00:00",
-      "sha256": "9d55f617115b45146e64b11fd20770687b56c5549a54eeec3f9abbcc5e7da15e"
+      "size": 13199,
+      "modified": "2026-04-26T12:36:51.806318+00:00",
+      "sha256": "d6dcb0e860011630287836f9ea176e38ea9d4d6735a261d9f0c00ffb57733c03"
     },
     {
       "path": "project_control\\utils\\rg_helper.py",
@@ -3436,10 +3448,22 @@
       "sha256": "7e156191293337d04b9c3059e02056f8dcf168d25608f691b236fbbf71353bbe"
     },
     {
+      "path": "project_control\\utils\\tree_formatter.py",
+      "size": 4729,
+      "modified": "2026-04-30T20:02:30.690147+00:00",
+      "sha256": "60a5af486e39ac46449240c182deed3717b7956c2da97d6971fa24cee74841da"
+    },
+    {
       "path": "tests\\__init__.py",
       "size": 40,
       "modified": "2026-02-21T18:21:24.686736+00:00",
       "sha256": "4c3a98fa76cd66ba52fdb1c21a54623a2862190a9566cc7f18c7559d15bb29ef"
+    },
+    {
+      "path": "tests\\test_dead_analyzer.py",
+      "size": 10258,
+      "modified": "2026-04-26T12:48:10.192209+00:00",
+      "sha256": "3db8c34f979688a5b0f00640964b7db5af413325da6d245c2d6b37500b01bc3c"
     },
     {
       "path": "tests\\test_duplicate_detector.py",
@@ -3512,7 +3536,19 @@
       "size": 6008,
       "modified": "2026-04-21T13:41:34.078972+00:00",
       "sha256": "70a3c026726597f021950ababd0d7400bf3816838d4a749554de536cb2d348d2"
+    },
+    {
+      "path": "tests\\test_tree_formatter.py",
+      "size": 2052,
+      "modified": "2026-04-30T20:10:33.650285+00:00",
+      "sha256": "d0c54c05030f223d550fb09238fdd1dbaa4fcd935eacb49e6653a8250e6f0927"
+    },
+    {
+      "path": "tests\\test_unused_analyzer.py",
+      "size": 13951,
+      "modified": "2026-04-26T12:46:33.031256+00:00",
+      "sha256": "32e0eab208f77f5418c89c95122e44ca9f186580552da519c2aba774e6810ba5"
     }
   ],
-  "generated_at": "2026-04-26T12:05:48.060940+00:00"
+  "generated_at": "2026-05-01T06:14:58.174716+00:00"
 }
