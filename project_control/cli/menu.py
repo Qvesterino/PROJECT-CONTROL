@@ -116,6 +116,12 @@ def run_menu(project_root: Path) -> None:
     if should_show_onboarding(project_root):
         show_onboarding(project_root)
     
+    # Show wizard for first-time users
+    if should_run_wizard(project_root):
+        wizard_config = run_wizard(project_root)
+        if wizard_config:
+            print_info("Wizard completed! Your settings have been saved.")
+    
     state = load_state(project_root)
 
     while True:

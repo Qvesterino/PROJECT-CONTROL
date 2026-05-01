@@ -510,6 +510,10 @@ def dispatch(args: argparse.Namespace) -> int:
     # Explore command
     if args.command == "explore":
         return _handle_explore_command(args)
+    
+    # Wizard command
+    if args.command == "wizard":
+        return _handle_wizard_command(args)
 
     print(f"Unknown command: {args.command}")
     return EXIT_VALIDATION_ERROR
@@ -718,3 +722,49 @@ def _safe_print(text: str) -> None:
                 print(text.encode("utf-8", errors="replace").decode("utf-8"))
             except Exception:
                 print(text.encode("ascii", errors="replace").decode("ascii"))
+
+
+# ── Wizard Command ───────────────────────────────────────────────────────
+
+def _handle_wizard_command(args: argparse.Namespace) -> int:
+    """Handle interactive setup wizard command."""
+    from project_control.ui.wizard import run_wizard, mark_wizard_completed, clear_wizard_mark
+    from project_control.utils.terminal import print_success, print_info, print_warning
+    
+    project_root = Path(getattr(args, "project_root", ".")).resolve()
+    reset = getattr(args, "reset", False)
+    
+    try:
+        # If reset flag is set, clear the wizard mark
+        if reset:
+            clear_wizard_mark(project_root)
+            print_info("Wizard reset. Starting fresh configuration...")
+        
+        # Run the wizard
+        config = run_wizard(project_root)
+        
+        if config:
+            # Mark wizard as completed
+            mark_wizard_completed(project_root)
+            print_success("\n✓ Setup wizard completed successfully!")
+            print_info(f"\nYour project is now configured with:")
+            print(f"  • Project Type: {config.get('project_mode', 'auto')}")
+            print(f"  • Output Format: {config.get('output_format', 'both')}")
+            print(f"  • Analysis Mode: {config.get('analysis_mode', 'pragmatic')}")
+            print_info("\nNext steps:")
+            print("  • Run 'pc scan' to index your project")
+            print("  • Run 'pc quick' for a full analysis")
+            print("  • Run 'pc ui' for the interactive menu")
+            return EXIT_OK
+        else:
+            print_warning("\nWizard was cancelled. No changes were made.")
+            return EXIT_OK
+            
+    except KeyboardInterrupt:
+        print_warning("\n\nWizard interrupted by user.")
+        return EXIT_OK
+    except Exception as e:
+        print(f"\n❌ Wizard failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return EXIT_VALIDATION_ERROR

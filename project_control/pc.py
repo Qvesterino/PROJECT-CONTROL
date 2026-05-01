@@ -140,6 +140,11 @@ def build_parser() -> argparse.ArgumentParser:
     explore_parser.add_argument("path", nargs="?", default=".", help="Starting path")
     explore_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
 
+    # Setup wizard
+    wizard_parser = subparsers.add_parser("wizard", help="Interactive setup wizard for first-time configuration")
+    wizard_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+    wizard_parser.add_argument("--reset", action="store_true", help="Force wizard to run even if already configured")
+
     embed_parser = subparsers.add_parser("embed")
     embed_sub = embed_parser.add_subparsers(dest="embed_cmd")
     embed_build = embed_sub.add_parser("build")
