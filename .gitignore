@@ -9,7 +9,9 @@ __pycache__/
 dist/
 build/
 examples/
-
+docs
+docs/documentation
+AUDITY
 # IDE and editor directories
 .qodo/
 .idea/
