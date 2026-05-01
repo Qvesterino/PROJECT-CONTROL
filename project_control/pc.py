@@ -27,6 +27,12 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("init")
     subparsers.add_parser("scan")
     subparsers.add_parser("checklist")
+    
+    # Quick analysis commands
+    quick_parser = subparsers.add_parser("quick", help="Quick analysis - scan, find issues, and build dependencies")
+    quick_parser.add_argument("--health", action="store_true", help="Run health check only")
+    quick_parser.add_argument("--orphans", action="store_true", help="Find orphans only")
+    quick_parser.add_argument("--tree", action="store_true", help="Export results as ASCII tree files")
 
     # New diagnostic commands
     dead_parser = subparsers.add_parser("dead", help="Dead Code Radar - finds unused files")

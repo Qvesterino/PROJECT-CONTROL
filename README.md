@@ -209,6 +209,7 @@ pc ui
 | `pc ghost` | Run ghost analysis (orphans, legacy, sessions, duplicates, semantic) |
 | `pc ghost --mode strict` | Strict mode — no ignore patterns applied |
 | `pc ghost --max-high 10` | Fail if more than 10 HIGH severity issues found |
+| `pc ghost --tree` | Export results as ASCII tree files (easier to read than JSON) |
 | `pc find <symbol>` | Search for symbol usage across project |
 | `pc writers` | Analyze writer patterns in codebase |
 
@@ -292,6 +293,11 @@ All outputs are stored in `.project-control/`:
 ├── content/                   # Deduplicated file blobs
 ├── exports/
 │   ├── ghost_candidates.md    # Ghost analysis report
+│   ├── ghost_orphans_tree.txt # ASCII tree of orphan files
+│   ├── ghost_legacy_tree.txt  # ASCII tree of legacy files
+│   ├── ghost_sessions_tree.txt # ASCII tree of session files
+│   ├── ghost_duplicates_tree.txt # ASCII tree of duplicate files
+│   ├── ghost_semantic_tree.txt # ASCII tree of semantic findings
 │   ├── checklist.md           # File checklist
 │   ├── find_<symbol>.md       # Symbol search results
 │   └── writers_report.md      # Writers analysis
@@ -304,6 +310,39 @@ All outputs are stored in `.project-control/`:
 ```
 
 **Note:** New diagnostic commands (`pc dead`, `pc unused`, `pc patterns`, `pc search`) output directly to terminal and don't create export files.
+
+### ASCII Tree Export
+
+When you run `pc ghost --tree`, the tool generates ASCII tree files that are much easier to read than JSON. For example:
+
+```bash
+$ pc ghost --tree
+
+Ghost Results
+-------------
+Orphans:   31
+Legacy:    0
+Sessions:  0
+Duplicates: 0
+Semantic:  61
+
+📄 Tree reports saved to:
+   - ghost_orphans_tree.txt
+   - ghost_semantic_tree.txt
+```
+
+The tree files look like this:
+
+```
+Orphans
++--- src
+|   +--- old_utils.py
+|   \--- deprecated_feature.js
+\--- tests
+    \--- test_old_feature.py
+```
+
+This format is perfect for quickly understanding the structure of dead code in your project.
 
 ---
 

@@ -16,6 +16,7 @@ class AppState:
     trace_all_paths: bool = False
     favorites: list[str] = None  # List of frequently traced targets
     history: list[str] = None  # List of recent actions
+    onboarding_seen: bool = False  # Whether user has seen onboarding
 
     def __post_init__(self):
         if self.favorites is None:
@@ -47,6 +48,7 @@ def load_state(project_root: Path) -> AppState:
         trace_all_paths=bool(data.get("trace_all_paths", False)),
         favorites=data.get("favorites", []),
         history=data.get("history", []),
+        onboarding_seen=data.get("onboarding_seen", False),
     )
 
 
@@ -62,6 +64,7 @@ def save_state(project_root: Path, state: AppState) -> None:
         "trace_all_paths": state.trace_all_paths,
         "favorites": state.favorites,
         "history": state.history,
+        "onboarding_seen": state.onboarding_seen,
     }
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -77,6 +80,7 @@ def add_to_history(state: AppState, action: str) -> AppState:
         trace_all_paths=state.trace_all_paths,
         favorites=state.favorites,
         history=new_history,
+        onboarding_seen=state.onboarding_seen,
     )
 
 
@@ -93,6 +97,7 @@ def add_to_favorites(state: AppState, target: str) -> AppState:
         trace_all_paths=state.trace_all_paths,
         favorites=new_favorites,
         history=state.history,
+        onboarding_seen=state.onboarding_seen,
     )
 
 
@@ -107,5 +112,5 @@ def remove_from_favorites(state: AppState, target: str) -> AppState:
         trace_all_paths=state.trace_all_paths,
         favorites=new_favorites,
         history=state.history,
+        onboarding_seen=state.onboarding_seen,
     )
-

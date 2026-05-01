@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from project_control.ui.state import AppState, load_state, save_state, add_to_history, add_to_favorites, remove_from_favorites
+from project_control.ui.onboarding import should_show_onboarding, show_onboarding, show_help_menu
 from project_control.services.scan_service import run_scan
 from project_control.services.graph_service import build_graph, show_report
 from project_control.services.analyze_service import ghost_fast, ghost_structural
@@ -111,6 +112,10 @@ def _graph_status(project_root: Path) -> str:
 
 def run_menu(project_root: Path) -> None:
     """Main menu loop with error handling."""
+    # Show onboarding for new users
+    if should_show_onboarding(project_root):
+        show_onboarding(project_root)
+    
     state = load_state(project_root)
 
     while True:
@@ -128,9 +133,10 @@ def run_menu(project_root: Path) -> None:
         print("X) Export/Imp   — export/import project state")
         print("B) Browse       — interactive file explorer")
         print("Q) Quick        — quick actions (full analysis, orphans, cycles)")
+        print("H) Help & Docs  — show help and documentation")
         print("0) Exit")
 
-        choice = input("\nSelect (0-8, P, X, B, Q): ").strip().lower()
+        choice = input("\nSelect (0-8, P, X, B, Q, H): ").strip().lower()
 
         try:
             if choice == "1":
@@ -157,6 +163,8 @@ def run_menu(project_root: Path) -> None:
                 _file_explorer_menu(project_root)
             elif choice == "q":
                 _quick_actions_menu(project_root, state)
+            elif choice == "h":
+                show_help_menu(project_root)
             elif choice == "0":
                 save_state(project_root, state)
                 print("Goodbye.")

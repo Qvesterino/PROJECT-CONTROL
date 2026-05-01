@@ -129,6 +129,101 @@ def cmd_checklist(args: argparse.Namespace) -> int:
         return ErrorHandler.handle(e, "Checklist command")
 
 
+def cmd_quick(args: argparse.Namespace) -> int:
+    """Quick analysis - scan, find issues, and build dependencies."""
+    from project_control.core.snapshot_service import load_snapshot
+    from project_control.core.graph_service import build_graph
+    
+    try:
+        with ErrorContext("Quick analysis"):
+            ensure_control_dirs()
+            
+            # Get flags
+            health_only = getattr(args, "health", False)
+            orphans_only = getattr(args, "orphans", False)
+            tree_export = getattr(args, "tree", False)
+            
+            # Step 1: Scan
+            print("\n📂 Scanning project...")
+            run_scan(PROJECT_DIR)
+            
+            snapshot = load_snapshot(PROJECT_DIR)
+            if snapshot is None:
+                print("Error: Failed to load snapshot")
+                return EXIT_VALIDATION_ERROR
+            
+            print(f"   ✓ Found {len(snapshot.get('files', []))} files")
+            
+            # Step 2: Run ghost analysis
+            if not health_only:
+                print("\n👻 Running ghost analysis...")
+                
+                # Create args for ghost
+                ghost_args = argparse.Namespace(
+                    mode="pragmatic",
+                    max_high=-1,
+                    max_medium=-1,
+                    max_low=-1,
+                    max_info=-1,
+                    tree=tree_export
+                )
+                
+                ghost_data = run_ghost(ghost_args, PROJECT_DIR)
+                if ghost_data:
+                    result = ghost_data["result"]
+                    counts = ghost_data["counts"]
+                    
+                    # Write reports
+                    write_ghost_report(result, PROJECT_DIR)
+                    if tree_export:
+                        write_ghost_tree_report(result, PROJECT_DIR)
+                    
+                    print(f"   ✓ Orphans: {counts.get('orphans', 0)}")
+                    print(f"   ✓ Legacy: {counts.get('legacy', 0)}")
+                    print(f"   ✓ Sessions: {counts.get('sessions', 0)}")
+                    print(f"   ✓ Duplicates: {counts.get('duplicates', 0)}")
+                    print(f"   ✓ Semantic: {counts.get('semantic', 0)}")
+                    
+                    if tree_export:
+                        print(f"\n   📄 Tree reports saved to .project-control/")
+            
+            # Step 3: Build graph (if not orphans_only)
+            if not orphans_only:
+                print("\n🔗 Building dependency graph...")
+                try:
+                    from project_control.graph.builder import build_graph as build_dep_graph
+                    
+                    graph_result = build_dep_graph(PROJECT_DIR, snapshot)
+                    if graph_result:
+                        print(f"   ✓ Graph built with {len(graph_result.get('nodes', []))} nodes")
+                except Exception as e:
+                    print(f"   ⚠️  Graph build skipped: {e}")
+            
+            # Step 4: Health check
+            if health_only or orphans_only:
+                print("\n✅ Quick analysis complete!")
+                return EXIT_OK
+            
+            # Full analysis summary
+            print("\n" + "="*60)
+            print("  QUICK ANALYSIS COMPLETE")
+            print("="*60)
+            print("\nReports saved to .project-control/:")
+            print("  • ghost_report.md")
+            if tree_export:
+                print("  • ghost_*_tree.txt")
+            print("\nNext steps:")
+            print("  • Run 'pc ghost' to see detailed results")
+            print("  • Run 'pc graph report' to analyze dependencies")
+            print("  • Run 'pc graph trace <file>' to trace imports")
+            
+        return EXIT_OK
+    except SystemExit:
+        raise
+    except Exception as e:
+        return ErrorHandler.handle(e, "Quick analysis")
+
+
 def cmd_find(args: argparse.Namespace) -> int:
     """Find symbol usage with error handling."""
     if not args.symbol:
@@ -317,6 +412,8 @@ def dispatch(args: argparse.Namespace) -> int:
         return cmd_scan(args)
     if args.command == "checklist":
         return cmd_checklist(args)
+    if args.command == "quick":
+        return cmd_quick(args)
     if args.command == "find":
         return cmd_find(args)
     if args.command == "ghost":
