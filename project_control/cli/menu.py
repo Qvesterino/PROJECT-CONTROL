@@ -398,11 +398,12 @@ def _settings_menu(project_root: Path, state: AppState) -> AppState:
         print("\nBasic:")
         print(f"  1) Project Type:  [{mode_label}]")
         print(f"  2) Strictness:    [{profile_label}]")
-        print(f"  3) Output Format: [Both (Reports + Trees)]")
+        print(f"  3) Output Format: [Tree files ⭐ recommended]")
         print("\nAdvanced:")
         print(f"  4) Trace Options  — direction, depth, all paths")
         print("\n[?] Help — What do these mean?")
         print("[0] Back to main menu (saves automatically)")
+  +++++++ REPLACE
         
         choice = input("\nSelect (1-4, ?, 0): ").strip()
 
@@ -505,18 +506,22 @@ def _output_format_info(project_root: Path) -> None:
     """Show output format information."""
     print("\n[Output Format]")
     print("="*60)
-    print("Currently generating: Both Reports and ASCII Trees")
+    print("Recommended: ASCII Tree Files ⭐")
     print()
     print("What you get:")
-    print("  • Markdown Reports  — Detailed, readable analysis")
-    print("  • ASCII Tree Files  — Visual file structure (easy to read)")
-    print("  • JSON Files        — For automation and tools")
+    print("  • ASCII Tree Files ⭐ — Visual structure, easy to read (recommended)")
+    print("                         Perfect for human review and understanding")
+    print()
+    print("  • Markdown Reports     — Detailed analysis with explanations")
+    print("  • JSON Files          — For automation and tools")
     print()
     print("Location: .project-control/exports/")
     print()
-    print("All formats are generated automatically. No need to choose.")
+    print_info("Tree files are human-readable and show file relationships clearly.")
+    print("They're the best choice for most users!")
     
     input("\nPress Enter...")
+  +++++++ REPLACE
 
 
 def _trace_options_menu(project_root: Path, state: AppState) -> AppState:

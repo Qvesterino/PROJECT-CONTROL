@@ -88,8 +88,9 @@ class WizardConfig:
     """Configuration collected during wizard."""
     project_type: str = "js_ts"  # js_ts | python | mixed
     strictness: str = "pragmatic"  # pragmatic | strict
-    output_format: str = "both"  # reports | tree | both
+    output_format: str = "tree"  # tree | both | reports (tree is recommended)
     run_first_scan: bool = True
+  +++++++ REPLACE
 
 
 class Wizard:
@@ -136,14 +137,15 @@ class Wizard:
                 step_number=3,
                 total_steps=4,
                 title="Output Format",
-                description="What format do you prefer for results? You can change this later.",
+                description="What format do you prefer for results? Tree files are human-readable and easy to understand.",
                 options=[
+                    {"label": "Tree files only (ASCII) ⭐ recommended", "value": "tree"},
                     {"label": "Both reports and trees", "value": "both"},
                     {"label": "Reports only (Markdown)", "value": "reports"},
-                    {"label": "Tree files only (ASCII)", "value": "tree"},
                 ],
                 default_option=0
             ),
+  +++++++ REPLACE
             WizardStep(
                 step_number=4,
                 total_steps=4,
