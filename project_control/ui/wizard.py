@@ -90,7 +90,6 @@ class WizardConfig:
     strictness: str = "pragmatic"  # pragmatic | strict
     output_format: str = "tree"  # tree | both | reports (tree is recommended)
     run_first_scan: bool = True
-  +++++++ REPLACE
 
 
 class Wizard:
@@ -145,7 +144,6 @@ class Wizard:
                 ],
                 default_option=0
             ),
-  +++++++ REPLACE
             WizardStep(
                 step_number=4,
                 total_steps=4,

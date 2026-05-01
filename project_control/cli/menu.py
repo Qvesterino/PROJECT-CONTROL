@@ -403,7 +403,6 @@ def _settings_menu(project_root: Path, state: AppState) -> AppState:
         print(f"  4) Trace Options  — direction, depth, all paths")
         print("\n[?] Help — What do these mean?")
         print("[0] Back to main menu (saves automatically)")
-  +++++++ REPLACE
         
         choice = input("\nSelect (1-4, ?, 0): ").strip()
 
@@ -521,7 +520,6 @@ def _output_format_info(project_root: Path) -> None:
     print("They're the best choice for most users!")
     
     input("\nPress Enter...")
-  +++++++ REPLACE
 
 
 def _trace_options_menu(project_root: Path, state: AppState) -> AppState:
