@@ -79,6 +79,42 @@ def show_help_menu(project_root: Path) -> None:
     print_header("HELP & DOCUMENTATION")
     print()
     
+    print_info("GETTING STARTED")
+    print()
+    print("1) 📚 Interactive Tutorial  — Step-by-step walkthrough")
+    print("2) Quick Questions         — Common questions answered")
+    print("3) Command Reference       — All commands at a glance")
+    print()
+    
+    choice = input("\nSelect (1-3, or 0 to go back): ").strip()
+    
+    if choice == "1":
+        from project_control.ui.tutorial import TutorialManager
+        tutorial_manager = TutorialManager(project_root)
+        tutorial_manager.run_tutorial_menu()
+        return
+    elif choice == "2":
+        _show_quick_questions()
+        return
+    elif choice == "3":
+        _show_command_reference()
+        return
+    elif choice == "0":
+        return
+    else:
+        print_warning("Invalid selection.")
+        input("\nPress Enter...")
+        return
+
+
+def _show_quick_questions() -> None:
+    """Show common quick questions."""
+    clear_screen()
+    
+    print()
+    print_header("QUICK QUESTIONS")
+    print()
+    
     print_info("QUICK QUESTIONS")
     print()
     print("1) What does PROJECT CONTROL do?")
@@ -106,6 +142,17 @@ def show_help_menu(project_root: Path) -> None:
     print("5) How do I trace dependencies?")
     print("   → Run 'pc graph trace <file>' to see what imports")
     print("     that file and what that file imports.")
+    print()
+    
+    input("\nPress Enter to return...")
+
+
+def _show_command_reference() -> None:
+    """Show command reference."""
+    clear_screen()
+    
+    print()
+    print_header("COMMAND REFERENCE")
     print()
     
     print_info("COMMANDS")
