@@ -17,8 +17,9 @@ from project_control.services.analyze_service import ghost_fast, ghost_structura
 from project_control.services.explore_service import run_trace
 from project_control.services.report_service import (
     view_ghost_report, view_graph_report, view_checklist, view_writers_report,
-    display_report_list, list_all_reports
+    view_vfx_contract_report, display_report_list, list_all_reports
 )
+from project_control.services.vfx_contract_service import run_vfx_contract_audit
 from project_control.core.error_handler import ErrorHandler, ErrorContext
 from project_control.core.pre_flight import health_check
 from project_control.core.validator import (
@@ -602,6 +603,7 @@ def _main_menu_help() -> None:
     print("   Scan Project = Index your files")
     print("   Find Issues  = Dead code, orphans, duplicates")
     print("   Dependencies = Trace imports & modules")
+    print("   VFX Audit    = Audit FX contract compliance")
     print()
     print("[ADVANCED]")
     print("   Settings and help for power users.")
@@ -637,6 +639,10 @@ def _reports_menu(project_root: Path) -> None:
         checklist = exports_dir / "checklist.md"
         if checklist.exists():
             reports.append(("File Checklist", checklist))
+
+        vfx_report = exports_dir / "vfx_contract_audit_report.md"
+        if vfx_report.exists():
+            reports.append(("VFX Contract Audit", vfx_report))
         
         # Check for tree files
         tree_files = list(exports_dir.glob("*_tree.txt"))
@@ -645,7 +651,7 @@ def _reports_menu(project_root: Path) -> None:
     
     if not reports:
         print("\nNo reports found yet.")
-        print("Run 'Full Analysis' or 'Find Issues' to generate reports.")
+        print("Run 'Full Analysis', 'Find Issues', or 'VFX Audit' to generate reports.")
     else:
         print(f"\nFound {len(reports)} report(s):\n")
         for i, (name, path) in enumerate(reports, 1):
@@ -1073,11 +1079,12 @@ def _quick_actions_menu(project_root: Path, state: AppState) -> None:
         print("3) Find Orphans       — quick orphan scan")
         print("4) Find Cycles        — quick cycle detection")
         print("5) Dependency Audit   — analyze dependency graph")
-        print("6) Favorites          — manage favorite trace targets")
-        print("7) History            — view recent actions")
+        print("6) VFX Audit          — audit FX contract compliance")
+        print("7) Favorites          — manage favorite trace targets")
+        print("8) History            — view recent actions")
         print("0) Back")
 
-        choice = input("\nSelect (0-7): ").strip()
+        choice = input("\nSelect (0-8): ").strip()
 
         if choice == "0":
             return
@@ -1092,8 +1099,10 @@ def _quick_actions_menu(project_root: Path, state: AppState) -> None:
         elif choice == "5":
             _quick_dependency_audit(project_root, state)
         elif choice == "6":
-            state = _quick_favorites_menu(project_root, state)
+            _quick_vfx_audit(project_root)
         elif choice == "7":
+            state = _quick_favorites_menu(project_root, state)
+        elif choice == "8":
             _quick_history_menu(project_root, state)
         else:
             input("Invalid selection. Press Enter...")
@@ -1221,6 +1230,31 @@ def _quick_dependency_audit(project_root: Path, state: AppState) -> None:
     print("\n" + "="*60)
     print_success("Dependency audit complete!")
     print("="*60)
+
+    input("\nPress Enter to return...")
+
+
+def _quick_vfx_audit(project_root: Path) -> None:
+    """Quick VFX contract audit."""
+    print("\n" + "="*60)
+    print("  VFX CONTRACT AUDIT")
+    print("="*60)
+
+    snapshot_path = project_root / ".project-control" / "snapshot.json"
+    if not snapshot_path.exists():
+        print_warning("Snapshot not found. Run 'Scan Project' first.")
+        input("\nPress Enter to return...")
+        return
+
+    try:
+        with ErrorContext("Running VFX contract audit"):
+            _result, markdown_path, json_path = run_vfx_contract_audit(project_root)
+            print_success("VFX contract audit complete")
+            print(f"Report saved: {markdown_path}")
+            print(f"Data saved:   {json_path}")
+            view_vfx_contract_report(project_root, show_content=True)
+    except Exception as e:
+        ErrorHandler.handle(e, "Running VFX contract audit")
 
     input("\nPress Enter to return...")
 

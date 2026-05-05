@@ -162,6 +162,7 @@ def _show_command_reference() -> None:
     print("  pc ghost         — Find orphans and dead code")
     print("  pc graph build   — Build dependency graph")
     print("  pc graph trace   — Trace file dependencies")
+    print("  pc audit vfx     — Audit VFX contract compliance")
     print("  pc dead          — Find unused files")
     print("  pc search <term> — Search in code")
     print("  pc explore       — Interactive file browser")

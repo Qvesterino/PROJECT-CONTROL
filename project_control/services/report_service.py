@@ -40,6 +40,16 @@ def get_writers_report_path(project_root: Path) -> Path:
     return get_exports_dir(project_root) / "writers_report.md"
 
 
+def get_vfx_contract_report_path(project_root: Path) -> Path:
+    """Get VFX contract report path."""
+    return get_exports_dir(project_root) / "vfx_contract_audit_report.md"
+
+
+def get_vfx_contract_data_path(project_root: Path) -> Path:
+    """Get VFX contract data path."""
+    return get_exports_dir(project_root) / "vfx_contract_audit_data.json"
+
+
 def get_graph_report_path(project_root: Path) -> Path:
     """Get graph report path."""
     return get_out_dir(project_root) / "graph.report.md"
@@ -179,6 +189,57 @@ def view_writers_report(project_root: Path) -> None:
         print_error(f"Failed to read writers report: {e}")
 
 
+def view_vfx_contract_report(project_root: Path, show_content: bool = False) -> None:
+    """
+    View the VFX contract audit report with summary.
+
+    Args:
+        project_root: Project root directory
+        show_content: Whether to show full report content
+    """
+    report_path = get_vfx_contract_report_path(project_root)
+    data_path = get_vfx_contract_data_path(project_root)
+
+    if not report_path.exists():
+        print_warning("VFX contract report not found. Run 'pc audit vfx' first.")
+        return
+
+    try:
+        summary = {}
+        if data_path.exists():
+            try:
+                payload = json.loads(data_path.read_text(encoding="utf-8"))
+                summary = payload.get("summary", {})
+            except json.JSONDecodeError:
+                pass
+
+        print(f"\n{'='*60}")
+        print(f"  VFX CONTRACT AUDIT")
+        print(f"{'='*60}")
+
+        if summary:
+            print("\nSummary:")
+            print(f"  Files:   {summary.get('total_files', '?')}")
+            print(f"  Keep:    {summary.get('keep', '?')}")
+            print(f"  Fix:     {summary.get('fix', '?')}")
+            print(f"  Isolate: {summary.get('isolate', '?')}")
+            print(f"  Kill:    {summary.get('kill', '?')}")
+
+        print(f"\nFile: {report_path}")
+
+        if show_content:
+            content = report_path.read_text(encoding="utf-8")
+            print(f"\n{'='*60}")
+            print("FULL REPORT CONTENT")
+            print(f"{'='*60}\n")
+            print(content)
+        else:
+            print("\nUse 'View Full Report' to see complete content.")
+
+    except Exception as e:
+        print_error(f"Failed to read VFX contract report: {e}")
+
+
 # ── Report Listing ───────────────────────────────────────────────────
 
 def list_all_reports(project_root: Path) -> list[dict]:
@@ -215,6 +276,12 @@ def list_all_reports(project_root: Path) -> list[dict]:
             "description": "Writer pattern analysis",
             "path": get_writers_report_path(project_root),
             "type": "writers"
+        },
+        {
+            "name": "VFX Contract Audit",
+            "description": "VFX contract audit results",
+            "path": get_vfx_contract_report_path(project_root),
+            "type": "vfx_contract"
         }
     ]
 
@@ -264,7 +331,7 @@ def refresh_report(project_root: Path, report_type: str) -> bool:
 
     Args:
         project_root: Project root directory
-        report_type: Type of report to refresh (ghost, graph, checklist, writers)
+        report_type: Type of report to refresh (ghost, graph, checklist, writers, vfx_contract)
 
     Returns:
         True if refresh was successful, False otherwise

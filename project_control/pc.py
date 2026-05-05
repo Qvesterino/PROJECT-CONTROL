@@ -59,6 +59,14 @@ def build_parser() -> argparse.ArgumentParser:
     find_parser = subparsers.add_parser("find")
     find_parser.add_argument("symbol", nargs="?")
 
+    audit_parser = subparsers.add_parser("audit", help="Run architecture and contract audits")
+    audit_subparsers = audit_parser.add_subparsers(dest="audit_cmd")
+
+    audit_vfx_parser = audit_subparsers.add_parser("vfx", help="VFX contract audit for FX-oriented JavaScript files")
+    audit_vfx_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+    audit_vfx_parser.add_argument("--output", help="Output directory for reports")
+    audit_vfx_parser.add_argument("--json", action="store_true", help="Print JSON to stdout")
+
     ghost_parser = subparsers.add_parser("ghost")
     ghost_parser.add_argument("--mode", choices=["strict", "pragmatic"], default="pragmatic")
     ghost_parser.add_argument("--max-high", type=int, default=-1)

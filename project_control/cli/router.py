@@ -19,10 +19,13 @@ from project_control.utils.fs_helpers import run_rg
 from project_control.cli.graph_cmd import graph_build, graph_report, graph_trace
 from project_control.utils.renderers import render_unused, render_patterns, render_search
 from project_control.render.dead_renderer import render_dead
+from project_control.render.vfx_contract_renderer import render_vfx_contract_console
 from project_control.analysis.dead_analyzer import analyze_dead_code
 from project_control.analysis.unused_analyzer import analyze_unused_systems
 from project_control.analysis.patterns_analyzer import analyze_patterns
 from project_control.analysis.search_analyzer import smart_search
+from project_control.analysis.vfx_contract_audit import vfx_contract_result_to_dict
+from project_control.services.vfx_contract_service import run_vfx_contract_audit
 import json
 from project_control.cli.menu import run_menu
 
@@ -405,6 +408,30 @@ def cmd_search(args: argparse.Namespace) -> int:
         return EXIT_VALIDATION_ERROR
 
 
+def cmd_audit_vfx(args: argparse.Namespace) -> int:
+    """VFX contract audit for FX-oriented JavaScript files."""
+    try:
+        project_root = Path(getattr(args, "project_root", ".")).resolve()
+        json_output = getattr(args, "json", False)
+        output_dir = getattr(args, "output", None)
+
+        target_dir = Path(output_dir).resolve() if output_dir else project_root / ".project-control" / "exports"
+        result, markdown_path, json_path = run_vfx_contract_audit(project_root, target_dir)
+
+        if json_output:
+            print(json.dumps(vfx_contract_result_to_dict(result), indent=2, ensure_ascii=False))
+        else:
+            _safe_print(render_vfx_contract_console(result))
+
+        if not json_output:
+            print(f"VFX audit report saved: {markdown_path}")
+            print(f"VFX audit data saved:   {json_path}")
+        return EXIT_OK
+    except Exception as e:
+        logger.error(f"VFX contract audit failed: {e}")
+        return ErrorHandler.handle(e, "VFX contract audit")
+
+
 def dispatch(args: argparse.Namespace) -> int:
     if args.command == "init":
         return cmd_init(args)
@@ -428,6 +455,11 @@ def dispatch(args: argparse.Namespace) -> int:
         return cmd_patterns(args)
     if args.command == "search":
         return cmd_search(args)
+    if args.command == "audit":
+        if getattr(args, "audit_cmd", None) == "vfx":
+            return cmd_audit_vfx(args)
+        print("Unknown audit command.")
+        return EXIT_VALIDATION_ERROR
     if args.command == "ui":
         run_menu(PROJECT_DIR)
         return EXIT_OK
