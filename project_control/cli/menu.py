@@ -17,7 +17,12 @@ from project_control.services.analyze_service import ghost_fast, ghost_structura
 from project_control.services.explore_service import run_trace
 from project_control.services.report_service import (
     view_ghost_report, view_graph_report, view_checklist, view_writers_report,
-    view_vfx_contract_report, display_report_list, list_all_reports
+    view_ui_verification_report, view_vfx_contract_report, display_report_list, list_all_reports
+)
+from project_control.services.ui_verification_service import (
+    get_default_ui_verification_config_path,
+    list_ui_verification_profiles,
+    run_ui_verification_profile,
 )
 from project_control.services.vfx_contract_service import run_vfx_contract_audit
 from project_control.core.error_handler import ErrorHandler, ErrorContext
@@ -603,6 +608,7 @@ def _main_menu_help() -> None:
     print("   Scan Project = Index your files")
     print("   Find Issues  = Dead code, orphans, duplicates")
     print("   Dependencies = Trace imports & modules")
+    print("   UI Verify    = Run configurable browser verification")
     print("   VFX Audit    = Audit FX contract compliance")
     print()
     print("[ADVANCED]")
@@ -640,6 +646,10 @@ def _reports_menu(project_root: Path) -> None:
         if checklist.exists():
             reports.append(("File Checklist", checklist))
 
+        ui_verify_report = exports_dir / "ui_verification_report.md"
+        if ui_verify_report.exists():
+            reports.append(("UI Verification Report", ui_verify_report))
+
         vfx_report = exports_dir / "vfx_contract_audit_report.md"
         if vfx_report.exists():
             reports.append(("VFX Contract Audit", vfx_report))
@@ -651,7 +661,7 @@ def _reports_menu(project_root: Path) -> None:
     
     if not reports:
         print("\nNo reports found yet.")
-        print("Run 'Full Analysis', 'Find Issues', or 'VFX Audit' to generate reports.")
+        print("Run 'Full Analysis', 'UI Verify', or 'VFX Audit' to generate reports.")
     else:
         print(f"\nFound {len(reports)} report(s):\n")
         for i, (name, path) in enumerate(reports, 1):
@@ -1080,11 +1090,12 @@ def _quick_actions_menu(project_root: Path, state: AppState) -> None:
         print("4) Find Cycles        — quick cycle detection")
         print("5) Dependency Audit   — analyze dependency graph")
         print("6) VFX Audit          — audit FX contract compliance")
-        print("7) Favorites          — manage favorite trace targets")
-        print("8) History            — view recent actions")
+        print("7) UI Verify          — run configurable browser verification")
+        print("8) Favorites          — manage favorite trace targets")
+        print("9) History            — view recent actions")
         print("0) Back")
 
-        choice = input("\nSelect (0-8): ").strip()
+        choice = input("\nSelect (0-9): ").strip()
 
         if choice == "0":
             return
@@ -1101,8 +1112,10 @@ def _quick_actions_menu(project_root: Path, state: AppState) -> None:
         elif choice == "6":
             _quick_vfx_audit(project_root)
         elif choice == "7":
-            state = _quick_favorites_menu(project_root, state)
+            _quick_ui_verify(project_root)
         elif choice == "8":
+            state = _quick_favorites_menu(project_root, state)
+        elif choice == "9":
             _quick_history_menu(project_root, state)
         else:
             input("Invalid selection. Press Enter...")
@@ -1257,6 +1270,89 @@ def _quick_vfx_audit(project_root: Path) -> None:
         ErrorHandler.handle(e, "Running VFX contract audit")
 
     input("\nPress Enter to return...")
+
+
+def _quick_ui_verify(project_root: Path) -> None:
+    """Quick UI verification using discovered project profiles."""
+    print("\n" + "="*60)
+    print("  UI VERIFICATION")
+    print("="*60)
+
+    profiles = list_ui_verification_profiles(project_root)
+    valid_profiles = [profile for profile in profiles if profile.is_valid]
+    selected_profile_name: str | None = None
+
+    if len(valid_profiles) > 1:
+        selected_profile_name = _pick_ui_verification_profile(valid_profiles)
+        if selected_profile_name is None:
+            return
+    elif len(valid_profiles) == 1 and not valid_profiles[0].is_default:
+        selected_profile_name = valid_profiles[0].name
+
+    config_path = get_default_ui_verification_config_path(project_root)
+    if not profiles:
+        print_warning("UI verification profile not found.")
+        print(f"Create: {config_path}")
+
+        template_path = Path(__file__).resolve().parents[2] / "examples" / "new" / "ui_verification.flowra.yaml"
+        if template_path.exists():
+            print(f"Template: {template_path}")
+
+        input("\nPress Enter to return...")
+        return
+
+    if not valid_profiles:
+        print_warning("No valid UI verification profiles found.")
+        for profile in profiles:
+            print(f"- {profile.name}: {profile.error or 'Invalid profile'}")
+        input("\nPress Enter to return...")
+        return
+
+    try:
+        with ErrorContext("Running UI verification"):
+            _report, resolved_config_path, markdown_path, json_path, html_path = run_ui_verification_profile(
+                project_root,
+                profile_name=selected_profile_name,
+                include_html=True,
+            )
+            print_success("UI verification complete")
+            print(f"Profile: {resolved_config_path}")
+            print(f"Report:  {markdown_path}")
+            print(f"Data:    {json_path}")
+            if html_path is not None:
+                print(f"HTML:    {html_path}")
+            view_ui_verification_report(project_root, show_content=True)
+    except Exception as e:
+        ErrorHandler.handle(e, "Running UI verification")
+
+    input("\nPress Enter to return...")
+
+
+def _pick_ui_verification_profile(profiles: list) -> str | None:
+    """Prompt the user to choose one of the discovered UI verification profiles."""
+
+    print("\nAvailable UI verification profiles:")
+    for index, profile in enumerate(profiles, 1):
+        default_label = " [default]" if profile.is_default else ""
+        print(f"  {index}) {profile.name}{default_label} - {profile.app_name}")
+
+    choice = input("\nSelect profile (0=cancel): ").strip()
+    if not choice or choice == "0":
+        return None
+
+    try:
+        selected_index = int(choice) - 1
+    except ValueError:
+        print_error("Please enter a valid number")
+        input("\nPress Enter to return...")
+        return None
+
+    if 0 <= selected_index < len(profiles):
+        return profiles[selected_index].name
+
+    print_error("Invalid selection")
+    input("\nPress Enter to return...")
+    return None
 
 
 def _quick_favorites_menu(project_root: Path, state: AppState) -> AppState:

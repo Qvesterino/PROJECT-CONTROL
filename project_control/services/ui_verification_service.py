@@ -11,7 +11,16 @@ from typing import Any, Optional
 from project_control.config.ui_verification_config import (
     UILifecycleStep,
     UIVerificationConfig,
+    UIVerificationProfileInfo,
+    find_ui_verification_profile as _find_ui_verification_profile,
+    get_default_ui_verification_config_path as _get_default_ui_verification_config_path,
+    inspect_ui_verification_profile,
+    list_ui_verification_profiles as _list_ui_verification_profiles,
+    load_ui_verification_config,
 )
+
+
+DEFAULT_UI_VERIFICATION_CONFIG = Path(".project-control/ui-verification.yaml")
 
 
 @dataclass
@@ -226,6 +235,139 @@ def run_ui_verification(
             return runner.run()
         finally:
             browser.close()
+
+
+def get_default_ui_verification_config_path(project_root: Path) -> Path:
+    """Return the default project-scoped UI verification profile path."""
+
+    return _get_default_ui_verification_config_path(project_root)
+
+
+def list_ui_verification_profiles(project_root: Path) -> tuple[UIVerificationProfileInfo, ...]:
+    """Return all discovered UI verification profiles for the project."""
+
+    return _list_ui_verification_profiles(project_root)
+
+
+def resolve_ui_verification_config_path(
+    project_root: Path,
+    config_path: Optional[Path | str] = None,
+    profile_name: Optional[str] = None,
+) -> Path:
+    """Resolve a verification profile path relative to the project root."""
+
+    resolved_project_root = project_root.resolve()
+
+    if config_path is not None:
+        candidate = Path(config_path)
+        resolved_path = candidate.resolve() if candidate.is_absolute() else (resolved_project_root / candidate).resolve()
+        profile_info = inspect_ui_verification_profile(resolved_path)
+        if not resolved_path.is_file():
+            return resolved_path
+        if not profile_info.is_valid:
+            raise RuntimeError(f"UI verification profile is invalid: {resolved_path} ({profile_info.error})")
+        return resolved_path
+
+    profiles = list_ui_verification_profiles(resolved_project_root)
+
+    if profile_name:
+        profile = _find_ui_verification_profile(resolved_project_root, profile_name)
+        if profile is None:
+            available_profiles = ", ".join(sorted(p.name for p in profiles if p.is_valid)) or "none"
+            raise RuntimeError(
+                f"UI verification profile '{profile_name}' not found. Available profiles: {available_profiles}"
+            )
+        if not profile.is_valid:
+            raise RuntimeError(f"UI verification profile '{profile.name}' is invalid: {profile.error}")
+        return profile.path
+
+    default_profile = next((profile for profile in profiles if profile.is_default), None)
+    if default_profile is not None:
+        if not default_profile.is_valid:
+            raise RuntimeError(
+                f"Default UI verification profile is invalid: {default_profile.path} ({default_profile.error})"
+            )
+        return default_profile.path
+
+    valid_profiles = [profile for profile in profiles if profile.is_valid]
+    if len(valid_profiles) == 1:
+        return valid_profiles[0].path
+    if len(valid_profiles) > 1:
+        available_profiles = ", ".join(sorted(profile.name for profile in valid_profiles))
+        raise RuntimeError(
+            f"Multiple UI verification profiles found. Use --profile <name> or --config <path>. Available profiles: {available_profiles}"
+        )
+
+    if profiles:
+        invalid_profiles = "; ".join(
+            f"{profile.name}: {profile.error}"
+            for profile in profiles
+            if not profile.is_valid
+        )
+        raise RuntimeError(f"No valid UI verification profiles found. Invalid profiles: {invalid_profiles}")
+
+    return get_default_ui_verification_config_path(resolved_project_root).resolve()
+
+
+def run_ui_verification_profile(
+    project_root: Path,
+    *,
+    config_path: Optional[Path | str] = None,
+    profile_name: Optional[str] = None,
+    url: Optional[str] = None,
+    image_path: Optional[Path | str] = None,
+    screenshots_dir: Optional[Path | str] = None,
+    headless: bool = True,
+    output_dir: Optional[Path | str] = None,
+    include_html: bool = False,
+) -> tuple[VerificationReport, Path, Path, Path, Optional[Path]]:
+    """Run a project-scoped UI verification profile and persist standard outputs."""
+
+    resolved_project_root = project_root.resolve()
+    resolved_config_path = resolve_ui_verification_config_path(
+        resolved_project_root,
+        config_path=config_path,
+        profile_name=profile_name,
+    )
+
+    if not resolved_config_path.is_file():
+        default_path = get_default_ui_verification_config_path(resolved_project_root)
+        template_path = _get_ui_verification_template_path()
+        hint = f" Create {default_path} or pass --config."
+        if template_path is not None:
+            hint += f" Template: {template_path}"
+        raise RuntimeError(f"UI verification profile not found: {resolved_config_path}.{hint}")
+
+    config = load_ui_verification_config(resolved_config_path)
+    if not config.html_path.exists():
+        raise RuntimeError(f"UI verification HTML source not found: {config.html_path}")
+
+    resolved_image_path = _resolve_optional_path(resolved_project_root, image_path)
+    target_image_path = resolved_image_path or config.image_path
+    if _profile_uses_image_path(config) and not target_image_path.exists():
+        raise RuntimeError(f"UI verification image asset not found: {target_image_path}")
+
+    resolved_screenshots_dir = _resolve_optional_path(resolved_project_root, screenshots_dir)
+    target_output_dir = _resolve_optional_path(resolved_project_root, output_dir) or (
+        resolved_project_root / ".project-control" / "exports"
+    )
+
+    report = run_ui_verification(
+        config,
+        url=url,
+        image_path=target_image_path,
+        screenshots_dir=resolved_screenshots_dir,
+        headless=headless,
+    )
+
+    from project_control.render.ui_verification_renderer import write_ui_verification_outputs
+
+    markdown_path, json_path, html_path = write_ui_verification_outputs(
+        report,
+        target_output_dir,
+        include_html=include_html,
+    )
+    return report, resolved_config_path, markdown_path, json_path, html_path
 
 
 class UIVerificationRunner:
@@ -597,6 +739,18 @@ def _summary_by_key(elements: list[UIElement], attribute: str) -> dict[str, dict
     return summary
 
 
+def _resolve_optional_path(project_root: Path, raw_path: Optional[Path | str]) -> Optional[Path]:
+    if raw_path is None:
+        return None
+    candidate = Path(raw_path)
+    return candidate.resolve() if candidate.is_absolute() else (project_root / candidate).resolve()
+
+
+def _profile_uses_image_path(config: UIVerificationConfig) -> bool:
+    lifecycle_steps = config.import_steps + config.preview_setup_steps + config.preview_teardown_steps
+    return any(step.value_from == "image_path" for step in lifecycle_steps)
+
+
 def _deduplicate_elements(elements: list[UIElement]) -> list[UIElement]:
     seen: set[str] = set()
     unique: list[UIElement] = []
@@ -651,3 +805,8 @@ def _load_playwright_runtime() -> tuple[Any, type[Exception]]:
             "Playwright Python package is not installed. Run: pip install playwright; then: playwright install chromium"
         ) from error
     return sync_playwright, PlaywrightTimeoutError
+
+
+def _get_ui_verification_template_path() -> Optional[Path]:
+    candidate = Path(__file__).resolve().parents[2] / "examples" / "new" / "ui_verification.flowra.yaml"
+    return candidate if candidate.exists() else None

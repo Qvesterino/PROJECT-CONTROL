@@ -10,8 +10,10 @@ from unittest import TestCase
 from project_control.render.ui_verification_renderer import (
     render_ui_verification_console_summary,
     render_ui_verification_html,
+    render_ui_verification_markdown,
     write_ui_verification_html_report,
     write_ui_verification_json_report,
+    write_ui_verification_outputs,
 )
 from project_control.services.ui_verification_service import VerificationReport
 
@@ -60,6 +62,15 @@ class TestUIVerificationRenderer(TestCase):
         self.assertIn("okButton", html)
         self.assertIn("badButton", html)
 
+    def test_markdown_renderer_includes_summary_and_elements(self) -> None:
+        report = self._build_report()
+        markdown = render_ui_verification_markdown(report)
+
+        self.assertIn("# UI Verification Report", markdown)
+        self.assertIn("**Application:** Demo UI", markdown)
+        self.assertIn("| toolbar | 2 | 1 | 1 | 0 | 0 | 0 |", markdown)
+        self.assertIn("badButton", markdown)
+
     def test_json_and_html_writers_create_reports(self) -> None:
         report = self._build_report()
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -69,5 +80,18 @@ class TestUIVerificationRenderer(TestCase):
 
             self.assertTrue(json_path.exists())
             self.assertTrue(html_path.exists())
+            self.assertEqual(json_path.name, "ui_verification_data.json")
+            self.assertEqual(html_path.name, "ui_verification_report.html")
             payload = json.loads(json_path.read_text(encoding="utf-8"))
             self.assertEqual(payload["app_name"], "Demo UI")
+
+    def test_standard_writer_creates_markdown_json_and_optional_html(self) -> None:
+        report = self._build_report()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out_dir = Path(temp_dir)
+            markdown_path, json_path, html_path = write_ui_verification_outputs(report, out_dir, include_html=True)
+
+            self.assertTrue(markdown_path.exists())
+            self.assertTrue(json_path.exists())
+            self.assertTrue(html_path is not None and html_path.exists())
+            self.assertEqual(markdown_path.name, "ui_verification_report.md")

@@ -163,6 +163,8 @@ def _show_command_reference() -> None:
     print("  pc graph build   — Build dependency graph")
     print("  pc graph trace   — Trace file dependencies")
     print("  pc audit vfx     — Audit VFX contract compliance")
+    print("  pc ui verify     — Run browser-based UI verification")
+    print("  pc ui verify --list-profiles — List discovered UI verification profiles")
     print("  pc dead          — Find unused files")
     print("  pc search <term> — Search in code")
     print("  pc explore       — Interactive file browser")

@@ -50,6 +50,21 @@ def get_vfx_contract_data_path(project_root: Path) -> Path:
     return get_exports_dir(project_root) / "vfx_contract_audit_data.json"
 
 
+def get_ui_verification_report_path(project_root: Path) -> Path:
+    """Get UI verification markdown report path."""
+    return get_exports_dir(project_root) / "ui_verification_report.md"
+
+
+def get_ui_verification_data_path(project_root: Path) -> Path:
+    """Get UI verification structured data path."""
+    return get_exports_dir(project_root) / "ui_verification_data.json"
+
+
+def get_ui_verification_html_path(project_root: Path) -> Path:
+    """Get UI verification HTML dashboard path."""
+    return get_exports_dir(project_root) / "ui_verification_report.html"
+
+
 def get_graph_report_path(project_root: Path) -> Path:
     """Get graph report path."""
     return get_out_dir(project_root) / "graph.report.md"
@@ -240,6 +255,58 @@ def view_vfx_contract_report(project_root: Path, show_content: bool = False) -> 
         print_error(f"Failed to read VFX contract report: {e}")
 
 
+def view_ui_verification_report(project_root: Path, show_content: bool = False) -> None:
+    """View the UI verification report with summary metadata."""
+
+    report_path = get_ui_verification_report_path(project_root)
+    data_path = get_ui_verification_data_path(project_root)
+    html_path = get_ui_verification_html_path(project_root)
+
+    if not report_path.exists():
+        print_warning("UI verification report not found. Run 'pc ui verify' first.")
+        return
+
+    try:
+        payload = {}
+        if data_path.exists():
+            try:
+                payload = json.loads(data_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                payload = {}
+
+        summary = payload.get("summary", {})
+
+        print(f"\n{'='*60}")
+        print("  UI VERIFICATION REPORT")
+        print(f"{'='*60}")
+
+        if payload:
+            print("\nSummary:")
+            print(f"  App:      {payload.get('app_name', '?')}")
+            print(f"  Profile:  {payload.get('profile_name', '?')}")
+            print(f"  Passed:   {payload.get('passed', '?')}")
+            print(f"  Failed:   {payload.get('failed', '?')}")
+            print(f"  Hidden:   {payload.get('hidden_by_context', '?')}")
+            print(f"  Warned:   {payload.get('warned', '?')}")
+            print(f"  Pass rate:{summary.get('pass_rate', '?')}%")
+
+        print(f"\nFile: {report_path}")
+        if html_path.exists():
+            print(f"HTML: {html_path}")
+
+        if show_content:
+            content = report_path.read_text(encoding="utf-8")
+            print(f"\n{'='*60}")
+            print("FULL REPORT CONTENT")
+            print(f"{'='*60}\n")
+            print(content)
+        else:
+            print("\nUse 'View Full Report' to see complete content.")
+
+    except Exception as e:
+        print_error(f"Failed to read UI verification report: {e}")
+
+
 # ── Report Listing ───────────────────────────────────────────────────
 
 def list_all_reports(project_root: Path) -> list[dict]:
@@ -282,6 +349,12 @@ def list_all_reports(project_root: Path) -> list[dict]:
             "description": "VFX contract audit results",
             "path": get_vfx_contract_report_path(project_root),
             "type": "vfx_contract"
+        },
+        {
+            "name": "UI Verification Report",
+            "description": "Configurable UI verification results",
+            "path": get_ui_verification_report_path(project_root),
+            "type": "ui_verification"
         }
     ]
 

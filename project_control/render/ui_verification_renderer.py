@@ -6,6 +6,7 @@ from dataclasses import asdict
 from html import escape
 import json
 from pathlib import Path
+from typing import Optional
 
 from project_control.services.ui_verification_service import VerificationReport
 
@@ -43,8 +44,83 @@ def write_ui_verification_json_report(report: VerificationReport, out_dir: Path)
     """Write the structured JSON report and return its path."""
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / "ui-verification-report.json"
+    path = out_dir / "ui_verification_data.json"
     path.write_text(json.dumps(asdict(report), indent=2, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def render_ui_verification_markdown(report: VerificationReport) -> str:
+    """Render the verification report as markdown for text-first viewers."""
+
+    lines = [
+        "# UI Verification Report",
+        "",
+        f"**Application:** {report.app_name}  ",
+        f"**Profile:** {report.profile_name}  ",
+        f"**URL:** {report.url}  ",
+        f"**Browser:** {report.browser}  ",
+        f"**HTML Source:** {report.html_path}  ",
+    ]
+
+    if report.manifest_path:
+        lines.append(f"**Manifest:** {report.manifest_path}  ")
+
+    lines.extend(
+        [
+            f"**Timestamp:** {report.timestamp}",
+            "",
+            "## Summary",
+            "",
+            f"- **Total elements:** {report.total}",
+            f"- **Passed:** {report.passed}",
+            f"- **Failed:** {report.failed}",
+            f"- **Hidden by context:** {report.hidden_by_context}",
+            f"- **Not applicable:** {report.not_applicable}",
+            f"- **Warned:** {report.warned}",
+            f"- **Pass rate:** {report.summary.get('pass_rate', 0)}%",
+            "",
+            "## By Section",
+            "",
+            "| Section | Total | Pass | Fail | Hidden | N/A | Warn |",
+            "|---------|-------|------|------|--------|-----|------|",
+        ]
+    )
+
+    for section, data in report.summary.get("by_section", {}).items():
+        lines.append(
+            "| "
+            f"{section} | {data.get('total', 0)} | {data.get('pass', 0)} | {data.get('fail', 0)} | "
+            f"{data.get('hidden-by-context', 0)} | {data.get('not-applicable', 0)} | {data.get('warn', 0)} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Elements",
+            "",
+            "| ID | Category | Section | Result | Notes | Error |",
+            "|----|----------|---------|--------|-------|-------|",
+        ]
+    )
+
+    for element in report.elements:
+        notes = "; ".join(str(note) for note in element.get("notes", [])) or "-"
+        error = str(element.get("error") or "-")
+        lines.append(
+            "| "
+            f"{element.get('id', '')} | {element.get('category', '')} | {element.get('section', '')} | "
+            f"{element.get('test_result', '')} | {notes} | {error} |"
+        )
+
+    return "\n".join(lines)
+
+
+def write_ui_verification_markdown_report(report: VerificationReport, out_dir: Path) -> Path:
+    """Write the markdown report and return its path."""
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "ui_verification_report.md"
+    path.write_text(render_ui_verification_markdown(report), encoding="utf-8")
     return path
 
 
@@ -52,9 +128,23 @@ def write_ui_verification_html_report(report: VerificationReport, out_dir: Path)
     """Write the HTML report and return its path."""
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / "ui-verification-report.html"
+    path = out_dir / "ui_verification_report.html"
     path.write_text(render_ui_verification_html(report), encoding="utf-8")
     return path
+
+
+def write_ui_verification_outputs(
+    report: VerificationReport,
+    out_dir: Path,
+    *,
+    include_html: bool = False,
+) -> tuple[Path, Path, Optional[Path]]:
+    """Write standard UI verification outputs and optionally an HTML dashboard."""
+
+    markdown_path = write_ui_verification_markdown_report(report, out_dir)
+    json_path = write_ui_verification_json_report(report, out_dir)
+    html_path = write_ui_verification_html_report(report, out_dir) if include_html else None
+    return markdown_path, json_path, html_path
 
 
 def render_ui_verification_html(report: VerificationReport) -> str:

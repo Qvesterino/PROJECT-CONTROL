@@ -103,7 +103,24 @@ def build_parser() -> argparse.ArgumentParser:
     graph_trace_parser.add_argument("--no-limits", action="store_true", help="Disable depth/path limits")
     graph_trace_parser.add_argument("--config", type=str, help="Path to graph config YAML", default=None)
 
-    subparsers.add_parser("ui")
+    ui_parser = subparsers.add_parser("ui", help="Interactive menu mode and UI verification tools")
+    ui_subparsers = ui_parser.add_subparsers(dest="ui_cmd")
+
+    ui_subparsers.add_parser("menu", help="Launch interactive menu mode")
+
+    ui_verify_parser = ui_subparsers.add_parser("verify", help="Run configurable browser-based UI verification")
+    ui_verify_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+    ui_verify_parser.add_argument("--config", help="Path to the UI verification YAML profile")
+    ui_verify_parser.add_argument("--profile", help="Discovered UI verification profile name")
+    ui_verify_parser.add_argument("--list-profiles", action="store_true", help="List discovered UI verification profiles")
+    ui_verify_parser.add_argument("--url", help="Override the profile base URL")
+    ui_verify_parser.add_argument("--image", help="Override the configured test image path")
+    ui_verify_parser.add_argument("--screenshots", help="Directory for screenshots")
+    ui_verify_parser.add_argument("--output", help="Output directory for reports")
+    ui_verify_parser.add_argument("--html", action="store_true", help="Generate HTML dashboard output")
+    ui_verify_parser.add_argument("--json", action="store_true", help="Print structured JSON to stdout")
+    ui_verify_parser.add_argument("--headless", action="store_true", default=True, help="Run browser headless")
+    ui_verify_parser.add_argument("--no-headless", action="store_false", dest="headless", help="Show browser window")
 
     # Preset management
     preset_parser = subparsers.add_parser("preset", help="Manage project presets")

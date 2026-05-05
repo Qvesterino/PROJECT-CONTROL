@@ -5,6 +5,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
 from project_control.config.ui_verification_config import (
     UISectionRule,
@@ -13,6 +14,10 @@ from project_control.config.ui_verification_config import (
 from project_control.services.ui_verification_service import (
     UIElement,
     discover_elements_from_html,
+    get_default_ui_verification_config_path,
+    list_ui_verification_profiles,
+    resolve_ui_verification_config_path,
+    run_ui_verification_profile,
     summarize_verification,
 )
 
@@ -74,3 +79,101 @@ class TestUIVerificationService(TestCase):
         self.assertEqual(report.summary["by_section"]["toolbar"]["pass"], 1)
         self.assertEqual(report.summary["by_section"]["toolbar"]["fail"], 1)
         self.assertEqual(report.summary["by_category"]["button"]["total"], 2)
+
+    def test_run_ui_verification_profile_requires_project_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+
+            with self.assertRaises(RuntimeError) as context:
+                run_ui_verification_profile(project_root)
+
+            self.assertIn(str(get_default_ui_verification_config_path(project_root.resolve())), str(context.exception))
+
+    def test_resolve_ui_verification_config_path_requires_selection_for_multiple_profiles(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            profiles_dir = project_root / ".project-control" / "ui-profiles"
+            profiles_dir.mkdir(parents=True)
+            (profiles_dir / "alpha.yaml").write_text("profile_name: alpha\napp_name: Alpha UI\n", encoding="utf-8")
+            (profiles_dir / "beta.yaml").write_text("profile_name: beta\napp_name: Beta UI\n", encoding="utf-8")
+
+            with self.assertRaises(RuntimeError) as context:
+                resolve_ui_verification_config_path(project_root)
+
+            self.assertIn("Multiple UI verification profiles found", str(context.exception))
+
+    def test_resolve_ui_verification_config_path_selects_named_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            profiles_dir = project_root / ".project-control" / "ui-profiles"
+            profiles_dir.mkdir(parents=True)
+            selected_path = profiles_dir / "beta.yaml"
+            (profiles_dir / "alpha.yaml").write_text("profile_name: alpha\napp_name: Alpha UI\n", encoding="utf-8")
+            selected_path.write_text("profile_name: beta\napp_name: Beta UI\n", encoding="utf-8")
+
+            resolved_path = resolve_ui_verification_config_path(project_root, profile_name="beta")
+
+            self.assertEqual(resolved_path, selected_path.resolve())
+
+    def test_list_ui_verification_profiles_passthrough_uses_config_discovery(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            default_path = project_root / ".project-control" / "ui-verification.yaml"
+            default_path.parent.mkdir(parents=True)
+            default_path.write_text("profile_name: legacy\napp_name: Legacy UI\n", encoding="utf-8")
+
+            profiles = list_ui_verification_profiles(project_root)
+
+            self.assertEqual(len(profiles), 1)
+            self.assertTrue(profiles[0].is_default)
+
+    def test_run_ui_verification_profile_writes_standard_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            control_dir = project_root / ".project-control"
+            control_dir.mkdir()
+            html_path = project_root / "index.html"
+            html_path.write_text('<button id="okButton"></button>', encoding="utf-8")
+
+            config_path = control_dir / "ui-verification.yaml"
+            config_path.write_text(
+                "\n".join(
+                    [
+                        "app_name: Demo UI",
+                        "profile_name: demo",
+                        "html_path: ../index.html",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            report = summarize_verification(
+                UIVerificationConfig(app_name="Demo UI", profile_name="demo", html_path=html_path),
+                "http://127.0.0.1:9000",
+                [
+                    UIElement(
+                        id="okButton",
+                        tag="button",
+                        type=None,
+                        selector="#okButton",
+                        category="button",
+                        section="toolbar",
+                        test_result="pass",
+                    )
+                ],
+            )
+
+            with patch("project_control.services.ui_verification_service.run_ui_verification", return_value=report):
+                result, resolved_config, markdown_path, json_path, html_path = run_ui_verification_profile(
+                    project_root,
+                    profile_name="demo",
+                    include_html=True,
+                )
+
+            self.assertEqual(result.app_name, "Demo UI")
+            self.assertEqual(resolved_config, config_path.resolve())
+            self.assertTrue(markdown_path.exists())
+            self.assertTrue(json_path.exists())
+            self.assertTrue(html_path is not None and html_path.exists())
+            self.assertEqual(markdown_path.name, "ui_verification_report.md")
+            self.assertEqual(json_path.name, "ui_verification_data.json")

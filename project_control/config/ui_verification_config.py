@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Optional
 
@@ -13,6 +13,8 @@ DEFAULT_BASE_URL = "http://127.0.0.1:6100"
 DEFAULT_BROWSER = "chromium"
 DEFAULT_TIMEOUT_MS = 15000
 DEFAULT_INTERACTION_TIMEOUT_MS = 2000
+DEFAULT_UI_VERIFICATION_CONFIG = Path(".project-control/ui-verification.yaml")
+UI_VERIFICATION_PROFILES_DIR = Path(".project-control/ui-profiles")
 ALLOWED_HOOK_ACTIONS = frozenset(
     {
         "click",
@@ -88,6 +90,19 @@ class UIVerificationConfig:
     config_path: Optional[Path] = None
 
 
+@dataclass(frozen=True)
+class UIVerificationProfileInfo:
+    """Strict metadata for a discovered UI verification profile."""
+
+    name: str
+    app_name: str
+    path: Path
+    source: str
+    is_default: bool = False
+    is_valid: bool = True
+    error: Optional[str] = None
+
+
 def default_ui_verification_config(base_dir: Optional[Path] = None) -> UIVerificationConfig:
     """Return a default config resolved against the provided base directory."""
 
@@ -147,6 +162,63 @@ def load_ui_verification_config(config_path: Optional[Path] = None) -> UIVerific
         test_values=_parse_test_values(data.get("test_values")),
         config_path=resolved_config_path,
     )
+
+
+def get_default_ui_verification_config_path(project_root: Path) -> Path:
+    """Return the legacy single-profile path used as the default UI profile."""
+
+    return project_root / DEFAULT_UI_VERIFICATION_CONFIG
+
+
+def get_ui_verification_profiles_dir(project_root: Path) -> Path:
+    """Return the canonical directory for multi-profile UI verification configs."""
+
+    return project_root / UI_VERIFICATION_PROFILES_DIR
+
+
+def list_ui_verification_profiles(project_root: Path) -> tuple[UIVerificationProfileInfo, ...]:
+    """Discover UI verification profiles without falling back to runtime defaults."""
+
+    resolved_project_root = project_root.resolve()
+    profiles: list[UIVerificationProfileInfo] = []
+
+    default_path = get_default_ui_verification_config_path(resolved_project_root)
+    if default_path.is_file():
+        profiles.append(inspect_ui_verification_profile(default_path, source="legacy", is_default=True))
+
+    profiles_dir = get_ui_verification_profiles_dir(resolved_project_root)
+    if profiles_dir.is_dir():
+        for profile_path in sorted(
+            [*profiles_dir.glob("*.yaml"), *profiles_dir.glob("*.yml")],
+            key=lambda path: path.as_posix().lower(),
+        ):
+            profiles.append(inspect_ui_verification_profile(profile_path, source="project-profile"))
+
+    return tuple(_mark_duplicate_profile_names(profiles))
+
+
+def find_ui_verification_profile(project_root: Path, profile_name: str) -> Optional[UIVerificationProfileInfo]:
+    """Find a discovered profile by name."""
+
+    normalized_name = profile_name.strip().lower()
+    if not normalized_name:
+        return None
+
+    for profile in list_ui_verification_profiles(project_root):
+        if profile.name.lower() == normalized_name:
+            return profile
+    return None
+
+
+def inspect_ui_verification_profile(
+    profile_path: Path,
+    *,
+    source: str = "explicit",
+    is_default: bool = False,
+) -> UIVerificationProfileInfo:
+    """Read strict metadata for a single UI verification profile path."""
+
+    return _read_ui_verification_profile_info(profile_path, source=source, is_default=is_default)
 
 
 def _resolve_path(base_dir: Path, raw_value: object, default_path: Path) -> Path:
@@ -248,3 +320,75 @@ def _safe_int(value: object, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _read_ui_verification_profile_info(
+    profile_path: Path,
+    *,
+    source: str,
+    is_default: bool = False,
+) -> UIVerificationProfileInfo:
+    resolved_path = profile_path.resolve()
+    fallback_name = resolved_path.stem
+
+    try:
+        with resolved_path.open("r", encoding="utf-8") as stream:
+            data = yaml.safe_load(stream)
+    except (yaml.YAMLError, OSError) as error:
+        return UIVerificationProfileInfo(
+            name=fallback_name,
+            app_name="UI Verification",
+            path=resolved_path,
+            source=source,
+            is_default=is_default,
+            is_valid=False,
+            error=str(error),
+        )
+
+    if not isinstance(data, dict):
+        return UIVerificationProfileInfo(
+            name=fallback_name,
+            app_name="UI Verification",
+            path=resolved_path,
+            source=source,
+            is_default=is_default,
+            is_valid=False,
+            error="Profile YAML must contain a mapping at the top level.",
+        )
+
+    raw_name = data.get("profile_name")
+    raw_app_name = data.get("app_name")
+    name = raw_name.strip() if isinstance(raw_name, str) and raw_name.strip() else fallback_name
+    app_name = raw_app_name.strip() if isinstance(raw_app_name, str) and raw_app_name.strip() else "UI Verification"
+
+    return UIVerificationProfileInfo(
+        name=name,
+        app_name=app_name,
+        path=resolved_path,
+        source=source,
+        is_default=is_default,
+        is_valid=True,
+    )
+
+
+def _mark_duplicate_profile_names(
+    profiles: list[UIVerificationProfileInfo],
+) -> list[UIVerificationProfileInfo]:
+    counts: dict[str, int] = {}
+    for profile in profiles:
+        key = profile.name.lower()
+        counts[key] = counts.get(key, 0) + 1
+
+    marked_profiles: list[UIVerificationProfileInfo] = []
+    for profile in profiles:
+        if counts.get(profile.name.lower(), 0) > 1:
+            marked_profiles.append(
+                replace(
+                    profile,
+                    is_valid=False,
+                    error=f"Duplicate UI verification profile name: {profile.name}",
+                )
+            )
+        else:
+            marked_profiles.append(profile)
+    return marked_profiles

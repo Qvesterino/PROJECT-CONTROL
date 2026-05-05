@@ -19,12 +19,14 @@ from project_control.utils.fs_helpers import run_rg
 from project_control.cli.graph_cmd import graph_build, graph_report, graph_trace
 from project_control.utils.renderers import render_unused, render_patterns, render_search
 from project_control.render.dead_renderer import render_dead
+from project_control.render.ui_verification_renderer import render_ui_verification_console_summary
 from project_control.render.vfx_contract_renderer import render_vfx_contract_console
 from project_control.analysis.dead_analyzer import analyze_dead_code
 from project_control.analysis.unused_analyzer import analyze_unused_systems
 from project_control.analysis.patterns_analyzer import analyze_patterns
 from project_control.analysis.search_analyzer import smart_search
 from project_control.analysis.vfx_contract_audit import vfx_contract_result_to_dict
+from project_control.services.ui_verification_service import list_ui_verification_profiles, run_ui_verification_profile
 from project_control.services.vfx_contract_service import run_vfx_contract_audit
 import json
 from project_control.cli.menu import run_menu
@@ -432,6 +434,82 @@ def cmd_audit_vfx(args: argparse.Namespace) -> int:
         return ErrorHandler.handle(e, "VFX contract audit")
 
 
+def cmd_ui_verify(args: argparse.Namespace) -> int:
+    """Run configurable browser-based UI verification."""
+    try:
+        project_root = Path(getattr(args, "project_root", ".")).resolve()
+        json_output = getattr(args, "json", False)
+        include_html = getattr(args, "html", False)
+        if getattr(args, "list_profiles", False):
+            profiles = list_ui_verification_profiles(project_root)
+
+            if json_output:
+                print(
+                    json.dumps(
+                        [
+                            {
+                                "name": profile.name,
+                                "app_name": profile.app_name,
+                                "path": str(profile.path),
+                                "source": profile.source,
+                                "is_default": profile.is_default,
+                                "is_valid": profile.is_valid,
+                                "error": profile.error,
+                            }
+                            for profile in profiles
+                        ],
+                        indent=2,
+                        ensure_ascii=False,
+                    )
+                )
+            else:
+                print("UI VERIFICATION PROFILES")
+                print("=" * 70)
+                if not profiles:
+                    print("No UI verification profiles found.")
+                for profile in profiles:
+                    flags: list[str] = []
+                    if profile.is_default:
+                        flags.append("default")
+                    if not profile.is_valid:
+                        flags.append("invalid")
+                    suffix = f" [{' | '.join(flags)}]" if flags else ""
+                    print(f"- {profile.name}{suffix}")
+                    print(f"  App:    {profile.app_name}")
+                    print(f"  Source: {profile.source}")
+                    print(f"  Path:   {profile.path}")
+                    if profile.error:
+                        print(f"  Error:  {profile.error}")
+            return EXIT_OK
+
+        report, config_path, markdown_path, json_path, html_path = run_ui_verification_profile(
+            project_root,
+            config_path=getattr(args, "config", None),
+            profile_name=getattr(args, "profile", None),
+            url=getattr(args, "url", None),
+            image_path=getattr(args, "image", None),
+            screenshots_dir=getattr(args, "screenshots", None),
+            headless=getattr(args, "headless", True),
+            output_dir=getattr(args, "output", None),
+            include_html=include_html,
+        )
+
+        if json_output:
+            print(json_path.read_text(encoding="utf-8"))
+        else:
+            _safe_print(render_ui_verification_console_summary(report))
+            print(f"UI verification profile: {config_path}")
+            print(f"UI verification report:  {markdown_path}")
+            print(f"UI verification data:    {json_path}")
+            if html_path is not None:
+                print(f"UI verification html:    {html_path}")
+
+        return EXIT_OK
+    except Exception as e:
+        logger.error(f"UI verification failed: {e}")
+        return ErrorHandler.handle(e, "UI verification")
+
+
 def dispatch(args: argparse.Namespace) -> int:
     if args.command == "init":
         return cmd_init(args)
@@ -461,8 +539,14 @@ def dispatch(args: argparse.Namespace) -> int:
         print("Unknown audit command.")
         return EXIT_VALIDATION_ERROR
     if args.command == "ui":
-        run_menu(PROJECT_DIR)
-        return EXIT_OK
+        ui_cmd = getattr(args, "ui_cmd", None)
+        if ui_cmd in (None, "menu"):
+            run_menu(PROJECT_DIR)
+            return EXIT_OK
+        if ui_cmd == "verify":
+            return cmd_ui_verify(args)
+        print("Unknown ui command.")
+        return EXIT_VALIDATION_ERROR
     if args.command == "graph":
         project_root = Path(getattr(args, "project_root", ".")).resolve()
         config_path = Path(args.config).resolve() if getattr(args, "config", None) else None
