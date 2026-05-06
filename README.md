@@ -188,6 +188,7 @@ pc search "TODO"       # Smart Search
 
 ```bash
 pc ui
+pc gui
 ```
 
 ---
@@ -249,6 +250,7 @@ pc ui
 | Command | Description |
 |---------|-------------|
 | `pc ui` | Launch interactive text-based menu |
+| `pc gui` | Launch desktop Tkinter GUI |
 
 ---
 

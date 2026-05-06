@@ -11,6 +11,7 @@ from pathlib import Path
 
 from project_control.ui.state import AppState, load_state, save_state, add_to_history, add_to_favorites, remove_from_favorites
 from project_control.ui.onboarding import should_show_onboarding, show_onboarding, show_help_menu
+from project_control.ui.wizard import should_run_wizard, run_wizard
 from project_control.services.scan_service import run_scan
 from project_control.services.graph_service import build_graph, show_report
 from project_control.services.analyze_service import ghost_fast, ghost_structural
@@ -454,6 +455,7 @@ def _change_mode_simple(project_root: Path, state: AppState) -> AppState:
             trace_direction=state.trace_direction,
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
+            ui_verification_headless=state.ui_verification_headless,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -496,6 +498,7 @@ def _change_profile_simple(project_root: Path, state: AppState) -> AppState:
             trace_direction=state.trace_direction,
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
+            ui_verification_headless=state.ui_verification_headless,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -697,6 +700,7 @@ def _change_mode(project_root: Path, state: AppState) -> AppState:
             trace_direction=state.trace_direction,
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
+            ui_verification_headless=state.ui_verification_headless,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -718,6 +722,7 @@ def _change_profile(project_root: Path, state: AppState) -> AppState:
             trace_direction=state.trace_direction,
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
+            ui_verification_headless=state.ui_verification_headless,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -740,6 +745,7 @@ def _change_direction(project_root: Path, state: AppState) -> AppState:
             trace_direction=mapping[choice],
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
+            ui_verification_headless=state.ui_verification_headless,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -762,6 +768,7 @@ def _change_depth(project_root: Path, state: AppState) -> AppState:
             trace_direction=state.trace_direction,
             trace_depth=new_depth,
             trace_all_paths=state.trace_all_paths,
+            ui_verification_headless=state.ui_verification_headless,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -779,6 +786,7 @@ def _toggle_all_paths(project_root: Path, state: AppState) -> AppState:
         trace_direction=state.trace_direction,
         trace_depth=state.trace_depth,
         trace_all_paths=new_val,
+        ui_verification_headless=state.ui_verification_headless,
         last_ui_verification_profile=state.last_ui_verification_profile,
     )
     save_state(project_root, state)
@@ -1337,6 +1345,7 @@ def _quick_ui_verify(project_root: Path, state: AppState) -> AppState:
             _report, resolved_config_path, markdown_path, json_path, html_path = run_ui_verification_profile(
                 project_root,
                 profile_name=selected_profile_name,
+                headless=state.ui_verification_headless,
                 include_html=True,
             )
             print_success("UI verification complete")

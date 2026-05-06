@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from project_control.utils.terminal import Colors
+from project_control.render.dead_renderer import render_dead as render_dead_text
 
 
 def render_dead(result: dict, colored: bool = True) -> str:
@@ -16,69 +17,20 @@ def render_dead(result: dict, colored: bool = True) -> str:
     Returns:
         Formatted string output.
     """
-    lines = []
-
-    # Title
+    # Compatibility wrapper around the canonical text renderer.
+    output = render_dead_text(result)
     if colored:
-        lines.append(f"{Colors.BOLD}{Colors.BLUE}Dead Code Radar{Colors.RESET}")
-        lines.append(f"{Colors.DIM}{'=' * 50}{Colors.RESET}")
-    else:
-        lines.append("Dead Code Radar")
-        lines.append("=" * 50)
-
-    high = result.get("high", [])
-    medium = result.get("medium", [])
-    stats = result.get("stats", {})
-
-    # HIGH section
-    if colored:
-        lines.append(f"\n{Colors.BOLD}{Colors.RED}HIGH (Orphan Files){Colors.RESET}: {len(high)}")
-    else:
-        lines.append(f"\nHIGH (Orphan Files): {len(high)}")
-
-    if high:
-        for item in high:
-            if colored:
-                lines.append(f"  {Colors.RED}*{Colors.RESET} {item['file']} {Colors.DIM}(usage: {item['usage']}){Colors.RESET}")
-            else:
-                lines.append(f"  * {item['file']} (usage: {item['usage']})")
-    else:
-        if colored:
-            lines.append(f"  {Colors.GREEN}*{Colors.RESET} None found")
-        else:
-            lines.append("  * None found")
-
-    # MEDIUM section
-    if colored:
-        lines.append(f"\n{Colors.BOLD}{Colors.YELLOW}MEDIUM (Low Usage){Colors.RESET}: {len(medium)}")
-    else:
-        lines.append(f"\nMEDIUM (Low Usage): {len(medium)}")
-
-    if medium:
-        for item in medium:
-            if colored:
-                lines.append(f"  {Colors.YELLOW}*{Colors.RESET} {item['file']} {Colors.DIM}(usage: {item['usage']}){Colors.RESET}")
-            else:
-                lines.append(f"  * {item['file']} (usage: {item['usage']})")
-    else:
-        if colored:
-            lines.append(f"  {Colors.GREEN}*{Colors.RESET} None found")
-        else:
-            lines.append("  * None found")
-
-    # Stats
-    if colored:
-        lines.append(f"\n{Colors.DIM}{'-' * 50}{Colors.RESET}")
-        lines.append(f"{Colors.CYAN}Total files:{Colors.RESET} {stats.get('total_files', 0)}")
-        lines.append(f"{Colors.RED}Dead files:{Colors.RESET} {stats.get('dead_files', 0)}")
-        lines.append(f"{Colors.YELLOW}Low usage files:{Colors.RESET} {stats.get('low_usage_files', 0)}")
-    else:
-        lines.append("\n" + "-" * 50)
-        lines.append(f"Total files: {stats.get('total_files', 0)}")
-        lines.append(f"Dead files: {stats.get('dead_files', 0)}")
-        lines.append(f"Low usage files: {stats.get('low_usage_files', 0)}")
-
-    return "\n".join(lines)
+        return output
+    return (
+        output.replace(Colors.BOLD, "")
+        .replace(Colors.BLUE, "")
+        .replace(Colors.DIM, "")
+        .replace(Colors.RED, "")
+        .replace(Colors.YELLOW, "")
+        .replace(Colors.GREEN, "")
+        .replace(Colors.CYAN, "")
+        .replace(Colors.RESET, "")
+    )
 
 
 def render_unused(result: dict, colored: bool = True) -> str:

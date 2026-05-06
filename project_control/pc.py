@@ -122,6 +122,9 @@ def build_parser() -> argparse.ArgumentParser:
     ui_verify_parser.add_argument("--headless", action="store_true", default=True, help="Run browser headless")
     ui_verify_parser.add_argument("--no-headless", action="store_false", dest="headless", help="Show browser window")
 
+    gui_parser = subparsers.add_parser("gui", help="Launch the desktop Tkinter GUI")
+    gui_parser.add_argument("project_root", nargs="?", default=".", help="Project root path")
+
     # Preset management
     preset_parser = subparsers.add_parser("preset", help="Manage project presets")
     preset_subparsers = preset_parser.add_subparsers(dest="preset_cmd")

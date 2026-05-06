@@ -45,6 +45,14 @@ class UIVerifyParserTests(unittest.TestCase):
         self.assertTrue(args.list_profiles)
         self.assertTrue(args.json)
 
+    def test_parser_exposes_gui_command(self) -> None:
+        parser = build_parser()
+
+        args = parser.parse_args(["gui", "."])
+
+        self.assertEqual(args.command, "gui")
+        self.assertEqual(args.project_root, ".")
+
 
 if __name__ == "__main__":
     unittest.main()

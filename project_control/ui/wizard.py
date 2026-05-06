@@ -300,6 +300,7 @@ class Wizard:
             trace_direction=state.trace_direction,
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
+            ui_verification_headless=state.ui_verification_headless,
             favorites=state.favorites,
             history=state.history,
             onboarding_seen=True,  # Mark onboarding as complete
@@ -371,3 +372,43 @@ def run_wizard(project_root: Path, force: bool = False) -> Optional[WizardConfig
     
     wizard = Wizard(project_root)
     return wizard.run()
+
+
+def mark_wizard_completed(project_root: Path) -> None:
+    """Persist the wizard completion marker."""
+    state = load_state(project_root)
+    save_state(
+        project_root,
+        AppState(
+            project_mode=state.project_mode,
+            graph_profile=state.graph_profile,
+            trace_direction=state.trace_direction,
+            trace_depth=state.trace_depth,
+            trace_all_paths=state.trace_all_paths,
+            ui_verification_headless=state.ui_verification_headless,
+            favorites=state.favorites,
+            history=state.history,
+            onboarding_seen=True,
+            last_ui_verification_profile=state.last_ui_verification_profile,
+        ),
+    )
+
+
+def clear_wizard_mark(project_root: Path) -> None:
+    """Clear the wizard completion marker."""
+    state = load_state(project_root)
+    save_state(
+        project_root,
+        AppState(
+            project_mode=state.project_mode,
+            graph_profile=state.graph_profile,
+            trace_direction=state.trace_direction,
+            trace_depth=state.trace_depth,
+            trace_all_paths=state.trace_all_paths,
+            ui_verification_headless=state.ui_verification_headless,
+            favorites=state.favorites,
+            history=state.history,
+            onboarding_seen=False,
+            last_ui_verification_profile=state.last_ui_verification_profile,
+        ),
+    )

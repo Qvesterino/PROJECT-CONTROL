@@ -38,12 +38,14 @@ class TestUIState(TestCase):
             self.assertEqual(loaded_state.project_mode, "python")
             self.assertEqual(loaded_state.graph_profile, "strict")
             self.assertEqual(loaded_state.last_ui_verification_profile, "beta")
+            self.assertTrue(loaded_state.ui_verification_headless)
 
     def test_state_helpers_preserve_last_ui_verification_profile(self) -> None:
         state = AppState(
             favorites=["alpha"],
             history=["scan"],
             last_ui_verification_profile="beta",
+            ui_verification_headless=False,
         )
 
         updated_history_state = add_to_history(state, "trace")
@@ -53,3 +55,4 @@ class TestUIState(TestCase):
         self.assertEqual(updated_history_state.last_ui_verification_profile, "beta")
         self.assertEqual(updated_favorites_state.last_ui_verification_profile, "beta")
         self.assertEqual(removed_favorites_state.last_ui_verification_profile, "beta")
+        self.assertFalse(updated_history_state.ui_verification_headless)

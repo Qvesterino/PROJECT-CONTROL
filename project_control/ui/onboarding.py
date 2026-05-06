@@ -64,6 +64,7 @@ def show_onboarding(project_root: Path) -> None:
         trace_direction=state.trace_direction,
         trace_depth=state.trace_depth,
         trace_all_paths=state.trace_all_paths,
+        ui_verification_headless=state.ui_verification_headless,
         favorites=state.favorites,
         history=state.history,
         onboarding_seen=True,
@@ -167,6 +168,7 @@ def _show_command_reference() -> None:
     print("  pc ui verify     — Run browser-based UI verification")
     print("  pc ui verify --list-profiles — List discovered UI verification profiles")
     print("  pc ui verify --profile <name> — Run a specific UI verification profile")
+    print("  pc gui           — Launch desktop GUI mode")
     print("  pc dead          — Find unused files")
     print("  pc search <term> — Search in code")
     print("  pc explore       — Interactive file browser")

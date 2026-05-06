@@ -30,6 +30,7 @@ from project_control.services.ui_verification_service import list_ui_verificatio
 from project_control.services.vfx_contract_service import run_vfx_contract_audit
 import json
 from project_control.cli.menu import run_menu
+from project_control.graph.ensure import ensure_graph
 
 logger = logging.getLogger(__name__)
 
@@ -136,9 +137,6 @@ def cmd_checklist(args: argparse.Namespace) -> int:
 
 def cmd_quick(args: argparse.Namespace) -> int:
     """Quick analysis - scan, find issues, and build dependencies."""
-    from project_control.core.snapshot_service import load_snapshot
-    from project_control.core.graph_service import build_graph
-    
     try:
         with ErrorContext("Quick analysis"):
             ensure_control_dirs()
@@ -196,11 +194,12 @@ def cmd_quick(args: argparse.Namespace) -> int:
             if not orphans_only:
                 print("\n🔗 Building dependency graph...")
                 try:
-                    from project_control.graph.builder import build_graph as build_dep_graph
-                    
-                    graph_result = build_dep_graph(PROJECT_DIR, snapshot)
-                    if graph_result:
-                        print(f"   ✓ Graph built with {len(graph_result.get('nodes', []))} nodes")
+                    graph_path, metrics_path, report_path = ensure_graph(PROJECT_DIR)
+                    metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+                    totals = metrics.get("totals", {})
+                    print(f"   ✓ Graph built with {totals.get('nodeCount', 0)} nodes")
+                    print(f"   ✓ Metrics: {metrics_path.name}")
+                    print(f"   ✓ Report:  {report_path.name}")
                 except Exception as e:
                     print(f"   ⚠️  Graph build skipped: {e}")
             
@@ -214,9 +213,10 @@ def cmd_quick(args: argparse.Namespace) -> int:
             print("  QUICK ANALYSIS COMPLETE")
             print("="*60)
             print("\nReports saved to .project-control/:")
-            print("  • ghost_report.md")
+            print("  • exports/ghost_candidates.md")
             if tree_export:
-                print("  • ghost_*_tree.txt")
+                print("  • exports/ghost_*_tree.txt")
+            print("  • out/graph.report.md")
             print("\nNext steps:")
             print("  • Run 'pc ghost' to see detailed results")
             print("  • Run 'pc graph report' to analyze dependencies")
@@ -547,6 +547,8 @@ def dispatch(args: argparse.Namespace) -> int:
             return cmd_ui_verify(args)
         print("Unknown ui command.")
         return EXIT_VALIDATION_ERROR
+    if args.command == "gui":
+        return _handle_gui_command(args)
     if args.command == "graph":
         project_root = Path(getattr(args, "project_root", ".")).resolve()
         config_path = Path(args.config).resolve() if getattr(args, "config", None) else None
@@ -862,7 +864,7 @@ def _handle_wizard_command(args: argparse.Namespace) -> int:
         if config:
             # Mark wizard as completed
             mark_wizard_completed(project_root)
-            print_success("\n✓ Setup wizard completed successfully!")
+            print_success("\nSetup wizard completed successfully!")
             print_info(f"\nYour project is now configured with:")
             print(f"  • Project Type: {config.get('project_mode', 'auto')}")
             print(f"  • Output Format: {config.get('output_format', 'both')}")
@@ -880,7 +882,19 @@ def _handle_wizard_command(args: argparse.Namespace) -> int:
         print_warning("\n\nWizard interrupted by user.")
         return EXIT_OK
     except Exception as e:
-        print(f"\n❌ Wizard failed: {e}")
+        print(f"\n[ERROR] Wizard failed: {e}")
         import traceback
         traceback.print_exc()
         return EXIT_VALIDATION_ERROR
+
+
+def _handle_gui_command(args: argparse.Namespace) -> int:
+    """Launch the desktop Tkinter GUI."""
+    from project_control.gui.app import launch_gui
+
+    project_root = Path(getattr(args, "project_root", ".")).resolve()
+    try:
+        launch_gui(project_root)
+        return EXIT_OK
+    except Exception as e:
+        return ErrorHandler.handle(e, "GUI command")

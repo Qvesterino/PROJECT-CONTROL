@@ -83,7 +83,12 @@ class TestUIVerificationMenuIntegration(TestCase):
 
         output = buffer.getvalue()
         self.assertIn("UI verification complete", output)
-        run_mock.assert_called_once_with(self.project_root, profile_name="ui-verification", include_html=True)
+        run_mock.assert_called_once_with(
+            self.project_root,
+            profile_name="ui-verification",
+            headless=True,
+            include_html=True,
+        )
         view_mock.assert_called_once_with(self.project_root, show_content=True)
         self.assertEqual(result_state.last_ui_verification_profile, "ui-verification")
 
@@ -122,7 +127,12 @@ class TestUIVerificationMenuIntegration(TestCase):
                         with redirect_stdout(buffer):
                             result_state = _quick_ui_verify(self.project_root, state)
 
-        run_mock.assert_called_once_with(self.project_root, profile_name="beta", include_html=True)
+        run_mock.assert_called_once_with(
+            self.project_root,
+            profile_name="beta",
+            headless=True,
+            include_html=True,
+        )
         self.assertEqual(result_state.last_ui_verification_profile, "beta")
 
     def test_quick_ui_verify_prompts_for_profile_when_multiple_valid_profiles_exist(self) -> None:
@@ -159,5 +169,10 @@ class TestUIVerificationMenuIntegration(TestCase):
                         with redirect_stdout(buffer):
                             result_state = _quick_ui_verify(self.project_root, AppState())
 
-        run_mock.assert_called_once_with(self.project_root, profile_name="beta", include_html=True)
+        run_mock.assert_called_once_with(
+            self.project_root,
+            profile_name="beta",
+            headless=True,
+            include_html=True,
+        )
         self.assertEqual(result_state.last_ui_verification_profile, "beta")

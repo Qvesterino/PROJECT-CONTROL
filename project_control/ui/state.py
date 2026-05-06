@@ -14,6 +14,7 @@ class AppState:
     trace_direction: str = "both"  # inbound | outbound | both
     trace_depth: int = 50
     trace_all_paths: bool = False
+    ui_verification_headless: bool = True
     favorites: list[str] = None  # List of frequently traced targets
     history: list[str] = None  # List of recent actions
     onboarding_seen: bool = False  # Whether user has seen onboarding
@@ -47,6 +48,7 @@ def load_state(project_root: Path) -> AppState:
         trace_direction=data.get("trace_direction", "both"),
         trace_depth=int(data.get("trace_depth", 50)),
         trace_all_paths=bool(data.get("trace_all_paths", False)),
+        ui_verification_headless=bool(data.get("ui_verification_headless", True)),
         favorites=data.get("favorites", []),
         history=data.get("history", []),
         onboarding_seen=data.get("onboarding_seen", False),
@@ -64,6 +66,7 @@ def save_state(project_root: Path, state: AppState) -> None:
         "trace_direction": state.trace_direction,
         "trace_depth": state.trace_depth,
         "trace_all_paths": state.trace_all_paths,
+        "ui_verification_headless": state.ui_verification_headless,
         "favorites": state.favorites,
         "history": state.history,
         "onboarding_seen": state.onboarding_seen,
@@ -81,6 +84,7 @@ def add_to_history(state: AppState, action: str) -> AppState:
         trace_direction=state.trace_direction,
         trace_depth=state.trace_depth,
         trace_all_paths=state.trace_all_paths,
+        ui_verification_headless=state.ui_verification_headless,
         favorites=state.favorites,
         history=new_history,
         onboarding_seen=state.onboarding_seen,
@@ -99,6 +103,7 @@ def add_to_favorites(state: AppState, target: str) -> AppState:
         trace_direction=state.trace_direction,
         trace_depth=state.trace_depth,
         trace_all_paths=state.trace_all_paths,
+        ui_verification_headless=state.ui_verification_headless,
         favorites=new_favorites,
         history=state.history,
         onboarding_seen=state.onboarding_seen,
@@ -115,6 +120,7 @@ def remove_from_favorites(state: AppState, target: str) -> AppState:
         trace_direction=state.trace_direction,
         trace_depth=state.trace_depth,
         trace_all_paths=state.trace_all_paths,
+        ui_verification_headless=state.ui_verification_headless,
         favorites=new_favorites,
         history=state.history,
         onboarding_seen=state.onboarding_seen,

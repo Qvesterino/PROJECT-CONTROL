@@ -170,23 +170,30 @@ class FileExplorer:
 
         # Get inbound (who imports this)
         for edge in self.graph_data.get("edges", []):
-            if edge["target"] == node_id:
-                source_path = self.id_to_path.get(edge["source"])
+            source_id = edge.get("fromId", edge.get("source"))
+            target_id = edge.get("toId", edge.get("target"))
+            if target_id == node_id:
+                source_path = self.id_to_path.get(source_id)
                 if source_path:
                     info.inbound.append(source_path)
-            elif edge["source"] == node_id:
-                target_path = self.id_to_path.get(edge["target"])
+            elif source_id == node_id:
+                target_path = self.id_to_path.get(target_id)
                 if target_path:
                     info.outbound.append(target_path)
 
         # Check if orphan
         if self.metrics_data:
             orphans = self.metrics_data.get("orphanCandidates", [])
-            info.is_orphan = any(file_path in o for o in orphans) or file_path in orphans
+            info.is_orphan = any(
+                candidate == file_path or (
+                    isinstance(candidate, dict) and candidate.get("path") == file_path
+                )
+                for candidate in orphans
+            )
 
             # Check if in cycle
             for cycle in self.metrics_data.get("cycles", []):
-                if node_id in cycle:
+                if node_id in cycle or file_path in cycle:
                     info.in_cycle = True
                     break
 

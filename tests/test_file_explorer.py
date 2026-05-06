@@ -44,8 +44,8 @@ def create_test_graph(project_root: Path) -> None:
             {"id": 3, "path": "src/app.ts"},
         ],
         "edges": [
-            {"source": 1, "target": 2},
-            {"source": 3, "target": 2},
+            {"fromId": 1, "toId": 2},
+            {"fromId": 3, "toId": 2},
         ]
     }
 
@@ -204,7 +204,7 @@ class TestFileExplorer(TestCase):
         info = self.explorer.get_dependency_info("src/utils.js")
 
         # utils.js is imported by main.js and app.ts (from test graph)
-        self.assertGreaterEqual(len(info.inbound), 0)
+        self.assertEqual(sorted(info.inbound), ["src/app.ts", "src/main.js"])
 
     def test_get_dependency_info_nonexistent(self) -> None:
         """Test getting dependency info for nonexistent file."""
