@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from project_control.config.patterns_loader import load_patterns
+from project_control.config.patterns_loader import get_scan_extensions, load_patterns
 from project_control.core.snapshot_service import create_snapshot, save_snapshot
 from project_control.services.base import Service, ServiceResult, with_error_handling
 
@@ -26,7 +26,7 @@ class ScanService:
         snapshot = create_snapshot(
             project_root,
             patterns.get("ignore_dirs", []),
-            patterns.get("extensions", []),
+            get_scan_extensions(patterns),
         )
         save_snapshot(snapshot, project_root)
 

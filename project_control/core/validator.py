@@ -348,6 +348,41 @@ def validate_patterns_config(config: Dict[str, Any]) -> ValidationResult:
             elif not ext.startswith("."):
                 warnings.append(f"Extension should start with '.': {ext}")
 
+    artifacts = config.get("artifacts")
+    if artifacts is not None:
+        if not isinstance(artifacts, dict):
+            errors.append(f"'artifacts' must be dict, got {type(artifacts).__name__}")
+        else:
+            artifacts_expected_types = {
+                "enabled": bool,
+                "older_than_days": int,
+                "min_score": int,
+                "extensions": list,
+                "suspicious_dirs": list,
+                "safe_dirs": list,
+                "likely_asset_resolutions": list,
+                "likely_screenshot_resolutions": list,
+            }
+            for key, expected_type in artifacts_expected_types.items():
+                if key in artifacts and not isinstance(artifacts[key], expected_type):
+                    errors.append(
+                        f"'artifacts.{key}' must be {expected_type.__name__}, got {type(artifacts[key]).__name__}"
+                    )
+            for key in (
+                "extensions",
+                "suspicious_dirs",
+                "safe_dirs",
+                "likely_asset_resolutions",
+                "likely_screenshot_resolutions",
+            ):
+                for item in artifacts.get(key, []) if isinstance(artifacts.get(key), list) else []:
+                    if not isinstance(item, str):
+                        errors.append(f"'artifacts.{key}' entries must be strings, got {type(item).__name__}")
+                if key == "extensions" and isinstance(artifacts.get(key), list):
+                    for ext in artifacts[key]:
+                        if isinstance(ext, str) and not ext.startswith("."):
+                            warnings.append(f"Artifact extension should start with '.': {ext}")
+
     is_valid = len(errors) == 0
     return create_validation_result(is_valid, errors, warnings)
 

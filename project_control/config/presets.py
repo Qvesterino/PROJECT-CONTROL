@@ -16,6 +16,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+from project_control.config.patterns_loader import ARTIFACT_DEFAULTS
+
 
 @dataclass
 class PresetConfig:
@@ -26,6 +28,13 @@ class PresetConfig:
     patterns: Dict[str, Any] = field(default_factory=dict)
     graph_config: Dict[str, Any] = field(default_factory=dict)
     category: str = "custom"  # builtin | custom
+
+
+def _artifact_defaults_copy() -> Dict[str, Any]:
+    return {
+        key: value.copy() if isinstance(value, list) else value
+        for key, value in ARTIFACT_DEFAULTS.items()
+    }
 
 
 # ── Built-in Presets ───────────────────────────────────────────────────────
@@ -48,6 +57,7 @@ REACT_FRONTEND_PRESET = PresetConfig(
             "coverage",
         ],
         "extensions": [".js", ".jsx", ".ts", ".tsx", ".json", ".md"],
+        "artifacts": _artifact_defaults_copy(),
     },
     graph_config={
         "include_globs": [
@@ -108,6 +118,7 @@ PYTHON_BACKEND_PRESET = PresetConfig(
             "node_modules",
         ],
         "extensions": [".py", ".md", ".txt", ".yaml", ".yml"],
+        "artifacts": _artifact_defaults_copy(),
     },
     graph_config={
         "include_globs": [
@@ -165,6 +176,7 @@ FULL_STACK_PRESET = PresetConfig(
             "build",
         ],
         "extensions": [".js", ".jsx", ".ts", ".tsx", ".py", ".json", ".md", ".yaml", ".yml"],
+        "artifacts": _artifact_defaults_copy(),
     },
     graph_config={
         "include_globs": [

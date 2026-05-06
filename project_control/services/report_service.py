@@ -30,6 +30,21 @@ def get_ghost_report_path(project_root: Path) -> Path:
     return get_exports_dir(project_root) / "ghost_candidates.md"
 
 
+def get_artifact_report_path(project_root: Path) -> Path:
+    """Get artifact hygiene markdown report path."""
+    return get_exports_dir(project_root) / "artifact_candidates.md"
+
+
+def get_artifact_data_path(project_root: Path) -> Path:
+    """Get artifact hygiene JSON data path."""
+    return get_exports_dir(project_root) / "artifact_candidates.json"
+
+
+def get_artifact_delete_list_path(project_root: Path) -> Path:
+    """Get artifact hygiene delete list path."""
+    return get_exports_dir(project_root) / "delete_candidates.txt"
+
+
 def get_checklist_path(project_root: Path) -> Path:
     """Get checklist report path."""
     return get_exports_dir(project_root) / "checklist.md"
@@ -320,6 +335,24 @@ def list_all_reports(project_root: Path) -> list[dict]:
         List of report dictionaries with name, path, size, and exists status
     """
     reports = [
+        {
+            "name": "Artifact Hygiene Report",
+            "description": "Cleanup candidates, space savings, and duplicate screenshot analysis",
+            "path": get_artifact_report_path(project_root),
+            "type": "artifacts_markdown"
+        },
+        {
+            "name": "Artifact Hygiene Data",
+            "description": "Structured artifact hygiene JSON payload",
+            "path": get_artifact_data_path(project_root),
+            "type": "artifacts_json"
+        },
+        {
+            "name": "Artifact Delete Candidate List",
+            "description": "Strict safe-to-delete artifact paths",
+            "path": get_artifact_delete_list_path(project_root),
+            "type": "artifacts_delete_list"
+        },
         {
             "name": "Ghost Report",
             "description": "Orphans, legacy, sessions, duplicates, semantic findings",

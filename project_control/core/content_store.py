@@ -45,11 +45,23 @@ class ContentStore:
         if not sha256:
             raise ValueError(f"No SHA256 for path: {path}")
 
+        return self.get_bytes(path).decode("utf-8", errors="ignore")
+
+    def get_bytes(self, path: str) -> bytes:
+        """Get raw file bytes by path via content-addressable storage."""
+        entry = self._find_file_entry(path)
+        if not entry:
+            raise FileNotFoundError(f"Path not found in snapshot: {path}")
+
+        sha256 = entry.get("sha256")
+        if not sha256:
+            raise ValueError(f"No SHA256 for path: {path}")
+
         blob_path = self.content_dir / f"{sha256}.blob"
         if not blob_path.exists():
             raise FileNotFoundError(f"Blob not found: {blob_path}")
 
-        return blob_path.read_text(encoding="utf-8", errors="ignore")
+        return blob_path.read_bytes()
 
     def get_blob(self, sha256: str) -> str:
         """Get content directly by SHA256 hash."""
@@ -57,6 +69,13 @@ class ContentStore:
         if not blob_path.exists():
             raise FileNotFoundError(f"Blob not found: {blob_path}")
         return blob_path.read_text(encoding="utf-8", errors="ignore")
+
+    def get_blob_bytes(self, sha256: str) -> bytes:
+        """Get raw content directly by SHA256 hash."""
+        blob_path = self.content_dir / f"{sha256}.blob"
+        if not blob_path.exists():
+            raise FileNotFoundError(f"Blob not found: {blob_path}")
+        return blob_path.read_bytes()
 
     def has_blob(self, sha256: str) -> bool:
         """Check if blob exists."""

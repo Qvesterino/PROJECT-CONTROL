@@ -8,8 +8,9 @@ import yaml
 from pathlib import Path
 from typing import Optional
 
-from project_control.config.patterns_loader import load_patterns
+from project_control.config.patterns_loader import get_default_patterns, get_scan_extensions, load_patterns
 from project_control.core.exit_codes import EXIT_OK, EXIT_VALIDATION_ERROR
+from project_control.core.artifact_service import run_artifact_hygiene
 from project_control.core.ghost_service import run_ghost, write_ghost_report, write_ghost_tree_report
 from project_control.core.markdown_renderer import render_writer_report
 from project_control.core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
@@ -39,13 +40,6 @@ CONTROL_DIR = PROJECT_DIR / ".project-control"
 EXPORTS_DIR = CONTROL_DIR / "exports"
 STATUS_FILE = CONTROL_DIR / "status.yaml"
 PATTERNS_FILE = CONTROL_DIR / "patterns.yaml"
-
-DEFAULT_PATTERNS = {
-    "writers": ["scale", "emissive", "opacity", "position"],
-    "entrypoints": ["main.js", "index.ts"],
-    "ignore_dirs": [".git", ".project-control", "node_modules", "__pycache__"],
-    "extensions": [".py", ".js", ".ts", ".md", ".txt"],
-}
 
 
 def ensure_control_dirs() -> None:
@@ -87,7 +81,7 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     if not PATTERNS_FILE.exists():
         with PATTERNS_FILE.open("w", encoding="utf-8") as f:
-            yaml.dump(DEFAULT_PATTERNS, f)
+            yaml.dump(get_default_patterns(), f, sort_keys=False)
 
     if not STATUS_FILE.exists():
         with STATUS_FILE.open("w", encoding="utf-8") as f:
@@ -312,6 +306,50 @@ def cmd_writers(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_artifacts(args: argparse.Namespace) -> int:
+    """Artifact Hygiene Engine - report suspicious visual artifacts without deleting anything."""
+    try:
+        with ErrorContext("Running artifact hygiene analysis"):
+            artifact_data = run_artifact_hygiene(args, PROJECT_DIR)
+            result = artifact_data["result"]
+            summary = result.get("summary", {})
+            paths = artifact_data["paths"]
+
+            if getattr(args, "json", False):
+                print(paths["json"].read_text(encoding="utf-8"))
+                return EXIT_OK
+
+            if getattr(args, "delete_list", False):
+                delete_candidates = result.get("delete_candidates", [])
+                print("\n".join(delete_candidates))
+                return EXIT_OK
+
+            print("\nArtifact Hygiene Results")
+            print("------------------------")
+            print(f"Assets scanned: {summary.get('total_assets_scanned', 0)}")
+            print(f"Report candidates: {summary.get('report_candidates', 0)}")
+            print(f"Safe to delete now: {summary.get('safe_to_delete', 0)}")
+            print(f"Reclaimable MB: {summary.get('safe_to_delete_mb', 0)}")
+            print(f"High confidence: {summary.get('high_confidence_cleanup_candidates', 0)}")
+            print(f"Review candidates: {summary.get('review_candidates', 0)}")
+            print(f"Duplicate groups: {summary.get('duplicate_groups', 0)}")
+            print(f"Delete candidates: {summary.get('delete_candidates', 0)}")
+
+            if getattr(args, "by_resolution", False):
+                print("\nBy Resolution")
+                for group in result.get("grouped_by_resolution", []):
+                    print(f"  {group['resolution']}: {group['count']}")
+
+            print(f"\nMarkdown report: {paths['markdown']}")
+            print(f"JSON data:       {paths['json']}")
+            print(f"Delete list:     {paths['delete_list']}")
+        return EXIT_OK
+    except SystemExit:
+        raise
+    except Exception as e:
+        return ErrorHandler.handle(e, "Artifacts command")
+
+
 def cmd_dead(args: argparse.Namespace) -> int:
     """Dead Code Radar - finds files with zero or minimal usage."""
     try:
@@ -523,6 +561,8 @@ def dispatch(args: argparse.Namespace) -> int:
         return cmd_find(args)
     if args.command == "ghost":
         return cmd_ghost(args)
+    if args.command == "artifacts":
+        return cmd_artifacts(args)
     if args.command == "writers":
         return cmd_writers(args)
     if args.command == "dead":
@@ -641,7 +681,7 @@ def dispatch(args: argparse.Namespace) -> int:
 def run_scan(project_root: Path) -> None:
     """Run scan with configuration."""
     patterns = load_patterns(project_root)
-    snapshot = create_snapshot(project_root, patterns.get("ignore_dirs", []), patterns.get("extensions", []))
+    snapshot = create_snapshot(project_root, patterns.get("ignore_dirs", []), get_scan_extensions(patterns))
     save_snapshot(snapshot, project_root)
     print(f"Scan complete. {len(snapshot.get('files', []))} files indexed.")
 

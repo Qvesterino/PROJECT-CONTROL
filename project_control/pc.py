@@ -75,6 +75,14 @@ def build_parser() -> argparse.ArgumentParser:
     ghost_parser.add_argument("--max-info", type=int, default=-1)
     ghost_parser.add_argument("--tree", action="store_true", help="Export results as ASCII tree files")
 
+    artifacts_parser = subparsers.add_parser("artifacts", help="Artifact Hygiene Engine - find temporary visual assets")
+    artifacts_parser.add_argument("--older-than", type=int, dest="older_than", help="Override artifacts.older_than_days for this run")
+    artifacts_parser.add_argument("--min-score", type=int, dest="min_score", help="Override artifacts.min_score for this run")
+    artifacts_parser.add_argument("--by-resolution", action="store_true", help="Include grouped-by-resolution summary in console output")
+    artifacts_output_group = artifacts_parser.add_mutually_exclusive_group()
+    artifacts_output_group.add_argument("--json", action="store_true", help="Print artifact JSON payload to stdout")
+    artifacts_output_group.add_argument("--delete-list", action="store_true", help="Print delete candidate paths to stdout")
+
     subparsers.add_parser("writers")
 
     graph_parser = subparsers.add_parser("graph")

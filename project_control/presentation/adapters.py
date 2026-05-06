@@ -17,6 +17,7 @@ from project_control.cli.graph_cmd import (
     _resolve_target_node,
 )
 from project_control.config.graph_config import load_graph_config
+from project_control.core.artifact_service import run_artifact_hygiene
 from project_control.core.content_store import ContentStore
 from project_control.core.ghost import ghost
 from project_control.core.ghost_service import run_ghost, write_ghost_report, write_ghost_tree_report
@@ -26,6 +27,9 @@ from project_control.render.ui_verification_renderer import render_ui_verificati
 from project_control.render.vfx_contract_renderer import render_vfx_contract_console
 from project_control.services._config import config_with_state
 from project_control.services.report_service import (
+    get_artifact_data_path,
+    get_artifact_delete_list_path,
+    get_artifact_report_path,
     get_graph_metrics_path,
     get_graph_report_path,
     get_ui_verification_data_path,
@@ -155,6 +159,61 @@ def present_dead(project_root: Path, *, threshold: int = 2) -> PresentationResul
         title="Dead Code Radar",
         summary=summary,
         primary_text=render_dead(result),
+    )
+
+
+def present_artifacts(
+    project_root: Path,
+    *,
+    older_than: int | None = None,
+    min_score: int | None = None,
+    by_resolution: bool = False,
+) -> PresentationResult:
+    """Run artifact hygiene and normalize the result for GUI/TUI consumers."""
+    args = argparse.Namespace(
+        older_than=older_than,
+        min_score=min_score,
+        by_resolution=by_resolution,
+        json=False,
+        delete_list=False,
+    )
+    artifact_data = run_artifact_hygiene(args, project_root)
+    result = artifact_data["result"]
+    summary = result.get("summary", {})
+    safe_candidates = result.get("safe_to_delete_candidates", [])
+    top_safe_candidates = safe_candidates[:10]
+    lines = [
+        "Artifact Hygiene",
+        "----------------",
+        f"Safe to delete now: {summary.get('safe_to_delete', 0)}",
+        f"Reclaimable space: {summary.get('safe_to_delete_mb', 0)} MB",
+        f"Duplicate groups: {summary.get('duplicate_groups', 0)}",
+        f"High confidence: {summary.get('high_confidence_cleanup_candidates', 0)}",
+    ]
+    if top_safe_candidates:
+        lines.append("")
+        lines.append("Top Safe Delete Candidates")
+        lines.append("-------------------------")
+        lines.extend(
+            f"- {candidate['path']} ({candidate.get('size_bytes', 0)} B)"
+            for candidate in top_safe_candidates
+        )
+
+    return PresentationResult(
+        workflow="artifacts",
+        title="Artifact Hygiene",
+        summary={
+            "safe_to_delete": summary.get("safe_to_delete", 0),
+            "reclaimable_mb": summary.get("safe_to_delete_mb", 0),
+            "duplicate_groups": summary.get("duplicate_groups", 0),
+            "high_confidence": summary.get("high_confidence_cleanup_candidates", 0),
+        },
+        primary_text="\n".join(lines),
+        report_paths={
+            "markdown": artifact_data["paths"]["markdown"],
+            "json": artifact_data["paths"]["json"],
+            "delete_list": artifact_data["paths"]["delete_list"],
+        },
     )
 
 
@@ -320,6 +379,9 @@ def present_report_registry(project_root: Path) -> PresentationResult:
         summary={"report_count": len(reports), "available": sum(1 for report in reports if report.get("exists"))},
         primary_text="\n".join(lines),
         report_paths={
+            "artifact_markdown": get_artifact_report_path(project_root),
+            "artifact_json": get_artifact_data_path(project_root),
+            "artifact_delete_list": get_artifact_delete_list_path(project_root),
             "graph_report": get_graph_report_path(project_root),
             "graph_metrics": get_graph_metrics_path(project_root),
             "vfx_markdown": get_vfx_contract_report_path(project_root),

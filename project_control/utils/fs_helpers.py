@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 import subprocess
 from typing import Sequence
 
 LOGGER = logging.getLogger(__name__)
 
 
-def run_rg(pattern: str, extra_args: Sequence[str] | None = None) -> str:
+def run_rg(pattern: str, extra_args: Sequence[str] | None = None, cwd: str | Path | None = None) -> str:
     """
     Execute ripgrep with the provided pattern and return its stdout.
 
@@ -31,6 +32,7 @@ def run_rg(pattern: str, extra_args: Sequence[str] | None = None) -> str:
             text=True,
             encoding="utf-8",
             errors="ignore",
+            cwd=str(cwd) if cwd is not None else None,
         )
         return result.stdout
     except FileNotFoundError:
