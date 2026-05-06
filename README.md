@@ -21,6 +21,15 @@ pc ghost
 pc graph report
 ```
 
+If `pc` is not recognized on your machine, use one of these local launchers from the repository root instead:
+
+```bash
+python gui.py           # easiest desktop window
+python pc.py gui        # same GUI through the root launcher
+python pc.py ui         # text menu
+python -m project_control.pc gui
+```
+
 Or use the new diagnostic commands:
 
 ```bash
@@ -141,6 +150,20 @@ pc --version
 pc --help
 ```
 
+If `pc` says "not recognized", that means the package is not installed into your shell PATH yet. You can either:
+
+```bash
+python -m pip install -e .
+```
+
+or run it locally from the repository root without installing:
+
+```bash
+python gui.py
+python pc.py gui
+python pc.py ui
+```
+
 ---
 
 ## Quick Start
@@ -189,6 +212,22 @@ pc search "TODO"       # Smart Search
 ```bash
 pc ui
 pc gui
+```
+
+### Simplest launch from a cloned repository
+
+From the repository root:
+
+```bash
+python gui.py
+```
+
+On Windows you can also double-click:
+
+```text
+OPEN_PROJECT_CONTROL.bat
+start_gui.bat
+start_menu.bat
 ```
 
 ---
