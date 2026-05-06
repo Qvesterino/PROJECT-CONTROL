@@ -454,6 +454,7 @@ def _change_mode_simple(project_root: Path, state: AppState) -> AppState:
             trace_direction=state.trace_direction,
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
+            last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
         print_success(f"Project type set to {label}")
@@ -495,6 +496,7 @@ def _change_profile_simple(project_root: Path, state: AppState) -> AppState:
             trace_direction=state.trace_direction,
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
+            last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
         print_success(f"Strictness set to {label}")
@@ -695,6 +697,7 @@ def _change_mode(project_root: Path, state: AppState) -> AppState:
             trace_direction=state.trace_direction,
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
+            last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
         print(f"  Mode set to {label}.")
@@ -715,6 +718,7 @@ def _change_profile(project_root: Path, state: AppState) -> AppState:
             trace_direction=state.trace_direction,
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
+            last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
         print(f"  Profile set to {PROFILE_LABELS[mapping[choice]]}.")
@@ -736,6 +740,7 @@ def _change_direction(project_root: Path, state: AppState) -> AppState:
             trace_direction=mapping[choice],
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
+            last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
         print(f"  Direction set to {DIRECTION_LABELS[mapping[choice]]}.")
@@ -757,6 +762,7 @@ def _change_depth(project_root: Path, state: AppState) -> AppState:
             trace_direction=state.trace_direction,
             trace_depth=new_depth,
             trace_all_paths=state.trace_all_paths,
+            last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
         print(f"  Depth set to {new_depth}.")
@@ -773,6 +779,7 @@ def _toggle_all_paths(project_root: Path, state: AppState) -> AppState:
         trace_direction=state.trace_direction,
         trace_depth=state.trace_depth,
         trace_all_paths=new_val,
+        last_ui_verification_profile=state.last_ui_verification_profile,
     )
     save_state(project_root, state)
     print(f"  Trace all paths: {'Yes' if new_val else 'No'}")
@@ -1112,7 +1119,7 @@ def _quick_actions_menu(project_root: Path, state: AppState) -> None:
         elif choice == "6":
             _quick_vfx_audit(project_root)
         elif choice == "7":
-            _quick_ui_verify(project_root)
+            state = _quick_ui_verify(project_root, state)
         elif choice == "8":
             state = _quick_favorites_menu(project_root, state)
         elif choice == "9":
@@ -1272,7 +1279,7 @@ def _quick_vfx_audit(project_root: Path) -> None:
     input("\nPress Enter to return...")
 
 
-def _quick_ui_verify(project_root: Path) -> None:
+def _quick_ui_verify(project_root: Path, state: AppState) -> AppState:
     """Quick UI verification using discovered project profiles."""
     print("\n" + "="*60)
     print("  UI VERIFICATION")
@@ -1282,11 +1289,28 @@ def _quick_ui_verify(project_root: Path) -> None:
     valid_profiles = [profile for profile in profiles if profile.is_valid]
     selected_profile_name: str | None = None
 
-    if len(valid_profiles) > 1:
+    if state.last_ui_verification_profile:
+        remembered_profile = next(
+            (
+                profile
+                for profile in valid_profiles
+                if profile.name.lower() == state.last_ui_verification_profile.lower()
+            ),
+            None,
+        )
+        if remembered_profile is not None:
+            selected_profile_name = remembered_profile.name
+            print_info(f"Using remembered profile: {selected_profile_name}")
+        elif len(valid_profiles) > 1:
+            print_warning(
+                f"Remembered profile '{state.last_ui_verification_profile}' is no longer available."
+            )
+
+    if selected_profile_name is None and len(valid_profiles) > 1:
         selected_profile_name = _pick_ui_verification_profile(valid_profiles)
         if selected_profile_name is None:
-            return
-    elif len(valid_profiles) == 1 and not valid_profiles[0].is_default:
+            return state
+    elif selected_profile_name is None and len(valid_profiles) == 1:
         selected_profile_name = valid_profiles[0].name
 
     config_path = get_default_ui_verification_config_path(project_root)
@@ -1299,14 +1323,14 @@ def _quick_ui_verify(project_root: Path) -> None:
             print(f"Template: {template_path}")
 
         input("\nPress Enter to return...")
-        return
+        return state
 
     if not valid_profiles:
         print_warning("No valid UI verification profiles found.")
         for profile in profiles:
             print(f"- {profile.name}: {profile.error or 'Invalid profile'}")
         input("\nPress Enter to return...")
-        return
+        return state
 
     try:
         with ErrorContext("Running UI verification"):
@@ -1321,11 +1345,14 @@ def _quick_ui_verify(project_root: Path) -> None:
             print(f"Data:    {json_path}")
             if html_path is not None:
                 print(f"HTML:    {html_path}")
+            state.last_ui_verification_profile = selected_profile_name
+            save_state(project_root, state)
             view_ui_verification_report(project_root, show_content=True)
     except Exception as e:
         ErrorHandler.handle(e, "Running UI verification")
 
     input("\nPress Enter to return...")
+    return state
 
 
 def _pick_ui_verification_profile(profiles: list) -> str | None:

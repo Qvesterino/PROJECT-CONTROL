@@ -303,6 +303,7 @@ class Wizard:
             favorites=state.favorites,
             history=state.history,
             onboarding_seen=True,  # Mark onboarding as complete
+            last_ui_verification_profile=state.last_ui_verification_profile,
         )
         
         save_state(self.project_root, new_state)

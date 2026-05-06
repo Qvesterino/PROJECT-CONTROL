@@ -79,12 +79,51 @@ class TestUIVerificationMenuIntegration(TestCase):
                 ):
                     with patch("builtins.input", side_effect=[""]):
                         with redirect_stdout(buffer):
-                            _quick_ui_verify(self.project_root)
+                                result_state = _quick_ui_verify(self.project_root, AppState())
 
         output = buffer.getvalue()
         self.assertIn("UI verification complete", output)
-        run_mock.assert_called_once_with(self.project_root, profile_name=None, include_html=True)
+        run_mock.assert_called_once_with(self.project_root, profile_name="ui-verification", include_html=True)
         view_mock.assert_called_once_with(self.project_root, show_content=True)
+        self.assertEqual(result_state.last_ui_verification_profile, "ui-verification")
+
+    def test_quick_ui_verify_uses_remembered_profile_without_prompt(self) -> None:
+        markdown_path = self.project_root / ".project-control" / "exports" / "ui_verification_report.md"
+        json_path = self.project_root / ".project-control" / "exports" / "ui_verification_data.json"
+        html_path = self.project_root / ".project-control" / "exports" / "ui_verification_report.html"
+        profiles = (
+            UIVerificationProfileInfo(
+                name="alpha",
+                app_name="Alpha UI",
+                path=self.project_root / ".project-control" / "ui-profiles" / "alpha.yaml",
+                source="project-profile",
+                is_default=False,
+                is_valid=True,
+            ),
+            UIVerificationProfileInfo(
+                name="beta",
+                app_name="Beta UI",
+                path=self.project_root / ".project-control" / "ui-profiles" / "beta.yaml",
+                source="project-profile",
+                is_default=False,
+                is_valid=True,
+            ),
+        )
+
+        state = AppState(last_ui_verification_profile="beta")
+        buffer = io.StringIO()
+        with patch("project_control.cli.menu.list_ui_verification_profiles", return_value=profiles):
+            with patch(
+                "project_control.cli.menu.run_ui_verification_profile",
+                return_value=(object(), profiles[1].path, markdown_path, json_path, html_path),
+            ) as run_mock:
+                with patch("project_control.cli.menu.view_ui_verification_report"):
+                    with patch("builtins.input", side_effect=[""]):
+                        with redirect_stdout(buffer):
+                            result_state = _quick_ui_verify(self.project_root, state)
+
+        run_mock.assert_called_once_with(self.project_root, profile_name="beta", include_html=True)
+        self.assertEqual(result_state.last_ui_verification_profile, "beta")
 
     def test_quick_ui_verify_prompts_for_profile_when_multiple_valid_profiles_exist(self) -> None:
         markdown_path = self.project_root / ".project-control" / "exports" / "ui_verification_report.md"
@@ -118,6 +157,7 @@ class TestUIVerificationMenuIntegration(TestCase):
                 with patch("project_control.cli.menu.view_ui_verification_report"):
                     with patch("builtins.input", side_effect=["2", ""]):
                         with redirect_stdout(buffer):
-                            _quick_ui_verify(self.project_root)
+                            result_state = _quick_ui_verify(self.project_root, AppState())
 
         run_mock.assert_called_once_with(self.project_root, profile_name="beta", include_html=True)
+        self.assertEqual(result_state.last_ui_verification_profile, "beta")

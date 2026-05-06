@@ -67,6 +67,7 @@ def show_onboarding(project_root: Path) -> None:
         favorites=state.favorites,
         history=state.history,
         onboarding_seen=True,
+        last_ui_verification_profile=state.last_ui_verification_profile,
     )
     save_state(project_root, state)
 
@@ -165,6 +166,7 @@ def _show_command_reference() -> None:
     print("  pc audit vfx     — Audit VFX contract compliance")
     print("  pc ui verify     — Run browser-based UI verification")
     print("  pc ui verify --list-profiles — List discovered UI verification profiles")
+    print("  pc ui verify --profile <name> — Run a specific UI verification profile")
     print("  pc dead          — Find unused files")
     print("  pc search <term> — Search in code")
     print("  pc explore       — Interactive file browser")
@@ -176,6 +178,7 @@ def _show_command_reference() -> None:
     print("  • Project type is auto-detected (JS/TS/Python)")
     print("  • Settings saved in .project-control/config.json")
     print("  • Customize patterns in .project-control/patterns.yaml")
+    print("  • UI verification profiles live in .project-control/ui-profiles/")
     print()
     
     input("\nPress Enter to return...")

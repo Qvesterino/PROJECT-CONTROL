@@ -17,6 +17,7 @@ class AppState:
     favorites: list[str] = None  # List of frequently traced targets
     history: list[str] = None  # List of recent actions
     onboarding_seen: bool = False  # Whether user has seen onboarding
+    last_ui_verification_profile: str | None = None  # Last selected UI verify profile
 
     def __post_init__(self):
         if self.favorites is None:
@@ -49,6 +50,7 @@ def load_state(project_root: Path) -> AppState:
         favorites=data.get("favorites", []),
         history=data.get("history", []),
         onboarding_seen=data.get("onboarding_seen", False),
+        last_ui_verification_profile=data.get("last_ui_verification_profile"),
     )
 
 
@@ -65,6 +67,7 @@ def save_state(project_root: Path, state: AppState) -> None:
         "favorites": state.favorites,
         "history": state.history,
         "onboarding_seen": state.onboarding_seen,
+        "last_ui_verification_profile": state.last_ui_verification_profile,
     }
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -81,6 +84,7 @@ def add_to_history(state: AppState, action: str) -> AppState:
         favorites=state.favorites,
         history=new_history,
         onboarding_seen=state.onboarding_seen,
+        last_ui_verification_profile=state.last_ui_verification_profile,
     )
 
 
@@ -98,6 +102,7 @@ def add_to_favorites(state: AppState, target: str) -> AppState:
         favorites=new_favorites,
         history=state.history,
         onboarding_seen=state.onboarding_seen,
+        last_ui_verification_profile=state.last_ui_verification_profile,
     )
 
 
@@ -113,4 +118,5 @@ def remove_from_favorites(state: AppState, target: str) -> AppState:
         favorites=new_favorites,
         history=state.history,
         onboarding_seen=state.onboarding_seen,
+        last_ui_verification_profile=state.last_ui_verification_profile,
     )
