@@ -36,7 +36,7 @@ THAT'S IT!
 Now you know what's happening in your codebase.
 
 INTERACTIVE MODE:
-   $ pc ui
+   $ pc tui
    Access all features through a friendly text-based menu.
 
 COMMON WORKFLOW:
@@ -44,10 +44,12 @@ COMMON WORKFLOW:
    2) pc ghost          - Find dead code
    3) pc graph build    - Analyze dependencies
    4) pc graph report   - View results
+   5) pc artifacts      - Find temporary screenshots and debug assets
+   6) pc audits retention - Find stale generated audits and reports
 
 NEED MORE?
    Use 'pc --help' for command reference
-   Use 'pc ui' for interactive menu with built-in help
+   Use 'pc tui' for interactive menu with built-in help
 """
 
 
@@ -66,6 +68,12 @@ ANALYSIS & SEARCH:
   pc ghost          Run ghost analysis (orphans, legacy, sessions, etc.)
   pc ghost --mode strict     Strict mode - no ignore patterns
   pc find <symbol>  Search for symbol usage across project
+  pc dead           Find unused files with low usage
+  pc unused         Find unused systems/modules
+  pc patterns       Detect suspicious or forbidden code patterns
+  pc search <term>  Search code with filters
+  pc artifacts      Find temporary screenshots and debug assets
+  pc audits retention  Find stale generated audits and reports
 
 DEPENDENCY GRAPH:
   pc graph build    Build import dependency graph
@@ -73,7 +81,10 @@ DEPENDENCY GRAPH:
   pc graph trace <target>    Trace dependency paths
 
 INTERACTIVE UI:
-  pc ui             Launch interactive text-based menu
+  pc tui            Launch interactive text-based menu
+  pc ui             Deprecated alias for pc tui
+  pc tui verify     Run browser-based UI verification
+  pc gui            Launch the desktop Tkinter GUI
 
 CODE QUALITY:
   pc writers        Analyze writer patterns in codebase
@@ -397,7 +408,7 @@ GETTING MORE HELP:
    - Use --verbose flag (if available)
 
 2. Try interactive mode
-   - pc ui has built-in diagnostics
+   - pc tui has built-in diagnostics
    - Tools → Diagnostics shows system info
 
 3. Check documentation
@@ -436,7 +447,7 @@ KEYBOARD SHORTCUTS
 
 MAIN MENU:
   0        Return to previous menu / Exit
-  1-8      Select menu option by number
+  1-6      Select menu option by number
   Q        Open Quick Actions menu
   Enter    Confirm selection / Continue
 
@@ -446,8 +457,12 @@ QUICK ACTIONS MENU (Q):
   3        Find Orphans
   4        Find Cycles
   5        Dependency Audit
-  6        Favorites
-  7        History
+  6        VFX Audit
+  7        UI Verify
+  8        Artifact Hygiene
+  9        Audit Retention
+  10       Favorites
+  11       History
   0        Back
 
 TOOLS MENU (7):

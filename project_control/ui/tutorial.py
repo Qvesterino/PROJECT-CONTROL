@@ -411,7 +411,7 @@ def interactive_menu_tutorial() -> Tutorial:
     """Get the interactive menu tutorial."""
     return Tutorial(
         name="Interactive Menu Guide",
-        description="Learn how to use the interactive menu (pc ui) to perform all tasks without remembering commands.",
+        description="Learn how to use the interactive menu (pc tui) to perform all tasks without remembering commands.",
         duration="4 minutes",
         difficulty="Beginner",
         steps=[
@@ -421,7 +421,7 @@ def interactive_menu_tutorial() -> Tutorial:
                 title="Launch the Menu",
                 explanation="Start the interactive menu system.",
                 action_type="command",
-                action_data={"command": "pc ui"},
+                action_data={"command": "pc tui"},
                 expected_result="You'll see the main menu with Quick Actions, Main Tools, and Advanced sections."
             ),
             TutorialStep(

@@ -12,6 +12,27 @@ from project_control.cli.router import dispatch
 from project_control import __version__
 
 
+def _add_tui_subcommands(parser: argparse.ArgumentParser, dest: str) -> None:
+    """Attach shared TUI subcommands to a parser."""
+    subparsers = parser.add_subparsers(dest=dest)
+
+    subparsers.add_parser("menu", help="Launch interactive menu mode")
+
+    verify_parser = subparsers.add_parser("verify", help="Run configurable browser-based UI verification")
+    verify_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+    verify_parser.add_argument("--config", help="Path to the UI verification YAML profile")
+    verify_parser.add_argument("--profile", help="Discovered UI verification profile name")
+    verify_parser.add_argument("--list-profiles", action="store_true", help="List discovered UI verification profiles")
+    verify_parser.add_argument("--url", help="Override the profile base URL")
+    verify_parser.add_argument("--image", help="Override the configured test image path")
+    verify_parser.add_argument("--screenshots", help="Directory for screenshots")
+    verify_parser.add_argument("--output", help="Output directory for reports")
+    verify_parser.add_argument("--html", action="store_true", help="Generate HTML dashboard output")
+    verify_parser.add_argument("--json", action="store_true", help="Print structured JSON to stdout")
+    verify_parser.add_argument("--headless", action="store_true", default=True, help="Run browser headless")
+    verify_parser.add_argument("--no-headless", action="store_false", dest="headless", help="Show browser window")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="PROJECT CONTROL - Deterministic architectural analysis engine",
@@ -67,6 +88,17 @@ def build_parser() -> argparse.ArgumentParser:
     audit_vfx_parser.add_argument("--output", help="Output directory for reports")
     audit_vfx_parser.add_argument("--json", action="store_true", help="Print JSON to stdout")
 
+    audits_parser = subparsers.add_parser("audits", help="Retention and hygiene workflows for generated audits")
+    audits_subparsers = audits_parser.add_subparsers(dest="audits_cmd")
+    audits_retention_parser = audits_subparsers.add_parser("retention", help="Audit Retention Engine - find stale generated audits and reports")
+    audits_retention_parser.add_argument("--older-than", type=int, dest="older_than", help="Override audit_retention.older_than_days for this run")
+    audits_retention_parser.add_argument("--min-score", type=int, dest="min_score", help="Override audit_retention.min_score for this run")
+    audits_retention_parser.add_argument("--keep-latest", type=int, dest="keep_latest", help="Override audit_retention.keep_latest_per_family for this run")
+    audits_retention_parser.add_argument("--by-family", action="store_true", help="Include grouped-by-family summary in console output")
+    audits_retention_output_group = audits_retention_parser.add_mutually_exclusive_group()
+    audits_retention_output_group.add_argument("--json", action="store_true", help="Print audit retention JSON payload to stdout")
+    audits_retention_output_group.add_argument("--delete-list", action="store_true", help="Print delete candidate paths to stdout")
+
     ghost_parser = subparsers.add_parser("ghost")
     ghost_parser.add_argument("--mode", choices=["strict", "pragmatic"], default="pragmatic")
     ghost_parser.add_argument("--max-high", type=int, default=-1)
@@ -111,24 +143,11 @@ def build_parser() -> argparse.ArgumentParser:
     graph_trace_parser.add_argument("--no-limits", action="store_true", help="Disable depth/path limits")
     graph_trace_parser.add_argument("--config", type=str, help="Path to graph config YAML", default=None)
 
-    ui_parser = subparsers.add_parser("ui", help="Interactive menu mode and UI verification tools")
-    ui_subparsers = ui_parser.add_subparsers(dest="ui_cmd")
+    tui_parser = subparsers.add_parser("tui", help="Interactive terminal UI and UI verification tools")
+    _add_tui_subcommands(tui_parser, "tui_cmd")
 
-    ui_subparsers.add_parser("menu", help="Launch interactive menu mode")
-
-    ui_verify_parser = ui_subparsers.add_parser("verify", help="Run configurable browser-based UI verification")
-    ui_verify_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
-    ui_verify_parser.add_argument("--config", help="Path to the UI verification YAML profile")
-    ui_verify_parser.add_argument("--profile", help="Discovered UI verification profile name")
-    ui_verify_parser.add_argument("--list-profiles", action="store_true", help="List discovered UI verification profiles")
-    ui_verify_parser.add_argument("--url", help="Override the profile base URL")
-    ui_verify_parser.add_argument("--image", help="Override the configured test image path")
-    ui_verify_parser.add_argument("--screenshots", help="Directory for screenshots")
-    ui_verify_parser.add_argument("--output", help="Output directory for reports")
-    ui_verify_parser.add_argument("--html", action="store_true", help="Generate HTML dashboard output")
-    ui_verify_parser.add_argument("--json", action="store_true", help="Print structured JSON to stdout")
-    ui_verify_parser.add_argument("--headless", action="store_true", default=True, help="Run browser headless")
-    ui_verify_parser.add_argument("--no-headless", action="store_false", dest="headless", help="Show browser window")
+    ui_parser = subparsers.add_parser("ui", help="Deprecated alias for 'tui'")
+    _add_tui_subcommands(ui_parser, "ui_cmd")
 
     gui_parser = subparsers.add_parser("gui", help="Launch the desktop Tkinter GUI")
     gui_parser.add_argument("project_root", nargs="?", default=".", help="Project root path")

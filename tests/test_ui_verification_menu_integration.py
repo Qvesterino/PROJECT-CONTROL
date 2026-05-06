@@ -9,7 +9,13 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from project_control.cli.menu import _quick_actions_menu, _quick_ui_verify, _reports_menu
+from project_control.cli.menu import (
+    _quick_actions_menu,
+    _quick_artifact_hygiene,
+    _quick_audit_retention,
+    _quick_ui_verify,
+    _reports_menu,
+)
 from project_control.config.ui_verification_config import UIVerificationProfileInfo
 from project_control.ui.state import AppState
 
@@ -37,10 +43,14 @@ class TestUIVerificationMenuIntegration(TestCase):
 
         output = buffer.getvalue()
         self.assertIn("UI Verify", output)
+        self.assertIn("Artifact Hygiene", output)
+        self.assertIn("Audit Retention", output)
 
     def test_reports_menu_lists_ui_verification_report(self) -> None:
         export_dir = self.project_root / ".project-control" / "exports"
         export_dir.mkdir(parents=True)
+        (export_dir / "artifact_candidates.md").write_text("# Artifact Hygiene Report\n", encoding="utf-8")
+        (export_dir / "audit_retention_candidates.md").write_text("# Audit Retention Report\n", encoding="utf-8")
         (export_dir / "ui_verification_report.md").write_text("# UI Verification Report\n", encoding="utf-8")
 
         buffer = io.StringIO()
@@ -49,6 +59,8 @@ class TestUIVerificationMenuIntegration(TestCase):
                 _reports_menu(self.project_root)
 
         output = buffer.getvalue()
+        self.assertIn("Artifact Hygiene Report", output)
+        self.assertIn("Audit Retention Report", output)
         self.assertIn("UI Verification Report", output)
 
     def test_quick_ui_verify_uses_shared_service_path(self) -> None:
@@ -91,6 +103,73 @@ class TestUIVerificationMenuIntegration(TestCase):
         )
         view_mock.assert_called_once_with(self.project_root, show_content=True)
         self.assertEqual(result_state.last_ui_verification_profile, "ui-verification")
+
+    def test_quick_artifact_hygiene_runs_shared_service(self) -> None:
+        exports_dir = self.project_root / ".project-control" / "exports"
+        exports_dir.mkdir(parents=True, exist_ok=True)
+        (self.project_root / ".project-control" / "snapshot.json").write_text("{}", encoding="utf-8")
+        fake_payload = {
+            "result": {
+                "summary": {
+                    "safe_to_delete": 2,
+                    "safe_to_delete_mb": 3.5,
+                    "duplicate_groups": 1,
+                    "high_confidence_cleanup_candidates": 2,
+                }
+            },
+            "paths": {
+                "markdown": exports_dir / "artifact_candidates.md",
+                "json": exports_dir / "artifact_candidates.json",
+                "delete_list": exports_dir / "delete_candidates.txt",
+            },
+        }
+
+        buffer = io.StringIO()
+        with patch("project_control.cli.menu.run_artifact_hygiene", return_value=fake_payload) as run_mock:
+            with patch("builtins.input", side_effect=[""]):
+                with redirect_stdout(buffer):
+                    _quick_artifact_hygiene(self.project_root)
+
+        output = buffer.getvalue()
+        self.assertIn("Artifact hygiene complete", output)
+        self.assertIn("Reclaimable MB:", output)
+        self.assertIn("High confidence:", output)
+        self.assertIn("Delete list:", output)
+        run_mock.assert_called_once()
+
+    def test_quick_audit_retention_runs_shared_service(self) -> None:
+        exports_dir = self.project_root / ".project-control" / "exports"
+        exports_dir.mkdir(parents=True, exist_ok=True)
+        (self.project_root / ".project-control" / "snapshot.json").write_text("{}", encoding="utf-8")
+        fake_payload = {
+            "result": {
+                "summary": {
+                    "safe_to_delete": 1,
+                    "safe_to_delete_mb": 1.25,
+                    "duplicate_groups": 0,
+                    "high_confidence_cleanup_candidates": 1,
+                    "families_detected": 3,
+                }
+            },
+            "paths": {
+                "markdown": exports_dir / "audit_retention_candidates.md",
+                "json": exports_dir / "audit_retention_candidates.json",
+                "delete_list": exports_dir / "audit_delete_candidates.txt",
+            },
+        }
+
+        buffer = io.StringIO()
+        with patch("project_control.cli.menu.run_audit_retention", return_value=fake_payload) as run_mock:
+            with patch("builtins.input", side_effect=[""]):
+                with redirect_stdout(buffer):
+                    _quick_audit_retention(self.project_root)
+
+        output = buffer.getvalue()
+        self.assertIn("Audit retention complete", output)
+        self.assertIn("High confidence:", output)
+        self.assertIn("Families detected:", output)
+        self.assertIn("Delete list:", output)
+        run_mock.assert_called_once()
 
     def test_quick_ui_verify_uses_remembered_profile_without_prompt(self) -> None:
         markdown_path = self.project_root / ".project-control" / "exports" / "ui_verification_report.md"

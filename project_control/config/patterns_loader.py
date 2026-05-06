@@ -53,12 +53,48 @@ ARTIFACT_DEFAULTS: Dict[str, Any] = {
 }
 
 
+AUDIT_RETENTION_DEFAULTS: Dict[str, Any] = {
+    "enabled": True,
+    "older_than_days": 45,
+    "min_score": 8,
+    "keep_latest_per_family": 3,
+    "extensions": [".md", ".txt", ".json", ".html", ".csv"],
+    "suspicious_dirs": [
+        ".project-control/exports",
+        ".project-control/out",
+        "docs/audits",
+        "docs/reports",
+        "reports",
+        "audit",
+        "audits",
+        "checklists",
+        "exports",
+    ],
+    "safe_dirs": [
+        "docs/specs",
+        "docs/architecture",
+        "docs/reference",
+        "docs/adr",
+    ],
+    "family_keywords": {
+        "ghost": ["ghost", "orphan", "legacy", "semantic"],
+        "graph": ["graph", "dependency", "trace", "metrics"],
+        "ui_verification": ["ui_verification", "ui-verify", "ui_verify"],
+        "vfx": ["vfx", "contract_audit"],
+        "checklist": ["checklist"],
+        "artifacts": ["artifact", "delete_candidates"],
+        "generic_audit": ["audit", "report", "review"],
+    },
+}
+
+
 _DEFAULT_PATTERNS: Dict[str, Any] = {
     "writers": ["scale", "emissive", "opacity", "position"],
     "entrypoints": ["main.js", "index.ts"],
     "ignore_dirs": [".git", ".project-control", "node_modules", "__pycache__"],
     "extensions": [".py", ".js", ".ts", ".md", ".txt"],
     "artifacts": ARTIFACT_DEFAULTS,
+    "audit_retention": AUDIT_RETENTION_DEFAULTS,
 }
 
 
@@ -96,6 +132,11 @@ def get_scan_extensions(patterns: Dict[str, Any]) -> list[str]:
     artifacts = patterns.get("artifacts", {})
     if isinstance(artifacts, dict) and artifacts.get("enabled", True):
         for extension in artifacts.get("extensions", []):
+            if extension not in extensions:
+                extensions.append(extension)
+    audit_retention = patterns.get("audit_retention", {})
+    if isinstance(audit_retention, dict) and audit_retention.get("enabled", True):
+        for extension in audit_retention.get("extensions", []):
             if extension not in extensions:
                 extensions.append(extension)
     return extensions

@@ -11,11 +11,13 @@ from typing import Optional
 from project_control.config.patterns_loader import get_default_patterns, get_scan_extensions, load_patterns
 from project_control.core.exit_codes import EXIT_OK, EXIT_VALIDATION_ERROR
 from project_control.core.artifact_service import run_artifact_hygiene
+from project_control.core.audit_retention_service import run_audit_retention
 from project_control.core.ghost_service import run_ghost, write_ghost_report, write_ghost_tree_report
 from project_control.core.markdown_renderer import render_writer_report
 from project_control.core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
 from project_control.core.writers import run_writers_analysis
-from project_control.core.error_handler import ErrorHandler, ErrorContext
+from project_control.core.error_handler import ErrorHandler, ErrorContext, FileNotFoundError as ProjectControlFileNotFoundError
+from project_control.core.pre_flight import require_healthy_snapshot
 from project_control.utils.fs_helpers import run_rg
 from project_control.cli.graph_cmd import graph_build, graph_report, graph_trace
 from project_control.utils.renderers import render_unused, render_patterns, render_search
@@ -50,9 +52,14 @@ def ensure_control_dirs() -> None:
 def _load_existing_snapshot() -> Optional[dict]:
     try:
         return load_snapshot(PROJECT_DIR)
-    except FileNotFoundError:
+    except ProjectControlFileNotFoundError:
         print("Run 'pc scan' first.")
         return None
+
+
+def _print_tui_deprecation_notice() -> None:
+    """Warn when the deprecated `pc ui` alias is used directly."""
+    print("Note: 'pc ui' is deprecated. Prefer 'pc tui'.")
 
 
 def _ensure_gitignore() -> None:
@@ -108,9 +115,8 @@ def cmd_checklist(args: argparse.Namespace) -> int:
     """Generate checklist from snapshot with error handling."""
     try:
         with ErrorContext("Generating checklist"):
-            snapshot = _load_existing_snapshot()
-            if snapshot is None:
-                return EXIT_OK
+            require_healthy_snapshot(PROJECT_DIR, operation="checklist generation")
+            snapshot = load_snapshot(PROJECT_DIR)
 
             ensure_control_dirs()
 
@@ -350,125 +356,167 @@ def cmd_artifacts(args: argparse.Namespace) -> int:
         return ErrorHandler.handle(e, "Artifacts command")
 
 
+def cmd_audit_retention(args: argparse.Namespace) -> int:
+    """Audit Retention Engine - report stale generated audits and exports without deleting anything."""
+    try:
+        with ErrorContext("Running audit retention analysis"):
+            retention_data = run_audit_retention(args, PROJECT_DIR)
+            result = retention_data["result"]
+            summary = result.get("summary", {})
+            paths = retention_data["paths"]
+
+            if getattr(args, "json", False):
+                print(paths["json"].read_text(encoding="utf-8"))
+                return EXIT_OK
+
+            if getattr(args, "delete_list", False):
+                delete_candidates = result.get("delete_candidates", [])
+                print("\n".join(delete_candidates))
+                return EXIT_OK
+
+            print("\nAudit Retention Results")
+            print("-----------------------")
+            print(f"Reports scanned: {summary.get('total_reports_scanned', 0)}")
+            print(f"Report candidates: {summary.get('report_candidates', 0)}")
+            print(f"Safe to delete now: {summary.get('safe_to_delete', 0)}")
+            print(f"Reclaimable MB: {summary.get('safe_to_delete_mb', 0)}")
+            print(f"High confidence: {summary.get('high_confidence_cleanup_candidates', 0)}")
+            print(f"Review candidates: {summary.get('review_candidates', 0)}")
+            print(f"Duplicate groups: {summary.get('duplicate_groups', 0)}")
+            print(f"Families detected: {summary.get('families_detected', 0)}")
+            print(f"Delete candidates: {summary.get('delete_candidates', 0)}")
+
+            if getattr(args, "by_family", False):
+                print("\nBy Family")
+                for group in result.get("grouped_by_family", []):
+                    print(f"  {group['report_family']}: {group['count']}")
+
+            print(f"\nMarkdown report: {paths['markdown']}")
+            print(f"JSON data:       {paths['json']}")
+            print(f"Delete list:     {paths['delete_list']}")
+        return EXIT_OK
+    except SystemExit:
+        raise
+    except Exception as e:
+        return ErrorHandler.handle(e, "Audit retention command")
+
+
 def cmd_dead(args: argparse.Namespace) -> int:
     """Dead Code Radar - finds files with zero or minimal usage."""
     try:
-        threshold = getattr(args, "threshold", 2)
-        json_output = getattr(args, "json", False)
+        with ErrorContext("Running dead code analysis"):
+            threshold = getattr(args, "threshold", 2)
+            json_output = getattr(args, "json", False)
+            require_healthy_snapshot(PROJECT_DIR, operation="dead code analysis")
+            snapshot = load_snapshot(PROJECT_DIR)
+            files = [f.get("path") for f in snapshot.get("files", [])]
+            result = analyze_dead_code(files, low_usage_threshold=threshold)
 
-        # Load snapshot to get file list
-        snapshot = load_snapshot(PROJECT_DIR)
-        if snapshot is None:
-            print("Error: No snapshot found. Run 'pc scan' first.")
-            return EXIT_VALIDATION_ERROR
-
-        # Extract file paths from snapshot
-        files = [f.get("path") for f in snapshot.get("files", [])]
-
-        # Run analysis
-        result = analyze_dead_code(files, low_usage_threshold=threshold)
-
-        if json_output:
-            print(json.dumps(result, indent=2))
-        else:
-            output = render_dead(result)
-            _safe_print(output)
-
+            if json_output:
+                print(json.dumps(result, indent=2))
+            else:
+                output = render_dead(result)
+                _safe_print(output)
         return EXIT_OK
+    except SystemExit:
+        raise
     except Exception as e:
-        logger.error(f"Dead code analysis failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return EXIT_VALIDATION_ERROR
+        return ErrorHandler.handle(e, "Dead code analysis")
 
 
 def cmd_unused(args: argparse.Namespace) -> int:
     """Unused System Scan - finds systems that exist but aren't used."""
     try:
-        json_output = getattr(args, "json", False)
-        no_color = getattr(args, "no_color", False)
-        result = analyze_unused_systems(PROJECT_DIR)
+        with ErrorContext("Running unused systems analysis"):
+            json_output = getattr(args, "json", False)
+            no_color = getattr(args, "no_color", False)
+            result = analyze_unused_systems(PROJECT_DIR)
 
-        if json_output:
-            print(json.dumps(result, indent=2))
-        else:
-            output = render_unused(result, colored=not no_color)
-            _safe_print(output)
-
+            if json_output:
+                print(json.dumps(result, indent=2))
+            else:
+                output = render_unused(result, colored=not no_color)
+                _safe_print(output)
         return EXIT_OK
+    except SystemExit:
+        raise
     except Exception as e:
-        logger.error(f"Unused systems analysis failed: {e}")
-        return EXIT_VALIDATION_ERROR
+        return ErrorHandler.handle(e, "Unused systems analysis")
 
 
 def cmd_patterns(args: argparse.Namespace) -> int:
     """Suspicious Patterns - detects forbidden code patterns."""
     try:
-        patterns_file = getattr(args, "file", None)
-        json_output = getattr(args, "json", False)
-        no_color = getattr(args, "no_color", False)
-        result = analyze_patterns(PROJECT_DIR, patterns_file=patterns_file)
+        with ErrorContext("Running suspicious patterns analysis"):
+            patterns_file = getattr(args, "file", None)
+            json_output = getattr(args, "json", False)
+            no_color = getattr(args, "no_color", False)
+            result = analyze_patterns(PROJECT_DIR, patterns_file=patterns_file)
 
-        if json_output:
-            print(json.dumps(result, indent=2))
-        else:
-            output = render_patterns(result, colored=not no_color)
-            _safe_print(output)
-
+            if json_output:
+                print(json.dumps(result, indent=2))
+            else:
+                output = render_patterns(result, colored=not no_color)
+                _safe_print(output)
         return EXIT_OK
+    except SystemExit:
+        raise
     except Exception as e:
-        logger.error(f"Patterns analysis failed: {e}")
-        return EXIT_VALIDATION_ERROR
+        return ErrorHandler.handle(e, "Suspicious patterns analysis")
 
 
 def cmd_search(args: argparse.Namespace) -> int:
     """Smart Search - power-user code search."""
     try:
-        patterns = getattr(args, "pattern", [])
-        invert = getattr(args, "invert", False)
-        files_only = getattr(args, "files_only", False)
-        json_output = getattr(args, "json", False)
-        no_color = getattr(args, "no_color", False)
+        with ErrorContext("Running smart search"):
+            patterns = getattr(args, "pattern", [])
+            invert = getattr(args, "invert", False)
+            files_only = getattr(args, "files_only", False)
+            json_output = getattr(args, "json", False)
+            no_color = getattr(args, "no_color", False)
 
-        if not patterns:
-            print("Error: At least one pattern is required")
-            return EXIT_VALIDATION_ERROR
+            if not patterns:
+                print("Error: At least one pattern is required")
+                return EXIT_VALIDATION_ERROR
 
-        result = smart_search(patterns, PROJECT_DIR, invert=invert, files_only=files_only)
+            result = smart_search(patterns, PROJECT_DIR, invert=invert, files_only=files_only)
 
-        if json_output:
-            print(json.dumps(result, indent=2))
-        else:
-            output = render_search(result, colored=not no_color)
-            _safe_print(output)
-
+            if json_output:
+                print(json.dumps(result, indent=2))
+            else:
+                output = render_search(result, colored=not no_color)
+                _safe_print(output)
         return EXIT_OK
+    except SystemExit:
+        raise
     except Exception as e:
-        logger.error(f"Search failed: {e}")
-        return EXIT_VALIDATION_ERROR
+        return ErrorHandler.handle(e, "Smart search")
 
 
 def cmd_audit_vfx(args: argparse.Namespace) -> int:
     """VFX contract audit for FX-oriented JavaScript files."""
     try:
-        project_root = Path(getattr(args, "project_root", ".")).resolve()
-        json_output = getattr(args, "json", False)
-        output_dir = getattr(args, "output", None)
+        with ErrorContext("Running VFX contract audit"):
+            project_root = Path(getattr(args, "project_root", ".")).resolve()
+            json_output = getattr(args, "json", False)
+            output_dir = getattr(args, "output", None)
+            require_healthy_snapshot(project_root, operation="VFX contract audit")
 
-        target_dir = Path(output_dir).resolve() if output_dir else project_root / ".project-control" / "exports"
-        result, markdown_path, json_path = run_vfx_contract_audit(project_root, target_dir)
+            target_dir = Path(output_dir).resolve() if output_dir else project_root / ".project-control" / "exports"
+            result, markdown_path, json_path = run_vfx_contract_audit(project_root, target_dir)
 
-        if json_output:
-            print(json.dumps(vfx_contract_result_to_dict(result), indent=2, ensure_ascii=False))
-        else:
-            _safe_print(render_vfx_contract_console(result))
+            if json_output:
+                print(json.dumps(vfx_contract_result_to_dict(result), indent=2, ensure_ascii=False))
+            else:
+                _safe_print(render_vfx_contract_console(result))
 
-        if not json_output:
-            print(f"VFX audit report saved: {markdown_path}")
-            print(f"VFX audit data saved:   {json_path}")
+            if not json_output:
+                print(f"VFX audit report saved: {markdown_path}")
+                print(f"VFX audit data saved:   {json_path}")
         return EXIT_OK
+    except SystemExit:
+        raise
     except Exception as e:
-        logger.error(f"VFX contract audit failed: {e}")
         return ErrorHandler.handle(e, "VFX contract audit")
 
 
@@ -578,14 +626,24 @@ def dispatch(args: argparse.Namespace) -> int:
             return cmd_audit_vfx(args)
         print("Unknown audit command.")
         return EXIT_VALIDATION_ERROR
-    if args.command == "ui":
-        ui_cmd = getattr(args, "ui_cmd", None)
+    if args.command == "audits":
+        if getattr(args, "audits_cmd", None) == "retention":
+            return cmd_audit_retention(args)
+        print("Unknown audits command.")
+        return EXIT_VALIDATION_ERROR
+    if args.command in ("ui", "tui"):
+        command_label = "tui" if args.command == "tui" else "ui"
+        if args.command == "ui":
+            _print_tui_deprecation_notice()
+        ui_cmd = getattr(args, "tui_cmd", None)
+        if ui_cmd is None:
+            ui_cmd = getattr(args, "ui_cmd", None)
         if ui_cmd in (None, "menu"):
             run_menu(PROJECT_DIR)
             return EXIT_OK
         if ui_cmd == "verify":
             return cmd_ui_verify(args)
-        print("Unknown ui command.")
+        print(f"Unknown {command_label} command.")
         return EXIT_VALIDATION_ERROR
     if args.command == "gui":
         return _handle_gui_command(args)
@@ -912,7 +970,7 @@ def _handle_wizard_command(args: argparse.Namespace) -> int:
             print_info("\nNext steps:")
             print("  • Run 'pc scan' to index your project")
             print("  • Run 'pc quick' for a full analysis")
-            print("  • Run 'pc ui' for the interactive menu")
+            print("  • Run 'pc tui' for the interactive menu")
             return EXIT_OK
         else:
             print_warning("\nWizard was cancelled. No changes were made.")

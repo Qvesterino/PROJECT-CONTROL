@@ -23,6 +23,7 @@ class GUIAppTests(unittest.TestCase):
         self.assertIn("scan", controller.workflow_handlers)
         self.assertIn("ghost", controller.workflow_handlers)
         self.assertIn("artifacts", controller.workflow_handlers)
+        self.assertIn("audit_retention", controller.workflow_handlers)
         self.assertIn("graph_trace", controller.workflow_handlers)
         self.assertIn("ui_verification", controller.workflow_handlers)
 
@@ -87,6 +88,7 @@ class GUIAppTests(unittest.TestCase):
         try:
             self.assertIn("scan", app.sidebar_actions)
             self.assertIn("artifacts", app.sidebar_actions)
+            self.assertIn("audit_retention", app.sidebar_actions)
             self.assertIn("reports", app.sidebar_actions)
             self.assertIn("settings", app.tab_frames)
         finally:
@@ -98,6 +100,9 @@ class GUIAppTests(unittest.TestCase):
         (export_dir / "artifact_candidates.md").write_text("# Artifact Hygiene Report\n", encoding="utf-8")
         (export_dir / "artifact_candidates.json").write_text('{"summary": {"safe_to_delete": 1}}', encoding="utf-8")
         (export_dir / "delete_candidates.txt").write_text("test-results/test-failed-home.png\n", encoding="utf-8")
+        (export_dir / "audit_retention_candidates.md").write_text("# Audit Retention Report\n", encoding="utf-8")
+        (export_dir / "audit_retention_candidates.json").write_text('{"summary": {"safe_to_delete": 1}}', encoding="utf-8")
+        (export_dir / "audit_delete_candidates.txt").write_text(".project-control/exports/ghost_old.md\n", encoding="utf-8")
 
         try:
             root = ProjectControlGUI.create_root()
@@ -111,5 +116,8 @@ class GUIAppTests(unittest.TestCase):
             self.assertTrue(any("Artifact Hygiene Report" in label for label in labels))
             self.assertTrue(any("Artifact Hygiene Data" in label for label in labels))
             self.assertTrue(any("Artifact Delete Candidate List" in label for label in labels))
+            self.assertTrue(any("Audit Retention Report" in label for label in labels))
+            self.assertTrue(any("Audit Retention Data" in label for label in labels))
+            self.assertTrue(any("Audit Delete Candidate List" in label for label in labels))
         finally:
             app.destroy()

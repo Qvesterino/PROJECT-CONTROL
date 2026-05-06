@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from project_control.config.patterns_loader import ARTIFACT_DEFAULTS
+from project_control.config.patterns_loader import ARTIFACT_DEFAULTS, AUDIT_RETENTION_DEFAULTS
 
 
 @dataclass
@@ -30,11 +30,20 @@ class PresetConfig:
     category: str = "custom"  # builtin | custom
 
 
+def _copy_nested_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _copy_nested_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_copy_nested_value(item) for item in value]
+    return value
+
+
 def _artifact_defaults_copy() -> Dict[str, Any]:
-    return {
-        key: value.copy() if isinstance(value, list) else value
-        for key, value in ARTIFACT_DEFAULTS.items()
-    }
+    return {key: _copy_nested_value(value) for key, value in ARTIFACT_DEFAULTS.items()}
+
+
+def _audit_retention_defaults_copy() -> Dict[str, Any]:
+    return {key: _copy_nested_value(value) for key, value in AUDIT_RETENTION_DEFAULTS.items()}
 
 
 # ── Built-in Presets ───────────────────────────────────────────────────────
@@ -58,6 +67,7 @@ REACT_FRONTEND_PRESET = PresetConfig(
         ],
         "extensions": [".js", ".jsx", ".ts", ".tsx", ".json", ".md"],
         "artifacts": _artifact_defaults_copy(),
+        "audit_retention": _audit_retention_defaults_copy(),
     },
     graph_config={
         "include_globs": [
@@ -119,6 +129,7 @@ PYTHON_BACKEND_PRESET = PresetConfig(
         ],
         "extensions": [".py", ".md", ".txt", ".yaml", ".yml"],
         "artifacts": _artifact_defaults_copy(),
+        "audit_retention": _audit_retention_defaults_copy(),
     },
     graph_config={
         "include_globs": [
@@ -177,6 +188,7 @@ FULL_STACK_PRESET = PresetConfig(
         ],
         "extensions": [".js", ".jsx", ".ts", ".tsx", ".py", ".json", ".md", ".yaml", ".yml"],
         "artifacts": _artifact_defaults_copy(),
+        "audit_retention": _audit_retention_defaults_copy(),
     },
     graph_config={
         "include_globs": [

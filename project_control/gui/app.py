@@ -16,6 +16,7 @@ from tkinter import scrolledtext, ttk
 from project_control.presentation.adapters import (
     PresentationResult,
     present_artifacts,
+    present_audit_retention,
     present_dead,
     present_ghost,
     present_graph_report,
@@ -99,6 +100,7 @@ class GUIController:
             "ghost": self.run_ghost,
             "dead": self.run_dead,
             "artifacts": self.run_artifacts,
+            "audit_retention": self.run_audit_retention,
             "graph_report": self.run_graph_report,
             "graph_trace": self.run_graph_trace,
             "reports": self.get_reports,
@@ -163,6 +165,9 @@ class GUIController:
     def run_artifacts(self) -> PresentationResult:
         return present_artifacts(self.project_root)
 
+    def run_audit_retention(self) -> PresentationResult:
+        return present_audit_retention(self.project_root)
+
     def run_graph_report(self) -> PresentationResult:
         return present_graph_report(self.project_root, self.refresh_state())
 
@@ -203,6 +208,7 @@ class ProjectControlGUI:
         "ghost": "ghost_dead",
         "dead": "ghost_dead",
         "artifacts": "audits",
+        "audit_retention": "audits",
         "graph_report": "graph",
         "graph_trace": "graph",
         "reports": "reports",
@@ -331,6 +337,7 @@ class ProjectControlGUI:
             ("ghost", "Run Ghost", lambda: self._submit("ghost", mode=self.ghost_mode_var.get(), tree=self.ghost_tree_var.get())),
             ("dead", "Run Dead", lambda: self._submit("dead", threshold=self.dead_threshold_var.get())),
             ("artifacts", "Run Artifacts", lambda: self._submit("artifacts")),
+            ("audit_retention", "Run Audit Retention", lambda: self._submit("audit_retention")),
             ("graph_report", "Graph Report", lambda: self._submit("graph_report")),
             ("graph_trace", "Graph Trace", self._submit_graph_trace),
             ("vfx_audit", "VFX Audit", lambda: self._submit("vfx_audit")),
@@ -474,7 +481,8 @@ class ProjectControlGUI:
         form.pack(fill=tk.X, padx=10, pady=(10, 6), before=self.tab_text_widgets["audits"])
 
         tk.Button(form, text="Run Artifacts", command=lambda: self._submit("artifacts"), bg=THEME["accent"], fg=THEME["bg"], relief=tk.FLAT).grid(row=0, column=0, padx=(0, 8), sticky="w")
-        tk.Button(form, text="Run VFX Audit", command=lambda: self._submit("vfx_audit"), bg=THEME["accent"], fg=THEME["bg"], relief=tk.FLAT).grid(row=0, column=1, padx=(0, 8), sticky="w")
+        tk.Button(form, text="Run Audit Retention", command=lambda: self._submit("audit_retention"), bg=THEME["accent"], fg=THEME["bg"], relief=tk.FLAT).grid(row=0, column=1, padx=(0, 8), sticky="w")
+        tk.Button(form, text="Run VFX Audit", command=lambda: self._submit("vfx_audit"), bg=THEME["accent"], fg=THEME["bg"], relief=tk.FLAT).grid(row=0, column=2, padx=(0, 8), sticky="w")
         tk.Label(form, text="UI profile", bg=THEME["bg"], fg=THEME["text"]).grid(row=1, column=0, sticky="w", pady=(10, 0))
         tk.Entry(form, textvariable=self.ui_profile_var, width=32, bg=THEME["panel_alt"], fg=THEME["text"], insertbackground=THEME["text"]).grid(row=1, column=1, padx=8, pady=(10, 0), sticky="w")
         tk.Button(form, text="Run UI Verify", command=self._submit_ui_verify, bg=THEME["accent"], fg=THEME["bg"], relief=tk.FLAT).grid(row=1, column=2, padx=8, pady=(10, 0))

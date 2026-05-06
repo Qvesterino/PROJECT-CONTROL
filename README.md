@@ -26,7 +26,7 @@ If `pc` is not recognized on your machine, use one of these local launchers from
 ```bash
 python gui.py           # easiest desktop window
 python pc.py gui        # same GUI through the root launcher
-python pc.py ui         # text menu
+python pc.py tui        # text menu
 python -m project_control.pc gui
 ```
 
@@ -37,6 +37,8 @@ pc dead        # Find dead code
 pc unused      # Find unused systems
 pc patterns    # Detect suspicious patterns
 pc search TODO # Smart search
+pc artifacts   # Find temporary screenshots and debug assets
+pc audits retention # Find stale generated audits and reports
 ```
 
 That's it. You now understand your codebase.
@@ -85,6 +87,8 @@ A detailed markdown report is generated at `.project-control/exports/ghost_candi
 | **Smart Search** | Power-user code search with advanced filters (invert, files-only) |
 | **Dependency Graph** | Builds a deterministic import graph for Python and JS/TS projects |
 | **Graph Trace** | Traces dependency paths to/from any symbol or file |
+| **Artifact Hygiene** | Finds suspicious screenshots, debug assets, and other temporary visual artifacts without deleting them |
+| **Audit Retention** | Finds stale generated audits, reports, checklists, and export files that are likely safe to remove |
 | **Interactive UI** | Text-based menu with quick actions, favorites, and smart notifications |
 | **Color Terminal Output** | Cross-platform color support with graceful fallback for terminals without ANSI support |
 | **Quick Actions** | One-click full analysis, health checks, and common tasks |
@@ -161,7 +165,7 @@ or run it locally from the repository root without installing:
 ```bash
 python gui.py
 python pc.py gui
-python pc.py ui
+python pc.py tui
 ```
 
 ---
@@ -205,14 +209,18 @@ pc dead                # Dead Code Radar
 pc unused              # Unused System Scan
 pc patterns            # Suspicious Patterns
 pc search "TODO"       # Smart Search
+pc artifacts           # Artifact Hygiene
+pc audits retention    # Audit Retention
 ```
 
 ### Or use the interactive UI
 
 ```bash
-pc ui
+pc tui
 pc gui
 ```
+
+`pc gui` exposes both hygiene workflows in the `Audits` surface. `pc tui` exposes both as direct menu actions. `pc ui` remains as a temporary compatibility alias.
 
 ### Simplest launch from a cloned repository
 
@@ -265,6 +273,10 @@ start_menu.bat
 | `pc search <pattern>` | Smart Search — power-user code search |
 | `pc search <pattern> --files-only` | Return only file paths (no line details) |
 | `pc search <pattern> --not` | Find files that DO NOT match the pattern |
+| `pc artifacts` | Artifact Hygiene — find temporary screenshots and debug assets |
+| `pc artifacts --delete-list` | Print strict safe-to-delete artifact paths |
+| `pc audits retention` | Audit Retention — find stale generated audits and reports |
+| `pc audits retention --delete-list` | Print strict safe-to-delete audit/report paths |
 
 ### Dependency Graph
 
@@ -288,8 +300,34 @@ start_menu.bat
 
 | Command | Description |
 |---------|-------------|
-| `pc ui` | Launch interactive text-based menu |
+| `pc tui` | Launch interactive text-based menu |
+| `pc ui` | Deprecated alias for `pc tui` |
 | `pc gui` | Launch desktop Tkinter GUI |
+
+## Hygiene Workflows
+
+Two cleanup-oriented workflows are available for generated outputs and temporary artifacts:
+
+- `Artifact Hygiene` targets screenshots, Playwright outputs, and other temporary visual assets.
+- `Audit Retention` targets stale generated audits, reports, checklists, and export files.
+
+Both workflows are analyze-only. They never delete files automatically.
+
+```bash
+pc artifacts
+pc artifacts --json
+pc audits retention
+pc audits retention --delete-list
+```
+
+Generated exports:
+
+- `.project-control/exports/artifact_candidates.md`
+- `.project-control/exports/artifact_candidates.json`
+- `.project-control/exports/delete_candidates.txt`
+- `.project-control/exports/audit_retention_candidates.md`
+- `.project-control/exports/audit_retention_candidates.json`
+- `.project-control/exports/audit_delete_candidates.txt`
 
 ---
 
@@ -317,6 +355,12 @@ extensions:
   - .ts
   - .md
   - .txt
+artifacts:
+  older_than_days: 30
+  min_score: 8
+audit_retention:
+  older_than_days: 45
+  keep_latest_per_family: 3
 ```
 
 Graph configuration is in `.project-control/graph_config.yaml` (auto-created on first `pc graph build`).
@@ -334,6 +378,12 @@ All outputs are stored in `.project-control/`:
 ├── content/                   # Deduplicated file blobs
 ├── exports/
 │   ├── ghost_candidates.md    # Ghost analysis report
+│   ├── artifact_candidates.md # Artifact hygiene report
+│   ├── artifact_candidates.json # Artifact hygiene data
+│   ├── delete_candidates.txt  # Artifact safe-delete list
+│   ├── audit_retention_candidates.md # Audit retention report
+│   ├── audit_retention_candidates.json # Audit retention data
+│   ├── audit_delete_candidates.txt # Audit retention safe-delete list
 │   ├── ghost_orphans_tree.txt # ASCII tree of orphan files
 │   ├── ghost_legacy_tree.txt  # ASCII tree of legacy files
 │   ├── ghost_sessions_tree.txt # ASCII tree of session files
@@ -350,7 +400,7 @@ All outputs are stored in `.project-control/`:
 └── embeddings/                # Embedding cache (optional)
 ```
 
-**Note:** New diagnostic commands (`pc dead`, `pc unused`, `pc patterns`, `pc search`) output directly to terminal and don't create export files.
+**Note:** Some diagnostic commands (`pc dead`, `pc unused`, `pc patterns`, `pc search`) output directly to terminal and don't create export files. Hygiene workflows do create markdown, JSON, and delete-list exports.
 
 ### ASCII Tree Export
 

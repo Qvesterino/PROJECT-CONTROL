@@ -16,55 +16,55 @@ from project_control.graph.artifacts import write_artifacts, ensure_output_dir
 from project_control.graph.trace import trace_paths
 from project_control.core.content_store import ContentStore
 from project_control.core.exit_codes import EXIT_OK, EXIT_VALIDATION_ERROR
+from project_control.core.error_handler import ErrorHandler
+from project_control.core.pre_flight import pre_flight_graph_build, require_healthy_snapshot
 from project_control.core.snapshot_service import load_snapshot
 from project_control.utils.fs_helpers import run_rg
 
 
-def _load_snapshot_or_fail(project_root: Path):
-    try:
-        return load_snapshot(project_root)
-    except FileNotFoundError:
-        print("Snapshot not found. Run 'pc scan' first.")
-        return None
+def _load_snapshot(project_root: Path) -> Dict:
+    """Load a validated snapshot for graph operations."""
+    return load_snapshot(project_root)
 
 
 def graph_build(project_root: Path, config_path: Optional[Path]) -> int:
-    snapshot = _load_snapshot_or_fail(project_root)
-    if snapshot is None:
-        return EXIT_VALIDATION_ERROR
+    try:
+        pre_flight_graph_build(project_root)
+        snapshot = _load_snapshot(project_root)
+        config = load_graph_config(project_root, config_path)
+        snapshot_path = project_root / ".project-control" / "snapshot.json"
+        content_store = ContentStore(snapshot, snapshot_path)
 
-    config = load_graph_config(project_root, config_path)
-    snapshot_path = project_root / ".project-control" / "snapshot.json"
-    content_store = ContentStore(snapshot, snapshot_path)
+        builder = GraphBuilder(project_root, snapshot, content_store, config)
+        graph = builder.build()
+        metrics = compute_metrics(graph, config)
 
-    builder = GraphBuilder(project_root, snapshot, content_store, config)
-    graph = builder.build()
-    metrics = compute_metrics(graph, config)
-
-    snapshot_path_out, metrics_path_out, report_path = write_artifacts(project_root, graph, metrics)
-    print(f"Graph snapshot written to: {snapshot_path_out}")
-    print(f"Graph metrics written to:  {metrics_path_out}")
-    print(f"Graph report written to:   {report_path}")
-    return EXIT_OK
+        snapshot_path_out, metrics_path_out, report_path = write_artifacts(project_root, graph, metrics)
+        print(f"Graph snapshot written to: {snapshot_path_out}")
+        print(f"Graph metrics written to:  {metrics_path_out}")
+        print(f"Graph report written to:   {report_path}")
+        return EXIT_OK
+    except Exception as error:
+        return ErrorHandler.handle(error, "Graph build")
 
 
 def graph_report(project_root: Path, config_path: Optional[Path]) -> int:
     """Regenerate graph artifacts from existing graph if cache is valid, otherwise rebuild."""
-    snapshot = _load_snapshot_or_fail(project_root)
-    if snapshot is None:
-        return EXIT_VALIDATION_ERROR
+    try:
+        require_healthy_snapshot(project_root, operation="graph report")
+        snapshot = _load_snapshot(project_root)
+        config = load_graph_config(project_root, config_path)
+        graph = _load_or_build_graph(project_root, snapshot, config)
+        if graph is None:
+            return EXIT_VALIDATION_ERROR
 
-    config = load_graph_config(project_root, config_path)
-    graph = _load_or_build_graph(project_root, snapshot, config)
-    if graph is None:
-        return EXIT_VALIDATION_ERROR
+        metrics = compute_metrics(graph, config)
+        snapshot_path_out, metrics_path_out, report_path = write_artifacts(project_root, graph, metrics)
 
-    # Regenerate artifacts from existing graph (metrics may be recomputed for consistency)
-    metrics = compute_metrics(graph, config)
-    snapshot_path_out, metrics_path_out, report_path = write_artifacts(project_root, graph, metrics)
-
-    print(f"Graph report regenerated: {report_path}")
-    return EXIT_OK
+        print(f"Graph report regenerated: {report_path}")
+        return EXIT_OK
+    except Exception as error:
+        return ErrorHandler.handle(error, "Graph report")
 
 
 def graph_trace(
@@ -77,32 +77,34 @@ def graph_trace(
     show_line: bool,
     config_override: Optional[GraphConfig] = None,
 ) -> int:
-    snapshot = _load_snapshot_or_fail(project_root)
-    if snapshot is None:
-        return EXIT_VALIDATION_ERROR
+    try:
+        require_healthy_snapshot(project_root, operation="graph trace")
+        snapshot = _load_snapshot(project_root)
 
-    config = config_override if config_override is not None else load_graph_config(project_root, config_path)
-    graph = _load_or_build_graph(project_root, snapshot, config)
-    if graph is None:
-        return EXIT_VALIDATION_ERROR
+        config = config_override if config_override is not None else load_graph_config(project_root, config_path)
+        graph = _load_or_build_graph(project_root, snapshot, config)
+        if graph is None:
+            return EXIT_VALIDATION_ERROR
 
-    id_to_path = {n["id"]: n["path"] for n in graph.get("nodes", [])}
-    target_id, symbol_defs = _resolve_target_node(project_root, target, id_to_path)
-    if target_id is None:
-        print(f"Target '{target}' not found in graph nodes.")
-        return EXIT_VALIDATION_ERROR
+        id_to_path = {n["id"]: n["path"] for n in graph.get("nodes", [])}
+        target_id, symbol_defs = _resolve_target_node(project_root, target, id_to_path)
+        if target_id is None:
+            print(f"Target '{target}' not found in graph nodes.")
+            return EXIT_VALIDATION_ERROR
 
-    traces = trace_paths(graph, target_id, direction=direction, max_depth=max_depth, max_paths=max_paths)
-    symbol_usages = _find_symbol_usages(target, limit=50)
-    output_lines = _render_trace(graph, traces, target, target_id, symbol_defs, symbol_usages, show_line)
+        traces = trace_paths(graph, target_id, direction=direction, max_depth=max_depth, max_paths=max_paths)
+        symbol_usages = _find_symbol_usages(target, limit=50)
+        output_lines = _render_trace(graph, traces, target, target_id, symbol_defs, symbol_usages, show_line)
 
-    for line in output_lines:
-        print(line)
+        for line in output_lines:
+            print(line)
 
-    out_dir = ensure_output_dir(project_root)
-    trace_path = out_dir / "graph.trace.txt"
-    trace_path.write_text("\n".join(output_lines), encoding="utf-8")
-    return EXIT_OK
+        out_dir = ensure_output_dir(project_root)
+        trace_path = out_dir / "graph.trace.txt"
+        trace_path.write_text("\n".join(output_lines), encoding="utf-8")
+        return EXIT_OK
+    except Exception as error:
+        return ErrorHandler.handle(error, "Graph trace")
 
 
 def _load_or_build_graph(project_root: Path, snapshot: Dict, config: GraphConfig) -> Optional[Dict]:

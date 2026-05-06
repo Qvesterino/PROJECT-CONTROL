@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import os
@@ -16,6 +17,8 @@ from project_control.services.scan_service import run_scan
 from project_control.services.graph_service import build_graph, show_report
 from project_control.services.analyze_service import ghost_fast, ghost_structural
 from project_control.services.explore_service import run_trace
+from project_control.core.artifact_service import run_artifact_hygiene
+from project_control.core.audit_retention_service import run_audit_retention
 from project_control.services.report_service import (
     view_ghost_report, view_graph_report, view_checklist, view_writers_report,
     view_ui_verification_report, view_vfx_contract_report, display_report_list, list_all_reports
@@ -639,6 +642,10 @@ def _reports_menu(project_root: Path) -> None:
     
     if exports_dir.exists():
         # Check for various reports
+        artifact_report = exports_dir / "artifact_candidates.md"
+        if artifact_report.exists():
+            reports.append(("Artifact Hygiene Report", artifact_report))
+
         ghost_report = exports_dir / "ghost_candidates.md"
         if ghost_report.exists():
             reports.append(("Ghost Analysis", ghost_report))
@@ -658,6 +665,10 @@ def _reports_menu(project_root: Path) -> None:
         vfx_report = exports_dir / "vfx_contract_audit_report.md"
         if vfx_report.exists():
             reports.append(("VFX Contract Audit", vfx_report))
+
+        audit_retention_report = exports_dir / "audit_retention_candidates.md"
+        if audit_retention_report.exists():
+            reports.append(("Audit Retention Report", audit_retention_report))
         
         # Check for tree files
         tree_files = list(exports_dir.glob("*_tree.txt"))
@@ -666,7 +677,7 @@ def _reports_menu(project_root: Path) -> None:
     
     if not reports:
         print("\nNo reports found yet.")
-        print("Run 'Full Analysis', 'UI Verify', or 'VFX Audit' to generate reports.")
+        print("Run 'Full Analysis', 'Artifact Hygiene', 'Audit Retention', 'UI Verify', or 'VFX Audit' to generate reports.")
     else:
         print(f"\nFound {len(reports)} report(s):\n")
         for i, (name, path) in enumerate(reports, 1):
@@ -1106,11 +1117,13 @@ def _quick_actions_menu(project_root: Path, state: AppState) -> None:
         print("5) Dependency Audit   — analyze dependency graph")
         print("6) VFX Audit          — audit FX contract compliance")
         print("7) UI Verify          — run configurable browser verification")
-        print("8) Favorites          — manage favorite trace targets")
-        print("9) History            — view recent actions")
+        print("8) Artifact Hygiene   — find temporary screenshots and debug assets")
+        print("9) Audit Retention    — find stale generated audits and reports")
+        print("10) Favorites         — manage favorite trace targets")
+        print("11) History           — view recent actions")
         print("0) Back")
 
-        choice = input("\nSelect (0-9): ").strip()
+        choice = input("\nSelect (0-11): ").strip()
 
         if choice == "0":
             return
@@ -1129,8 +1142,12 @@ def _quick_actions_menu(project_root: Path, state: AppState) -> None:
         elif choice == "7":
             state = _quick_ui_verify(project_root, state)
         elif choice == "8":
-            state = _quick_favorites_menu(project_root, state)
+            _quick_artifact_hygiene(project_root)
         elif choice == "9":
+            _quick_audit_retention(project_root)
+        elif choice == "10":
+            state = _quick_favorites_menu(project_root, state)
+        elif choice == "11":
             _quick_history_menu(project_root, state)
         else:
             input("Invalid selection. Press Enter...")
@@ -1268,12 +1285,6 @@ def _quick_vfx_audit(project_root: Path) -> None:
     print("  VFX CONTRACT AUDIT")
     print("="*60)
 
-    snapshot_path = project_root / ".project-control" / "snapshot.json"
-    if not snapshot_path.exists():
-        print_warning("Snapshot not found. Run 'Scan Project' first.")
-        input("\nPress Enter to return...")
-        return
-
     try:
         with ErrorContext("Running VFX contract audit"):
             _result, markdown_path, json_path = run_vfx_contract_audit(project_root)
@@ -1283,6 +1294,76 @@ def _quick_vfx_audit(project_root: Path) -> None:
             view_vfx_contract_report(project_root, show_content=True)
     except Exception as e:
         ErrorHandler.handle(e, "Running VFX contract audit")
+
+    input("\nPress Enter to return...")
+
+
+def _quick_artifact_hygiene(project_root: Path) -> None:
+    """Quick artifact hygiene workflow."""
+    print("\n" + "="*60)
+    print("  ARTIFACT HYGIENE")
+    print("="*60)
+
+    args = argparse.Namespace(
+        older_than=None,
+        min_score=None,
+        by_resolution=False,
+        json=False,
+        delete_list=False,
+    )
+
+    try:
+        with ErrorContext("Running artifact hygiene"):
+            artifact_data = run_artifact_hygiene(args, project_root)
+            result = artifact_data["result"]
+            summary = result.get("summary", {})
+            paths = artifact_data["paths"]
+            print_success("Artifact hygiene complete")
+            print(f"Safe to delete now: {summary.get('safe_to_delete', 0)}")
+            print(f"Reclaimable MB:     {summary.get('safe_to_delete_mb', 0)}")
+            print(f"Duplicate groups:   {summary.get('duplicate_groups', 0)}")
+            print(f"High confidence:    {summary.get('high_confidence_cleanup_candidates', 0)}")
+            print(f"Markdown report:    {paths['markdown']}")
+            print(f"JSON data:          {paths['json']}")
+            print(f"Delete list:        {paths['delete_list']}")
+    except Exception as e:
+        ErrorHandler.handle(e, "Running artifact hygiene")
+
+    input("\nPress Enter to return...")
+
+
+def _quick_audit_retention(project_root: Path) -> None:
+    """Quick audit retention workflow."""
+    print("\n" + "="*60)
+    print("  AUDIT RETENTION")
+    print("="*60)
+
+    args = argparse.Namespace(
+        older_than=None,
+        min_score=None,
+        keep_latest=None,
+        by_family=False,
+        json=False,
+        delete_list=False,
+    )
+
+    try:
+        with ErrorContext("Running audit retention"):
+            retention_data = run_audit_retention(args, project_root)
+            result = retention_data["result"]
+            summary = result.get("summary", {})
+            paths = retention_data["paths"]
+            print_success("Audit retention complete")
+            print(f"Safe to delete now: {summary.get('safe_to_delete', 0)}")
+            print(f"Reclaimable MB:     {summary.get('safe_to_delete_mb', 0)}")
+            print(f"Duplicate groups:   {summary.get('duplicate_groups', 0)}")
+            print(f"High confidence:    {summary.get('high_confidence_cleanup_candidates', 0)}")
+            print(f"Families detected:  {summary.get('families_detected', 0)}")
+            print(f"Markdown report:    {paths['markdown']}")
+            print(f"JSON data:          {paths['json']}")
+            print(f"Delete list:        {paths['delete_list']}")
+    except Exception as e:
+        ErrorHandler.handle(e, "Running audit retention")
 
     input("\nPress Enter to return...")
 

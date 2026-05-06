@@ -10,9 +10,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import builtins
 
 from project_control.core.error_handler import (
-    FileNotFoundError,
+    FileNotFoundError as ProjectControlFileNotFoundError,
     DependencyError,
     ValidationError,
     Validator,
@@ -84,7 +85,7 @@ def check_ripgrep_available() -> HealthStatus:
                 message="Ripgrep command failed",
                 suggestion="Install ripgrep: https://github.com/BurntSushi/ripgrep#installation",
             )
-    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+    except (builtins.FileNotFoundError, subprocess.TimeoutExpired):
         return HealthStatus(
             name="ripgrep",
             is_healthy=False,
@@ -115,7 +116,7 @@ def check_ollama_available() -> HealthStatus:
                 message="Ollama command failed",
                 suggestion="Start Ollama: 'ollama serve'",
             )
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (builtins.FileNotFoundError, subprocess.TimeoutExpired):
         return HealthStatus(
             name="ollama",
             is_healthy=False,
@@ -249,6 +250,28 @@ def check_snapshot_valid(project_root: Path) -> HealthStatus:
                 suggestion="Run 'pc scan' to recreate the snapshot",
             )
 
+        # Check freshness (warn if > 7 days old)
+        snapshot_created_at = snapshot.get("generated_at")
+        if snapshot_created_at is None and "meta" in snapshot:
+            snapshot_created_at = snapshot.get("meta", {}).get("createdAt")
+
+        if snapshot_created_at:
+            try:
+                created = datetime.fromisoformat(snapshot_created_at)
+                if created.tzinfo is None:
+                    created = created.replace(tzinfo=timezone.utc)
+                age = (datetime.now(timezone.utc) - created).days
+                if age > 7:
+                    return HealthStatus(
+                        name="snapshot_valid",
+                        is_healthy=True,
+                        message=f"Snapshot valid but stale ({age} days old)",
+                        details=f"Warnings: {'; '.join(result.warnings)}" if result.has_warnings() else None,
+                        suggestion="Run 'pc scan' to update the snapshot",
+                    )
+            except (ValueError, KeyError):
+                pass
+
         if result.has_warnings():
             return HealthStatus(
                 name="snapshot_valid",
@@ -256,21 +279,6 @@ def check_snapshot_valid(project_root: Path) -> HealthStatus:
                 message="Snapshot valid with warnings",
                 details=f"Warnings: {'; '.join(result.warnings)}",
             )
-
-        # Check freshness (warn if > 7 days old)
-        if "meta" in snapshot and "createdAt" in snapshot.get("meta", {}):
-            try:
-                created = datetime.fromisoformat(snapshot["meta"]["createdAt"])
-                age = (datetime.now(timezone.utc) - created).days
-                if age > 7:
-                    return HealthStatus(
-                        name="snapshot_valid",
-                        is_healthy=True,
-                        message=f"Snapshot valid but stale ({age} days old)",
-                        suggestion="Run 'pc scan' to update the snapshot",
-                    )
-            except (ValueError, KeyError):
-                pass
 
         return HealthStatus(
             name="snapshot_valid",
@@ -424,7 +432,7 @@ def pre_flight_scan(project_root: Path) -> None:
     # Check project is initialized
     status = check_project_initialized(project_root)
     if not status.is_healthy:
-        raise FileNotFoundError(status.message, details=status.suggestion)
+        raise ProjectControlFileNotFoundError(status.message, details=status.suggestion)
 
     # Check disk space
     status = check_disk_space(project_root, min_mb=50)
@@ -439,7 +447,7 @@ def pre_flight_ghost(project_root: Path) -> None:
     # Check snapshot exists
     status = check_snapshot_exists(project_root)
     if not status.is_healthy:
-        raise FileNotFoundError(status.message, details=status.suggestion)
+        raise ProjectControlFileNotFoundError(status.message, details=status.suggestion)
 
     # Check snapshot is valid
     status = check_snapshot_valid(project_root)
@@ -460,7 +468,7 @@ def pre_flight_graph_build(project_root: Path) -> None:
     # Check snapshot exists
     status = check_snapshot_exists(project_root)
     if not status.is_healthy:
-        raise FileNotFoundError(status.message, details=status.suggestion)
+        raise ProjectControlFileNotFoundError(status.message, details=status.suggestion)
 
     # Check snapshot is valid
     status = check_snapshot_valid(project_root)
@@ -480,7 +488,7 @@ def pre_flight_graph_operation(project_root: Path) -> None:
     # Check graph exists
     status = check_graph_exists(project_root)
     if not status.is_healthy:
-        raise FileNotFoundError(status.message, details=status.suggestion)
+        raise ProjectControlFileNotFoundError(status.message, details=status.suggestion)
 
     # Check graph is valid
     status = check_graph_valid(project_root)
@@ -596,4 +604,4 @@ def ensure_initialized(project_root: Path) -> None:
     """
     status = check_project_initialized(project_root)
     if not status.is_healthy:
-        raise FileNotFoundError(status.message, details=status.suggestion)
+        raise ProjectControlFileNotFoundError(status.message, details=status.suggestion)

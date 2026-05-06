@@ -383,6 +383,55 @@ def validate_patterns_config(config: Dict[str, Any]) -> ValidationResult:
                         if isinstance(ext, str) and not ext.startswith("."):
                             warnings.append(f"Artifact extension should start with '.': {ext}")
 
+    audit_retention = config.get("audit_retention")
+    if audit_retention is not None:
+        if not isinstance(audit_retention, dict):
+            errors.append(f"'audit_retention' must be dict, got {type(audit_retention).__name__}")
+        else:
+            audit_retention_expected_types = {
+                "enabled": bool,
+                "older_than_days": int,
+                "min_score": int,
+                "keep_latest_per_family": int,
+                "extensions": list,
+                "suspicious_dirs": list,
+                "safe_dirs": list,
+                "family_keywords": dict,
+            }
+            for key, expected_type in audit_retention_expected_types.items():
+                if key in audit_retention and not isinstance(audit_retention[key], expected_type):
+                    errors.append(
+                        f"'audit_retention.{key}' must be {expected_type.__name__}, got "
+                        f"{type(audit_retention[key]).__name__}"
+                    )
+            for key in ("extensions", "suspicious_dirs", "safe_dirs"):
+                for item in audit_retention.get(key, []) if isinstance(audit_retention.get(key), list) else []:
+                    if not isinstance(item, str):
+                        errors.append(f"'audit_retention.{key}' entries must be strings, got {type(item).__name__}")
+                if key == "extensions" and isinstance(audit_retention.get(key), list):
+                    for ext in audit_retention[key]:
+                        if isinstance(ext, str) and not ext.startswith("."):
+                            warnings.append(f"Audit retention extension should start with '.': {ext}")
+            family_keywords = audit_retention.get("family_keywords", {})
+            if isinstance(family_keywords, dict):
+                for family_name, keywords in family_keywords.items():
+                    if not isinstance(family_name, str):
+                        errors.append(
+                            f"'audit_retention.family_keywords' keys must be strings, got {type(family_name).__name__}"
+                        )
+                    if not isinstance(keywords, list):
+                        errors.append(
+                            f"'audit_retention.family_keywords.{family_name}' must be list, got "
+                            f"{type(keywords).__name__}"
+                        )
+                        continue
+                    for keyword in keywords:
+                        if not isinstance(keyword, str):
+                            errors.append(
+                                f"'audit_retention.family_keywords.{family_name}' entries must be strings, got "
+                                f"{type(keyword).__name__}"
+                            )
+
     is_valid = len(errors) == 0
     return create_validation_result(is_valid, errors, warnings)
 

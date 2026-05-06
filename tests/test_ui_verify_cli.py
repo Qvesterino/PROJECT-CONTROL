@@ -8,25 +8,44 @@ from project_control.pc import build_parser
 
 
 class UIVerifyParserTests(unittest.TestCase):
-    def test_parser_preserves_ui_menu_fallback(self) -> None:
+    def test_parser_preserves_tui_menu_fallback(self) -> None:
         parser = build_parser()
 
-        args = parser.parse_args(["ui"])
+        args = parser.parse_args(["tui"])
 
-        self.assertEqual(args.command, "ui")
-        self.assertIsNone(args.ui_cmd)
+        self.assertEqual(args.command, "tui")
+        self.assertIsNone(args.tui_cmd)
 
-    def test_parser_exposes_ui_verify_command(self) -> None:
+    def test_parser_exposes_tui_verify_command(self) -> None:
         parser = build_parser()
 
-        args = parser.parse_args(["ui", "verify", "--html"])
+        args = parser.parse_args(["tui", "verify", "--html"])
 
-        self.assertEqual(args.command, "ui")
-        self.assertEqual(args.ui_cmd, "verify")
+        self.assertEqual(args.command, "tui")
+        self.assertEqual(args.tui_cmd, "verify")
         self.assertTrue(args.html)
         self.assertTrue(args.headless)
 
-    def test_parser_exposes_ui_verify_profile_selection(self) -> None:
+    def test_parser_exposes_tui_verify_profile_selection(self) -> None:
+        parser = build_parser()
+
+        args = parser.parse_args(["tui", "verify", "--profile", "demo"])
+
+        self.assertEqual(args.command, "tui")
+        self.assertEqual(args.tui_cmd, "verify")
+        self.assertEqual(args.profile, "demo")
+
+    def test_parser_exposes_tui_verify_list_profiles(self) -> None:
+        parser = build_parser()
+
+        args = parser.parse_args(["tui", "verify", "--list-profiles", "--json"])
+
+        self.assertEqual(args.command, "tui")
+        self.assertEqual(args.tui_cmd, "verify")
+        self.assertTrue(args.list_profiles)
+        self.assertTrue(args.json)
+
+    def test_parser_preserves_ui_alias(self) -> None:
         parser = build_parser()
 
         args = parser.parse_args(["ui", "verify", "--profile", "demo"])
@@ -34,16 +53,6 @@ class UIVerifyParserTests(unittest.TestCase):
         self.assertEqual(args.command, "ui")
         self.assertEqual(args.ui_cmd, "verify")
         self.assertEqual(args.profile, "demo")
-
-    def test_parser_exposes_ui_verify_list_profiles(self) -> None:
-        parser = build_parser()
-
-        args = parser.parse_args(["ui", "verify", "--list-profiles", "--json"])
-
-        self.assertEqual(args.command, "ui")
-        self.assertEqual(args.ui_cmd, "verify")
-        self.assertTrue(args.list_profiles)
-        self.assertTrue(args.json)
 
     def test_parser_exposes_gui_command(self) -> None:
         parser = build_parser()

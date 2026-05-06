@@ -45,6 +45,21 @@ def get_artifact_delete_list_path(project_root: Path) -> Path:
     return get_exports_dir(project_root) / "delete_candidates.txt"
 
 
+def get_audit_retention_report_path(project_root: Path) -> Path:
+    """Get audit retention markdown report path."""
+    return get_exports_dir(project_root) / "audit_retention_candidates.md"
+
+
+def get_audit_retention_data_path(project_root: Path) -> Path:
+    """Get audit retention JSON data path."""
+    return get_exports_dir(project_root) / "audit_retention_candidates.json"
+
+
+def get_audit_delete_list_path(project_root: Path) -> Path:
+    """Get audit retention delete list path."""
+    return get_exports_dir(project_root) / "audit_delete_candidates.txt"
+
+
 def get_checklist_path(project_root: Path) -> Path:
     """Get checklist report path."""
     return get_exports_dir(project_root) / "checklist.md"
@@ -278,7 +293,7 @@ def view_ui_verification_report(project_root: Path, show_content: bool = False) 
     html_path = get_ui_verification_html_path(project_root)
 
     if not report_path.exists():
-        print_warning("UI verification report not found. Run 'pc ui verify' first.")
+        print_warning("UI verification report not found. Run 'pc tui verify' first.")
         return
 
     try:
@@ -352,6 +367,24 @@ def list_all_reports(project_root: Path) -> list[dict]:
             "description": "Strict safe-to-delete artifact paths",
             "path": get_artifact_delete_list_path(project_root),
             "type": "artifacts_delete_list"
+        },
+        {
+            "name": "Audit Retention Report",
+            "description": "Stale generated audit and report cleanup candidates",
+            "path": get_audit_retention_report_path(project_root),
+            "type": "audit_retention_markdown"
+        },
+        {
+            "name": "Audit Retention Data",
+            "description": "Structured audit retention JSON payload",
+            "path": get_audit_retention_data_path(project_root),
+            "type": "audit_retention_json"
+        },
+        {
+            "name": "Audit Delete Candidate List",
+            "description": "Strict safe-to-delete audit/report paths",
+            "path": get_audit_delete_list_path(project_root),
+            "type": "audit_retention_delete_list"
         },
         {
             "name": "Ghost Report",
