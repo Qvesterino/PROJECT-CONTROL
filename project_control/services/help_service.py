@@ -37,7 +37,7 @@ Now you know what's happening in your codebase.
 
 INTERACTIVE MODE:
    $ pc tui
-   Access all features through a friendly text-based menu.
+   Access all features through the TUI text-based menu.
 
 COMMON WORKFLOW:
    1) pc scan           - Get current state
@@ -49,7 +49,7 @@ COMMON WORKFLOW:
 
 NEED MORE?
    Use 'pc --help' for command reference
-   Use 'pc tui' for interactive menu with built-in help
+   Use 'pc tui' for TUI access with built-in help
 """
 
 
@@ -80,9 +80,8 @@ DEPENDENCY GRAPH:
   pc graph report   Generate graph report (uses cache if valid)
   pc graph trace <target>    Trace dependency paths
 
-INTERACTIVE UI:
-  pc tui            Launch interactive text-based menu
-  pc ui             Deprecated alias for pc tui
+TUI / GUI:
+  pc tui            Launch the TUI text-based menu
   pc tui verify     Run browser-based UI verification
   pc gui            Launch the desktop Tkinter GUI
 
@@ -480,7 +479,7 @@ EXPLORE MENU (4):
   f        Add current target to favorites
   0        Back
 
-FAVORITES MENU (Quick Actions → 6):
+FAVORITES MENU (Quick Actions → 10):
   1        Add current target to favorites
   2        Trace a favorite
   3        Remove a favorite
@@ -502,19 +501,18 @@ CONTEXT HELP:
 
 MENUS WITH SHORTCUTS:
 
-Main Menu
+TUI Main Menu
   0 = Exit
-  1-7 = Menu options
+  1-6 = Menu options
   Q = Quick Actions
-  8 = Reports (NEW!)
 
 Quick Actions
   0 = Back
-  1-7 = Quick action options
+  1-11 = Quick action options
 
 Reports
   0 = Back
-  1-6 = View specific report
+  1-N = View specific report
 
 Tools
   0 = Back
@@ -530,7 +528,7 @@ TIPS:
   - Favorites save time for frequently traced files
   - History shows recent actions
   - Use Quick Actions for common workflows
-  - Check Health menu for project status
+  - Check the Health menu for project status
 """
 
 

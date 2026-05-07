@@ -45,14 +45,11 @@ class UIVerifyParserTests(unittest.TestCase):
         self.assertTrue(args.list_profiles)
         self.assertTrue(args.json)
 
-    def test_parser_preserves_ui_alias(self) -> None:
+    def test_parser_rejects_removed_ui_command(self) -> None:
         parser = build_parser()
 
-        args = parser.parse_args(["ui", "verify", "--profile", "demo"])
-
-        self.assertEqual(args.command, "ui")
-        self.assertEqual(args.ui_cmd, "verify")
-        self.assertEqual(args.profile, "demo")
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["ui", "verify", "--profile", "demo"])
 
     def test_parser_exposes_gui_command(self) -> None:
         parser = build_parser()

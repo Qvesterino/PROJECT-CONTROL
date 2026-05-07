@@ -7,6 +7,7 @@ Parses arguments and dispatches to router.
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from project_control.cli.router import dispatch
 from project_control import __version__
@@ -16,7 +17,7 @@ def _add_tui_subcommands(parser: argparse.ArgumentParser, dest: str) -> None:
     """Attach shared TUI subcommands to a parser."""
     subparsers = parser.add_subparsers(dest=dest)
 
-    subparsers.add_parser("menu", help="Launch interactive menu mode")
+    subparsers.add_parser("menu", help="Launch the TUI text-based menu")
 
     verify_parser = subparsers.add_parser("verify", help="Run configurable browser-based UI verification")
     verify_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
@@ -143,11 +144,8 @@ def build_parser() -> argparse.ArgumentParser:
     graph_trace_parser.add_argument("--no-limits", action="store_true", help="Disable depth/path limits")
     graph_trace_parser.add_argument("--config", type=str, help="Path to graph config YAML", default=None)
 
-    tui_parser = subparsers.add_parser("tui", help="Interactive terminal UI and UI verification tools")
+    tui_parser = subparsers.add_parser("tui", help="TUI and UI verification tools")
     _add_tui_subcommands(tui_parser, "tui_cmd")
-
-    ui_parser = subparsers.add_parser("ui", help="Deprecated alias for 'tui'")
-    _add_tui_subcommands(ui_parser, "ui_cmd")
 
     gui_parser = subparsers.add_parser("gui", help="Launch the desktop Tkinter GUI")
     gui_parser.add_argument("project_root", nargs="?", default=".", help="Project root path")
@@ -213,7 +211,26 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _removed_ui_message(raw_args: list[str]) -> str | None:
+    """Return a migration message when a removed `pc ui*` command is used."""
+    if not raw_args or raw_args[0] != "ui":
+        return None
+
+    replacement = "pc tui"
+    if len(raw_args) >= 2 and raw_args[1] == "verify":
+        replacement = "pc tui verify"
+    elif len(raw_args) >= 2 and raw_args[1] == "menu":
+        replacement = "pc tui menu"
+
+    return f"pc ui was removed in this release. Use '{replacement}' instead."
+
+
 def main() -> None:
+    migration_message = _removed_ui_message(sys.argv[1:])
+    if migration_message is not None:
+        print(migration_message, file=sys.stderr)
+        raise SystemExit(2)
+
     parser = build_parser()
     args = parser.parse_args()
     if not args.command:

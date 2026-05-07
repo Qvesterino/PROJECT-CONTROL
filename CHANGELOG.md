@@ -80,6 +80,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `pc tui` is now the canonical terminal interface name across docs, help text, onboarding, and manual surfaces
+- `TUI` is the canonical user-facing term; `interactive menu` remains explanatory copy only
+
+### Removed
+- `pc ui`
+- `pc ui menu`
+- `pc ui verify`
+
+Use `pc tui`, `pc tui menu`, and `pc tui verify` instead.
+
+### Migration
+- `pc ui` → `pc tui`
+- `pc ui menu` → `pc tui menu`
+- `pc ui verify` → `pc tui verify`
+- All docs, scripts, and launcher hints now point to `pc tui*`
+
 ### Planned
 - Enhanced visualization options
 - Additional language support

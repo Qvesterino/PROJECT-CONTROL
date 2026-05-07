@@ -89,7 +89,7 @@ A detailed markdown report is generated at `.project-control/exports/ghost_candi
 | **Graph Trace** | Traces dependency paths to/from any symbol or file |
 | **Artifact Hygiene** | Finds suspicious screenshots, debug assets, and other temporary visual artifacts without deleting them |
 | **Audit Retention** | Finds stale generated audits, reports, checklists, and export files that are likely safe to remove |
-| **Interactive UI** | Text-based menu with quick actions, favorites, and smart notifications |
+| **TUI** | Text-based menu with quick actions, favorites, and smart notifications |
 | **Color Terminal Output** | Cross-platform color support with graceful fallback for terminals without ANSI support |
 | **Quick Actions** | One-click full analysis, health checks, and common tasks |
 | **Backup & Rollback** | Automatic backups before destructive operations with restore capability |
@@ -213,14 +213,18 @@ pc artifacts           # Artifact Hygiene
 pc audits retention    # Audit Retention
 ```
 
-### Or use the interactive UI
+### Or use the TUI / GUI
 
 ```bash
 pc tui
 pc gui
 ```
 
-`pc gui` exposes both hygiene workflows in the `Audits` surface. `pc tui` exposes both as direct menu actions. `pc ui` remains as a temporary compatibility alias.
+`pc gui` exposes both hygiene workflows in the `Audits` surface. `pc tui` exposes both as direct menu actions.
+
+Migration note:
+- `pc ui` was removed in this release.
+- Use `pc tui`, `pc tui menu`, and `pc tui verify` instead.
 
 ### Simplest launch from a cloned repository
 
@@ -296,12 +300,11 @@ start_menu.bat
 | `pc embed rebuild` | Rebuild index from scratch |
 | `pc embed search "query"` | Semantic code search |
 
-### Interactive
+### TUI / GUI
 
 | Command | Description |
 |---------|-------------|
-| `pc tui` | Launch interactive text-based menu |
-| `pc ui` | Deprecated alias for `pc tui` |
+| `pc tui` | Launch the TUI text-based menu |
 | `pc gui` | Launch desktop Tkinter GUI |
 
 ## Hygiene Workflows

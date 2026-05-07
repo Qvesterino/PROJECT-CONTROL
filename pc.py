@@ -4,7 +4,7 @@ Root-level launcher for PROJECT CONTROL.
 
 Allows:
     python pc.py gui
-    python pc.py ui
+    python pc.py tui
     python pc.py scan
 """
 

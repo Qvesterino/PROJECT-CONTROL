@@ -57,11 +57,6 @@ def _load_existing_snapshot() -> Optional[dict]:
         return None
 
 
-def _print_tui_deprecation_notice() -> None:
-    """Warn when the deprecated `pc ui` alias is used directly."""
-    print("Note: 'pc ui' is deprecated. Prefer 'pc tui'.")
-
-
 def _ensure_gitignore() -> None:
     """Add .project-control/ to .gitignore if not already present."""
     gitignore = PROJECT_DIR / ".gitignore"
@@ -631,19 +626,14 @@ def dispatch(args: argparse.Namespace) -> int:
             return cmd_audit_retention(args)
         print("Unknown audits command.")
         return EXIT_VALIDATION_ERROR
-    if args.command in ("ui", "tui"):
-        command_label = "tui" if args.command == "tui" else "ui"
-        if args.command == "ui":
-            _print_tui_deprecation_notice()
-        ui_cmd = getattr(args, "tui_cmd", None)
-        if ui_cmd is None:
-            ui_cmd = getattr(args, "ui_cmd", None)
-        if ui_cmd in (None, "menu"):
+    if args.command == "tui":
+        tui_cmd = getattr(args, "tui_cmd", None)
+        if tui_cmd in (None, "menu"):
             run_menu(PROJECT_DIR)
             return EXIT_OK
-        if ui_cmd == "verify":
+        if tui_cmd == "verify":
             return cmd_ui_verify(args)
-        print(f"Unknown {command_label} command.")
+        print("Unknown tui command.")
         return EXIT_VALIDATION_ERROR
     if args.command == "gui":
         return _handle_gui_command(args)
@@ -970,7 +960,7 @@ def _handle_wizard_command(args: argparse.Namespace) -> int:
             print_info("\nNext steps:")
             print("  • Run 'pc scan' to index your project")
             print("  • Run 'pc quick' for a full analysis")
-            print("  • Run 'pc tui' for the interactive menu")
+            print("  • Run 'pc tui' for the TUI text-based menu")
             return EXIT_OK
         else:
             print_warning("\nWizard was cancelled. No changes were made.")

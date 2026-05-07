@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import sys
 import tempfile
 import unittest
 from argparse import Namespace
@@ -12,6 +13,8 @@ from unittest.mock import patch
 from project_control.cli.graph_cmd import graph_build
 from project_control.cli.router import dispatch
 from project_control.core.pre_flight import check_ripgrep_available, check_snapshot_valid
+from project_control.pc import main as pc_main
+from project_control.services.help_service import get_command_reference, get_keyboard_shortcuts_help, get_quick_start
 
 
 class ReleaseHardeningTests(unittest.TestCase):
@@ -61,18 +64,28 @@ class ReleaseHardeningTests(unittest.TestCase):
         self.assertNotIn("deprecated", buffer.getvalue().lower())
         run_menu.assert_called_once()
 
-    def test_dispatch_ui_alias_emits_deprecation_notice(self) -> None:
-        args = Namespace(command="ui", ui_cmd=None)
-        buffer = io.StringIO()
+    def test_removed_ui_command_prints_migration_error(self) -> None:
+        stderr = io.StringIO()
 
-        with patch("project_control.cli.router.run_menu") as run_menu:
-            with redirect_stdout(buffer):
-                exit_code = dispatch(args)
+        with patch.object(sys, "argv", ["pc", "ui"]):
+            with redirect_stderr(stderr):
+                with self.assertRaises(SystemExit) as exit_info:
+                    pc_main()
 
-        self.assertEqual(exit_code, 0)
-        self.assertIn("deprecated", buffer.getvalue().lower())
-        self.assertIn("pc tui", buffer.getvalue())
-        run_menu.assert_called_once()
+        self.assertEqual(exit_info.exception.code, 2)
+        self.assertIn("pc ui was removed", stderr.getvalue())
+        self.assertIn("pc tui", stderr.getvalue())
+
+    def test_removed_ui_verify_command_points_to_tui_verify(self) -> None:
+        stderr = io.StringIO()
+
+        with patch.object(sys, "argv", ["pc", "ui", "verify"]):
+            with redirect_stderr(stderr):
+                with self.assertRaises(SystemExit) as exit_info:
+                    pc_main()
+
+        self.assertEqual(exit_info.exception.code, 2)
+        self.assertIn("pc tui verify", stderr.getvalue())
 
     def test_graph_build_missing_snapshot_returns_validation_error(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -87,6 +100,12 @@ class ReleaseHardeningTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 2)
         self.assertIn("pc scan", stderr.getvalue())
+
+    def test_help_content_prefers_tui_wording(self) -> None:
+        self.assertIn("pc tui", get_quick_start())
+        self.assertIn("pc tui", get_command_reference())
+        self.assertIn("TUI", get_command_reference())
+        self.assertIn("Quick Actions \u2192 10", get_keyboard_shortcuts_help())
 
 
 if __name__ == "__main__":

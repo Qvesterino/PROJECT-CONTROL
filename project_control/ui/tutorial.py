@@ -408,18 +408,18 @@ def trace_dependencies_tutorial() -> Tutorial:
 
 
 def interactive_menu_tutorial() -> Tutorial:
-    """Get the interactive menu tutorial."""
+    """Get the TUI tutorial."""
     return Tutorial(
-        name="Interactive Menu Guide",
-        description="Learn how to use the interactive menu (pc tui) to perform all tasks without remembering commands.",
+        name="TUI Guide",
+        description="Learn how to use the TUI (`pc tui`) to perform all tasks without remembering commands.",
         duration="4 minutes",
         difficulty="Beginner",
         steps=[
             TutorialStep(
                 step_number=1,
                 total_steps=4,
-                title="Launch the Menu",
-                explanation="Start the interactive menu system.",
+                title="Launch the TUI",
+                explanation="Start the TUI text-based menu.",
                 action_type="command",
                 action_data={"command": "pc tui"},
                 expected_result="You'll see the main menu with Quick Actions, Main Tools, and Advanced sections."

@@ -33,7 +33,7 @@ echo PROJECT CONTROL could not open the desktop window.
 echo Try the text menu instead:
 echo   start_menu.bat
 echo or:
-echo   python pc.py ui
+echo   python pc.py tui
 pause
 
 :end

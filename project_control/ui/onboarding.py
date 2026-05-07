@@ -46,7 +46,7 @@ def show_onboarding(project_root: Path) -> None:
     print_info("GETTING HELP")
     print()
     print("  Run 'pc --help' to see all available commands")
-    print("  Run 'pc tui' for interactive menu mode")
+    print("  Run 'pc tui' for the TUI text-based menu")
     print("  Check README.md for detailed documentation")
     print()
     
@@ -174,8 +174,7 @@ def _show_command_reference() -> None:
     print("  pc dead          — Find unused files")
     print("  pc search <term> — Search in code")
     print("  pc explore       — Interactive file browser")
-    print("  pc tui           — Interactive menu mode")
-    print("  pc ui            — Deprecated alias for pc tui")
+    print("  pc tui           — Launch the TUI text-based menu")
     print()
     
     print_info("CONFIGURATION")

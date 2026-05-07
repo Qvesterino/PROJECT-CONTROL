@@ -4,13 +4,13 @@ cd /d "%~dp0"
 
 where py >nul 2>&1
 if %errorlevel%==0 (
-    py -3 pc.py ui
+    py -3 pc.py tui
     goto :end
 )
 
 where python >nul 2>&1
 if %errorlevel%==0 (
-    python pc.py ui
+    python pc.py tui
     goto :end
 )
 
