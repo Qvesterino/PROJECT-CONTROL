@@ -12,7 +12,10 @@ from unittest.mock import patch
 
 from project_control.cli.menu import run_menu
 from project_control.cli.router import (
+    _handle_export_command,
     _handle_explore_command,
+    _handle_import_command,
+    _handle_preset_command,
     _handle_wizard_command,
     _safe_print as router_safe_print,
     cmd_quick,
@@ -135,3 +138,136 @@ class CLIRuntimeFixTests(unittest.TestCase):
 
         self.assertEqual(result, EXIT_VALIDATION_ERROR)
         self.assertIn("Explore path not found", stderr.getvalue())
+
+    def test_handle_preset_command_missing_name_uses_error_contract(self) -> None:
+        args = argparse.Namespace(project_root=".", preset_cmd="apply", name=None, no_backup=False)
+        stderr = io.StringIO()
+
+        with redirect_stderr(stderr):
+            result = _handle_preset_command(args)
+
+        self.assertEqual(result, EXIT_VALIDATION_ERROR)
+        self.assertIn("Preset name is required", stderr.getvalue())
+
+    def test_handle_preset_command_nonexistent_preset_uses_error_contract(self) -> None:
+        args = argparse.Namespace(project_root=".", preset_cmd="apply", name="nonexistent", no_backup=False)
+        stderr = io.StringIO()
+
+        with redirect_stderr(stderr):
+            result = _handle_preset_command(args)
+
+        self.assertEqual(result, EXIT_VALIDATION_ERROR)
+        self.assertIn("Preset not found: nonexistent", stderr.getvalue())
+
+    def test_handle_preset_command_builtin_delete_uses_error_contract(self) -> None:
+        args = argparse.Namespace(project_root=".", preset_cmd="delete", name="react-frontend")
+        stderr = io.StringIO()
+
+        with redirect_stderr(stderr):
+            result = _handle_preset_command(args)
+
+        self.assertEqual(result, EXIT_VALIDATION_ERROR)
+        self.assertIn("Cannot delete preset 'react-frontend'", stderr.getvalue())
+
+    def test_handle_export_command_missing_subcommand_uses_error_contract(self) -> None:
+        args = argparse.Namespace(project_root=".", export_cmd=None)
+        stderr = io.StringIO()
+
+        with redirect_stderr(stderr):
+            result = _handle_export_command(args)
+
+        self.assertEqual(result, EXIT_VALIDATION_ERROR)
+        self.assertIn("No export subcommand specified", stderr.getvalue())
+        self.assertIn("pc export {state}", stderr.getvalue())
+
+    def test_handle_import_command_missing_subcommand_uses_error_contract(self) -> None:
+        args = argparse.Namespace(project_root=".", import_cmd=None, path=None, merge=False)
+        stderr = io.StringIO()
+
+        with redirect_stderr(stderr):
+            result = _handle_import_command(args)
+
+        self.assertEqual(result, EXIT_VALIDATION_ERROR)
+        self.assertIn("No import subcommand specified", stderr.getvalue())
+        self.assertIn("pc import {state}", stderr.getvalue())
+
+    def test_handle_import_command_missing_path_uses_error_contract(self) -> None:
+        args = argparse.Namespace(project_root=".", import_cmd="state", path=None, merge=False)
+        stderr = io.StringIO()
+
+        with redirect_stderr(stderr):
+            result = _handle_import_command(args)
+
+        self.assertEqual(result, EXIT_VALIDATION_ERROR)
+        self.assertIn("Import path is required", stderr.getvalue())
+
+    def test_handle_import_command_missing_file_uses_resolved_path_in_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            missing_path = project_root / "missing-state.json"
+            args = argparse.Namespace(project_root=temp_dir, import_cmd="state", path=str(missing_path), merge=False)
+            stderr = io.StringIO()
+
+            with redirect_stderr(stderr):
+                result = _handle_import_command(args)
+
+        self.assertEqual(result, EXIT_VALIDATION_ERROR)
+        self.assertIn(str(missing_path.resolve()), stderr.getvalue())
+
+    def test_handle_export_command_success_uses_resolved_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            export_path = Path(temp_dir) / "state-export.json"
+            args = argparse.Namespace(project_root=temp_dir, export_cmd="state", path=str(export_path), no_metadata=False)
+            stdout = io.StringIO()
+
+            with redirect_stdout(stdout):
+                result = _handle_export_command(args)
+
+        self.assertEqual(result, EXIT_OK)
+        self.assertIn(str(export_path.resolve()), stdout.getvalue())
+
+    def test_handle_import_command_merge_success_returns_ok(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            import_path = project_root / "state.json"
+            import_path.write_text(
+                json.dumps(
+                    {
+                        "version": "1.0",
+                        "ui": {
+                            "project_mode": "python",
+                            "graph_profile": "strict",
+                            "trace_direction": "inbound",
+                            "trace_depth": 5,
+                            "trace_all_paths": False,
+                        },
+                        "tags": {"tags": {}},
+                        "user": {"favorites": [], "history": []},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            args = argparse.Namespace(project_root=temp_dir, import_cmd="state", path=str(import_path), merge=True)
+            stdout = io.StringIO()
+
+            with redirect_stdout(stdout):
+                result = _handle_import_command(args)
+
+        self.assertEqual(result, EXIT_OK)
+        self.assertIn(str(import_path.resolve()), stdout.getvalue())
+
+    def test_handle_preset_command_save_success_returns_ok(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            args = argparse.Namespace(
+                project_root=temp_dir,
+                preset_cmd="save",
+                name="custom-preset",
+                description="Custom preset description",
+            )
+            stdout = io.StringIO()
+
+            with redirect_stdout(stdout):
+                result = _handle_preset_command(args)
+
+        self.assertEqual(result, EXIT_OK)
+        self.assertIn("[OK] Saved custom preset: custom-preset", stdout.getvalue())

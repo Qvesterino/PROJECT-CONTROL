@@ -744,74 +744,72 @@ def _handle_preset_command(args: argparse.Namespace) -> int:
     """Handle preset subcommands."""
     from project_control.config.presets import PresetManager
 
-    project_root = Path(getattr(args, "project_root", ".")).resolve()
-    manager = PresetManager(project_root)
+    try:
+        project_root = Path(getattr(args, "project_root", ".")).resolve()
+        manager = PresetManager(project_root)
+        preset_cmd = getattr(args, "preset_cmd", None)
 
-    if getattr(args, "preset_cmd", None) == "list":
-        presets = manager.list_presets()
-        print("Available Presets:")
-        print("=" * 60)
-        for preset in presets:
-            category_mark = " [builtin]" if preset["category"] == "builtin" else " [custom]"
-            print(f"  • {preset['name']}{category_mark}")
-            print(f"    {preset['description']}")
-        print()
+        if preset_cmd == "list":
+            presets = manager.list_presets()
+            print("Available Presets:")
+            print("=" * 60)
+            for preset in presets:
+                category_mark = " [builtin]" if preset["category"] == "builtin" else " [custom]"
+                print(f"  • {preset['name']}{category_mark}")
+                print(f"    {preset['description']}")
+            print()
 
-        # Show current preset
-        current = manager.get_current_preset_name()
-        if current:
-            print(f"Current preset: {current}")
-        else:
-            print("Current configuration doesn't match any preset")
-        return EXIT_OK
+            current = manager.get_current_preset_name()
+            if current:
+                print(f"Current preset: {current}")
+            else:
+                print("Current configuration doesn't match any preset")
+            return EXIT_OK
 
-    if getattr(args, "preset_cmd", None) == "apply":
-        name = getattr(args, "name", None)
-        if not name:
-            print("Error: Preset name is required")
-            return EXIT_VALIDATION_ERROR
+        if preset_cmd == "apply":
+            name = getattr(args, "name", None)
+            if not name:
+                raise ValidationError("Preset name is required")
 
-        backup = not getattr(args, "no_backup", False)
-        if manager.apply_preset(name, backup=backup):
+            backup = not getattr(args, "no_backup", False)
+            if not manager.apply_preset(name, backup=backup):
+                raise ValidationError(f"Preset not found: {name}")
+
             print(f"[OK] Applied preset: {name}")
             if backup:
                 print("  (Backup created in .project-control/backups/)")
             return EXIT_OK
-        else:
-            print(f"[ERROR] Preset not found: {name}")
-            return EXIT_VALIDATION_ERROR
 
-    if getattr(args, "preset_cmd", None) == "save":
-        name = getattr(args, "name", None)
-        if not name:
-            print("Error: Preset name is required")
-            return EXIT_VALIDATION_ERROR
+        if preset_cmd == "save":
+            name = getattr(args, "name", None)
+            if not name:
+                raise ValidationError("Preset name is required")
 
-        description = getattr(args, "description", "") or f"Custom preset: {name}"
-        if manager.save_custom_preset(name, description):
+            description = getattr(args, "description", "") or f"Custom preset: {name}"
+            if not manager.save_custom_preset(name, description):
+                raise ValidationError(f"Failed to save preset: {name}")
+
             print(f"[OK] Saved custom preset: {name}")
             print(f"  Description: {description}")
             return EXIT_OK
-        else:
-            print(f"[ERROR] Failed to save preset: {name}")
-            return EXIT_VALIDATION_ERROR
 
-    if getattr(args, "preset_cmd", None) == "delete":
-        name = getattr(args, "name", None)
-        if not name:
-            print("Error: Preset name is required")
-            return EXIT_VALIDATION_ERROR
+        if preset_cmd == "delete":
+            name = getattr(args, "name", None)
+            if not name:
+                raise ValidationError("Preset name is required")
 
-        if manager.delete_custom_preset(name):
+            if not manager.delete_custom_preset(name):
+                raise ValidationError(f"Cannot delete preset '{name}' (not found or is built-in)")
+
             print(f"[OK] Deleted custom preset: {name}")
             return EXIT_OK
-        else:
-            print(f"[ERROR] Cannot delete preset '{name}' (not found or is built-in)")
-            return EXIT_VALIDATION_ERROR
 
-    print("Error: No preset subcommand specified")
-    print("Use: pc preset {list|apply|save|delete}")
-    return EXIT_VALIDATION_ERROR
+        raise ValidationError(
+            "No preset subcommand specified",
+            details="Use: pc preset {list|apply|save|delete}",
+        )
+    except Exception as e:
+        return ErrorHandler.handle(e, "Preset command")
 
 
 # ── Export Commands ───────────────────────────────────────────────────────
@@ -820,27 +818,26 @@ def _handle_export_command(args: argparse.Namespace) -> int:
     """Handle export subcommands."""
     from project_control.persistence.state_manager import StateManager
 
-    project_root = Path(getattr(args, "project_root", ".")).resolve()
-    manager = StateManager(project_root)
+    try:
+        project_root = Path(getattr(args, "project_root", ".")).resolve()
+        manager = StateManager(project_root)
 
-    if getattr(args, "export_cmd", None) == "state":
+        if getattr(args, "export_cmd", None) != "state":
+            raise ValidationError(
+                "No export subcommand specified",
+                details="Use: pc export {state}",
+            )
+
         export_path = getattr(args, "path", None)
         if export_path:
             export_path = Path(export_path).resolve()
 
         include_metadata = not getattr(args, "no_metadata", False)
-
-        try:
-            result_path = manager.export_state(export_path, include_metadata=include_metadata)
-            print(f"[OK] State exported to: {result_path}")
-            return EXIT_OK
-        except Exception as e:
-            print(f"[ERROR] Export failed: {e}")
-            return EXIT_VALIDATION_ERROR
-
-    print("Error: No export subcommand specified")
-    print("Use: pc export {state}")
-    return EXIT_VALIDATION_ERROR
+        result_path = manager.export_state(export_path, include_metadata=include_metadata)
+        print(f"[OK] State exported to: {result_path.resolve()}")
+        return EXIT_OK
+    except Exception as e:
+        return ErrorHandler.handle(e, "Export command")
 
 
 # ── Import Commands ───────────────────────────────────────────────────────
@@ -849,29 +846,31 @@ def _handle_import_command(args: argparse.Namespace) -> int:
     """Handle import subcommands."""
     from project_control.persistence.state_manager import StateManager
 
-    project_root = Path(getattr(args, "project_root", ".")).resolve()
-    manager = StateManager(project_root)
+    try:
+        project_root = Path(getattr(args, "project_root", ".")).resolve()
+        manager = StateManager(project_root)
 
-    if getattr(args, "import_cmd", None) == "state":
-        import_path = Path(getattr(args, "path", None))
-        if not import_path or not import_path.exists():
-            print(f"[ERROR] Import file not found: {import_path}")
-            return EXIT_VALIDATION_ERROR
+        if getattr(args, "import_cmd", None) != "state":
+            raise ValidationError(
+                "No import subcommand specified",
+                details="Use: pc import {state}",
+            )
+
+        path_value = getattr(args, "path", None)
+        if not path_value:
+            raise ValidationError("Import path is required")
+
+        import_path = Path(path_value).resolve()
+        if not import_path.exists():
+            raise ProjectControlFileNotFoundError(f"Import file not found: {import_path}")
 
         merge = getattr(args, "merge", False)
-
-        try:
-            manager.import_state(import_path, merge=merge)
-            mode = "merged" if merge else "imported"
-            print(f"[OK] State {mode} from: {import_path}")
-            return EXIT_OK
-        except Exception as e:
-            print(f"[ERROR] Import failed: {e}")
-            return EXIT_VALIDATION_ERROR
-
-    print("Error: No import subcommand specified")
-    print("Use: pc import {state}")
-    return EXIT_VALIDATION_ERROR
+        manager.import_state(import_path, merge=merge)
+        mode = "merged" if merge else "imported"
+        print(f"[OK] State {mode} from: {import_path}")
+        return EXIT_OK
+    except Exception as e:
+        return ErrorHandler.handle(e, "Import command")
 
 
 # ── Explore Command ───────────────────────────────────────────────────────
