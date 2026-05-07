@@ -5,12 +5,15 @@ Uses SHA256 hashes as cache keys for deterministic, incremental embedding comput
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from ollama import embeddings as ollama_embeddings
 from hashlib import sha256 as hashlib_sha256
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
@@ -31,7 +34,7 @@ class EmbeddingService:
             try:
                 return json.loads(self.cache_file.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                print(f"⚠️  Warning: Failed to load embedding cache ({e}), starting fresh")
+                logger.warning("Failed to load embedding cache; starting fresh: %s", e)
         return {}
 
     def _save_cache(self) -> None:
@@ -103,7 +106,7 @@ class EmbeddingService:
                     f"Also ensure Ollama server is running: https://ollama.ai/"
                 ) from e
             except Exception as e:
-                print(f"⚠️  Warning: Failed to embed chunk ({e}), skipping")
+                logger.warning("Failed to embed chunk; skipping: %s", e)
                 continue
         
         if not chunk_embeddings:

@@ -7,6 +7,7 @@ Uses qwen3-embedding:8b via EmbeddingService.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, TYPE_CHECKING
 
@@ -14,6 +15,8 @@ from project_control.core.embedding_service import EmbeddingService, cosine_simi
 
 if TYPE_CHECKING:
     from project_control.core.content_store import ContentStore
+
+logger = logging.getLogger(__name__)
 
 
 def _is_code_file(path: str) -> bool:
@@ -42,18 +45,21 @@ def analyze(snapshot: Dict[str, Any], patterns: Dict[str, Any], content_store: "
     if not files:
         return []
     
-    # Initialize embedding service with graceful fallback
-    # Note: EmbeddingService needs a project root path for cache management
-    # We pass the parent directory of snapshot as project root
+    # Initialize embedding service with graceful fallback.
+    # The content store already knows where the snapshot lives, which keeps
+    # semantic caching tied to the analyzed project instead of the caller cwd.
     try:
-        project_root = Path.cwd()
+        snapshot_path = getattr(content_store, "snapshot_path", None)
+        project_root = snapshot_path.parent.parent if snapshot_path is not None else Path.cwd()
         embedding_service = EmbeddingService(project_root)
     except ImportError as e:
-        print(f"⚠️  Warning: Embedding dependencies not installed. Install with: pip install -e '.[embedding]'")
-        print(f"   Error: {e}")
+        logger.warning(
+            "Embedding dependencies not installed; semantic analysis skipped: %s",
+            e,
+        )
         return []
     except Exception as e:
-        print(f"⚠️  Warning: Failed to initialize embedding service ({e}), skipping semantic analysis")
+        logger.warning("Failed to initialize semantic embedding service: %s", e)
         return []
     
     # Load configuration (with defaults)
@@ -84,7 +90,7 @@ def analyze(snapshot: Dict[str, Any], patterns: Dict[str, Any], content_store: "
             file_sha256[path] = sha256
             
         except Exception as e:
-            print(f"⚠️  Warning: Failed to process {path} ({e})")
+            logger.warning("Failed to process semantic candidate %s: %s", path, e)
             continue
     
     if len(file_embeddings) < 2:

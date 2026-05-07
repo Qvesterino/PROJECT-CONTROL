@@ -38,6 +38,7 @@ class HealthStatus:
     message: str
     details: Optional[str] = None
     suggestion: Optional[str] = None
+    severity: str = "error"
 
 
 @dataclass
@@ -84,6 +85,7 @@ def check_ripgrep_available() -> HealthStatus:
                 is_healthy=False,
                 message="Ripgrep command failed",
                 suggestion="Install ripgrep: https://github.com/BurntSushi/ripgrep#installation",
+                severity="warning",
             )
     except (builtins.FileNotFoundError, subprocess.TimeoutExpired):
         return HealthStatus(
@@ -91,6 +93,7 @@ def check_ripgrep_available() -> HealthStatus:
             is_healthy=False,
             message="Ripgrep not found on PATH",
             suggestion="Install ripgrep: https://github.com/BurntSushi/ripgrep#installation",
+            severity="warning",
         )
 
 
@@ -115,6 +118,7 @@ def check_ollama_available() -> HealthStatus:
                 is_healthy=False,
                 message="Ollama command failed",
                 suggestion="Start Ollama: 'ollama serve'",
+                severity="warning",
             )
     except (builtins.FileNotFoundError, subprocess.TimeoutExpired):
         return HealthStatus(
@@ -122,6 +126,7 @@ def check_ollama_available() -> HealthStatus:
             is_healthy=False,
             message="Ollama not found (optional)",
             suggestion="Embedding features disabled. Install Ollama for semantic analysis: https://ollama.ai",
+            severity="warning",
         )
 
 
@@ -526,19 +531,20 @@ def health_check(project_root: Path) -> HealthReport:
     checks.append(check_disk_space(project_root))
 
     # Aggregate results
-    has_errors = any(not check.is_healthy for check in checks)
+    has_errors = any(not check.is_healthy and check.severity == "error" for check in checks)
     has_warnings = any(
-        check.is_healthy and check.suggestion
+        (not check.is_healthy and check.severity == "warning")
+        or (check.is_healthy and check.suggestion)
         for check in checks
     )
 
     # Extract errors, warnings, and suggestions
     for check in checks:
-        if not check.is_healthy:
+        if not check.is_healthy and check.severity == "error":
             errors.append(f"{check.name}: {check.message}")
             if check.suggestion:
                 suggestions.append(f"• {check.suggestion}")
-        elif check.suggestion:
+        elif (not check.is_healthy and check.severity == "warning") or check.suggestion:
             warnings.append(f"{check.name}: {check.message}")
             suggestions.append(f"• {check.suggestion}")
 

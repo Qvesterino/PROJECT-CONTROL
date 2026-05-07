@@ -1914,8 +1914,9 @@ def _safe_print(text: str) -> None:
     try:
         print(text)
     except UnicodeEncodeError:
+        stdout_encoding = sys.stdout.encoding or "utf-8"
         if sys.platform == "win32":
-            safe_text = text.encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
+            safe_text = text.encode(stdout_encoding, errors="replace").decode(stdout_encoding)
             print(safe_text)
         else:
             try:

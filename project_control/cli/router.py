@@ -16,7 +16,12 @@ from project_control.core.ghost_service import run_ghost, write_ghost_report, wr
 from project_control.core.markdown_renderer import render_writer_report
 from project_control.core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
 from project_control.core.writers import run_writers_analysis
-from project_control.core.error_handler import ErrorHandler, ErrorContext, FileNotFoundError as ProjectControlFileNotFoundError
+from project_control.core.error_handler import (
+    ErrorHandler,
+    ErrorContext,
+    FileNotFoundError as ProjectControlFileNotFoundError,
+    ValidationError,
+)
 from project_control.core.pre_flight import require_healthy_snapshot
 from project_control.utils.fs_helpers import run_rg
 from project_control.cli.graph_cmd import graph_build, graph_report, graph_trace
@@ -587,7 +592,6 @@ def cmd_ui_verify(args: argparse.Namespace) -> int:
 
         return EXIT_OK
     except Exception as e:
-        logger.error(f"UI verification failed: {e}")
         return ErrorHandler.handle(e, "UI verification")
 
 
@@ -877,7 +881,8 @@ def _handle_explore_command(args: argparse.Namespace) -> int:
     from project_control.ui.file_explorer import FileExplorer
 
     project_root = Path(getattr(args, "project_root", ".")).resolve()
-    start_path = Path(getattr(args, "path", ".")).resolve()
+    raw_path = Path(getattr(args, "path", "."))
+    start_path = raw_path.resolve() if raw_path.is_absolute() else (project_root / raw_path).resolve()
 
     # Resolve start_path relative to project_root if needed
     try:
@@ -885,8 +890,13 @@ def _handle_explore_command(args: argparse.Namespace) -> int:
     except ValueError:
         # If not relative, use as-is if it's within project_root
         if not str(start_path).startswith(str(project_root)):
-            print(f"[ERROR] Path must be within project root: {project_root}")
-            return EXIT_VALIDATION_ERROR
+            return ErrorHandler.handle(
+                ValidationError(
+                    "Explore path must stay within the project root",
+                    details=f"Project root: {project_root}",
+                ),
+                "Explore command",
+            )
 
     start_path = project_root / start_path
 
@@ -902,13 +912,17 @@ def _handle_explore_command(args: argparse.Namespace) -> int:
             output = explorer.render_file_details(rel_path)
             _safe_print(output)
         else:
-            print(f"[ERROR] Path not found: {start_path}")
-            return EXIT_VALIDATION_ERROR
+            return ErrorHandler.handle(
+                ProjectControlFileNotFoundError(
+                    f"Explore path not found: {start_path}",
+                    details=f"Project root: {project_root}",
+                ),
+                "Explore command",
+            )
 
         return EXIT_OK
     except Exception as e:
-        print(f"[ERROR] Explore failed: {e}")
-        return EXIT_VALIDATION_ERROR
+        return ErrorHandler.handle(e, "Explore command")
 
 
 def _safe_print(text: str) -> None:
@@ -917,10 +931,11 @@ def _safe_print(text: str) -> None:
     try:
         print(text)
     except UnicodeEncodeError:
+        stdout_encoding = sys.stdout.encoding or "utf-8"
         # Fallback for Windows console with limited encoding
         if sys.platform == "win32":
             # Encode with error replacement
-            safe_text = text.encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
+            safe_text = text.encode(stdout_encoding, errors="replace").decode(stdout_encoding)
             print(safe_text)
         else:
             # For other platforms, try UTF-8
@@ -970,10 +985,7 @@ def _handle_wizard_command(args: argparse.Namespace) -> int:
         print_warning("\n\nWizard interrupted by user.")
         return EXIT_OK
     except Exception as e:
-        print(f"\n[ERROR] Wizard failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return EXIT_VALIDATION_ERROR
+        return ErrorHandler.handle(e, "Wizard command")
 
 
 def _handle_gui_command(args: argparse.Namespace) -> int:

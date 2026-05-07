@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from project_control.cli.graph_cmd import graph_build
 from project_control.cli.router import dispatch
-from project_control.core.pre_flight import check_ripgrep_available, check_snapshot_valid
+from project_control.core.pre_flight import HealthStatus, check_ripgrep_available, check_snapshot_valid, health_check
 from project_control.pc import main as pc_main
 from project_control.services.help_service import get_command_reference, get_keyboard_shortcuts_help, get_quick_start
 
@@ -106,6 +106,41 @@ class ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("pc tui", get_command_reference())
         self.assertIn("TUI", get_command_reference())
         self.assertIn("Quick Actions \u2192 10", get_keyboard_shortcuts_help())
+
+    def test_health_check_treats_optional_dependencies_as_warnings(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            healthy = HealthStatus(name="ok", is_healthy=True, message="ok")
+            rg_missing = HealthStatus(
+                name="ripgrep",
+                is_healthy=False,
+                message="Ripgrep not found on PATH",
+                suggestion="Install ripgrep",
+                severity="warning",
+            )
+            ollama_missing = HealthStatus(
+                name="ollama",
+                is_healthy=False,
+                message="Ollama not found (optional)",
+                suggestion="Install Ollama",
+                severity="warning",
+            )
+
+            with patch("project_control.core.pre_flight.check_project_initialized", return_value=healthy):
+                with patch("project_control.core.pre_flight.check_snapshot_exists", return_value=healthy):
+                    with patch("project_control.core.pre_flight.check_snapshot_valid", return_value=healthy):
+                        with patch("project_control.core.pre_flight.check_graph_exists", return_value=healthy):
+                            with patch("project_control.core.pre_flight.check_graph_valid", return_value=healthy):
+                                with patch("project_control.core.pre_flight.check_config_valid", return_value=healthy):
+                                    with patch("project_control.core.pre_flight.check_ripgrep_available", return_value=rg_missing):
+                                        with patch("project_control.core.pre_flight.check_ollama_available", return_value=ollama_missing):
+                                            with patch("project_control.core.pre_flight.check_disk_space", return_value=healthy):
+                                                report = health_check(project_root)
+
+        self.assertEqual(report.overall_status, "warning")
+        self.assertEqual(report.errors, [])
+        self.assertTrue(any("ripgrep" in warning.lower() for warning in report.warnings))
+        self.assertTrue(any("ollama" in warning.lower() for warning in report.warnings))
 
 
 if __name__ == "__main__":
