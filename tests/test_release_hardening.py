@@ -105,6 +105,8 @@ class ReleaseHardeningTests(unittest.TestCase):
         self.assertIn("pc tui", get_quick_start())
         self.assertIn("pc tui", get_command_reference())
         self.assertIn("TUI", get_command_reference())
+        self.assertIn(".\\pc.ps1 gui", get_quick_start())
+        self.assertIn("python .\\pc.py gui", get_command_reference())
         self.assertIn("Quick Actions \u2192 10", get_keyboard_shortcuts_help())
 
     def test_health_check_treats_optional_dependencies_as_warnings(self) -> None:

@@ -39,6 +39,11 @@ INTERACTIVE MODE:
    $ pc tui
    Access all features through the TUI text-based menu.
 
+LAUNCH MODES:
+   Installed:   pc gui / pc tui
+   Repo-local:  .\\pc.ps1 gui / .\\pc.cmd tui
+   Fallback:    python .\\pc.py gui / python .\\pc.py tui
+
 COMMON WORKFLOW:
    1) pc scan           - Get current state
    2) pc ghost          - Find dead code
@@ -84,6 +89,17 @@ TUI / GUI:
   pc tui            Launch the TUI text-based menu
   pc tui verify     Run browser-based UI verification
   pc gui            Launch the desktop Tkinter GUI
+
+LAUNCH MODES:
+  Installed mode:
+    pc gui
+    pc tui
+  Repo-local Windows mode:
+    .\\pc.ps1 gui
+    .\\pc.cmd tui
+  Python fallback:
+    python .\\pc.py gui
+    python .\\pc.py tui
 
 CODE QUALITY:
   pc writers        Analyze writer patterns in codebase

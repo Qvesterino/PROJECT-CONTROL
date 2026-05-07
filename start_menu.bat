@@ -2,20 +2,5 @@
 setlocal
 cd /d "%~dp0"
 
-where py >nul 2>&1
-if %errorlevel%==0 (
-    py -3 pc.py tui
-    goto :end
-)
-
-where python >nul 2>&1
-if %errorlevel%==0 (
-    python pc.py tui
-    goto :end
-)
-
-echo Python 3 was not found in PATH.
-echo Install Python 3.10+ and then run this file again.
-pause
-
-:end
+call "%~dp0pc.cmd" tui
+if %errorlevel% neq 0 pause

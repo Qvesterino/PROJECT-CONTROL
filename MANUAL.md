@@ -56,6 +56,20 @@ Notes:
 - `pc tui verify` --> Runs browser-based UI verification
 - `pc gui` --> Launches the desktop GUI
 
+### Launch Modes
+- **Installed mode** --> `pc gui`, `pc tui`, `pc scan`
+- **Repo-local mode (Windows)** --> `.\pc.ps1 gui`, `.\pc.cmd tui`
+- **Python fallback** --> `python .\pc.py gui`, `python .\pc.py tui`
+
+### Install Matrix
+- **End users** --> `pipx install project-control`
+- **Source checkout users** --> `pipx install .`
+- **Contributors** --> `pip install -e .`
+
+### Windows Note
+- PowerShell does not run scripts from the current directory unless you prefix them with `.\`
+- That is why the repo-local launcher is `.\pc.ps1 ...` instead of bare `pc ...`
+
 ### Removal Note
 - `pc ui`, `pc ui menu`, and `pc ui verify` were removed in this release
 - Migration path:

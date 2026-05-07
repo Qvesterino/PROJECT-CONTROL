@@ -24,10 +24,10 @@ pc graph report
 If `pc` is not recognized on your machine, use one of these local launchers from the repository root instead:
 
 ```bash
-python gui.py           # easiest desktop window
-python pc.py gui        # same GUI through the root launcher
-python pc.py tui        # text menu
-python -m project_control.pc gui
+.\pc.ps1 gui           # PowerShell repo-local launcher
+.\pc.cmd tui           # CMD repo-local launcher
+python .\pc.py gui     # Python fallback
+python .\pc.py tui     # Python fallback
 ```
 
 Or use the new diagnostic commands:
@@ -116,7 +116,27 @@ If you want semantic code search and semantic ghost detection:
 
 ## Installation
 
-### Option 1: Install from PyPI (recommended)
+### Install matrix
+
+**End users**
+
+```bash
+pipx install project-control
+```
+
+If you are running from a source checkout instead of PyPI:
+
+```bash
+pipx install .
+```
+
+**Contributors**
+
+```bash
+pip install -e .
+```
+
+### Option 1: Install from PyPI
 
 ```bash
 pip install project-control
@@ -157,15 +177,16 @@ pc --help
 If `pc` says "not recognized", that means the package is not installed into your shell PATH yet. You can either:
 
 ```bash
-python -m pip install -e .
+pipx install .
 ```
 
 or run it locally from the repository root without installing:
 
 ```bash
-python gui.py
-python pc.py gui
-python pc.py tui
+.\pc.ps1 gui
+.\pc.cmd tui
+python .\pc.py gui
+python .\pc.py tui
 ```
 
 ---
@@ -222,16 +243,30 @@ pc gui
 
 `pc gui` exposes both hygiene workflows in the `Audits` surface. `pc tui` exposes both as direct menu actions.
 
+Windows note:
+- PowerShell does not run scripts from the current directory unless you prefix them with `.\`
+- That is why repo-local launchers are `.\pc.ps1 ...` and `.\pc.cmd ...`
+
 Migration note:
 - `pc ui` was removed in this release.
 - Use `pc tui`, `pc tui menu`, and `pc tui verify` instead.
 
 ### Simplest launch from a cloned repository
 
-From the repository root:
+Installed mode:
 
 ```bash
-python gui.py
+pc gui
+pc tui
+```
+
+Repo-local mode from the repository root:
+
+```bash
+.\pc.ps1 gui
+.\pc.cmd tui
+python .\pc.py gui
+python .\pc.py tui
 ```
 
 On Windows you can also double-click:

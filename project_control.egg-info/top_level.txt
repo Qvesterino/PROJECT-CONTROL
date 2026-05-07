@@ -2,5 +2,8 @@ AUDITY
 contract
 docs
 documentation
+examples
+plans
 project_control
 tests
+tmp

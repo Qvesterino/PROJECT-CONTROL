@@ -3,7 +3,9 @@
 One-command desktop launcher for PROJECT CONTROL.
 
 Allows:
-    python gui.py
+    python .\\gui.py
+    .\\pc.ps1 gui
+    .\\pc.cmd gui
 """
 
 from __future__ import annotations

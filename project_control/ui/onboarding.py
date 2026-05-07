@@ -47,6 +47,7 @@ def show_onboarding(project_root: Path) -> None:
     print()
     print("  Run 'pc --help' to see all available commands")
     print("  Run 'pc tui' for the TUI text-based menu")
+    print("  From a source checkout on Windows: use '.\\pc.ps1 gui' or '.\\pc.cmd tui'")
     print("  Check README.md for detailed documentation")
     print()
     
@@ -175,6 +176,8 @@ def _show_command_reference() -> None:
     print("  pc search <term> — Search in code")
     print("  pc explore       — Interactive file browser")
     print("  pc tui           — Launch the TUI text-based menu")
+    print("  .\\pc.ps1 gui     — Repo-local Windows GUI launcher")
+    print("  .\\pc.cmd tui     — Repo-local Windows TUI launcher")
     print()
     
     print_info("CONFIGURATION")
