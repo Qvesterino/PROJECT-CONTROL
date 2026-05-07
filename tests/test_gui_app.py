@@ -108,6 +108,8 @@ class GUIAppTests(unittest.TestCase):
             self.assertIn("overview", app.tab_buttons)
             self.assertIn("audits", app.tab_buttons)
             self.assertIn("settings", app.tab_frames)
+            self.assertEqual(app.quick_start_title_var.get(), "Quick Start")
+            self.assertNotIn("Visual Mode", app.quick_start_body_var.get())
         finally:
             app.destroy()
 
@@ -139,6 +141,7 @@ class GUIAppTests(unittest.TestCase):
             self.assertIn("No reports are generated yet", app.report_summary_var.get())
             preview_text = app.report_preview.get("1.0", "end")
             self.assertIn("Run the related workflow first", preview_text)
+            self.assertIn("Run Scan", app.quick_start_body_var.get())
         finally:
             app.destroy()
 
@@ -179,6 +182,8 @@ class GUIAppTests(unittest.TestCase):
             self.assertTrue(app.tab_buttons["reports"].selected)
             self.assertTrue(app.tab_frames["reports"].winfo_manager())
             self.assertEqual(app.tab_frames["overview"].winfo_manager(), "")
+            self.assertIsInstance(app.report_preview, tk.Text)
+            self.assertIsInstance(app.log_widget, tk.Text)
         finally:
             app.destroy()
 

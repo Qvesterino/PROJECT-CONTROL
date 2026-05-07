@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from tkinter import TclError
 import tkinter as tk
-from tkinter import scrolledtext, ttk
+from tkinter import ttk
 
 from project_control.presentation.adapters import (
     PresentationResult,
@@ -56,6 +56,23 @@ THEME = {
     "danger": "#FF6B8A",
     "info": "#73B8FF",
     "shadow": "#0B0413",
+    "scroll_track": "#1A0E2A",
+    "scroll_thumb": "#4B3370",
+    "scroll_thumb_hover": "#6E52A0",
+}
+
+FONTS = {
+    "display": ("Segoe UI Semibold", 22),
+    "header": ("Segoe UI Semibold", 14),
+    "section": ("Segoe UI Semibold", 13),
+    "label": ("Segoe UI Semibold", 10),
+    "body": ("Segoe UI", 10),
+    "caption": ("Segoe UI", 9),
+    "badge": ("Segoe UI Semibold", 8),
+    "mono": ("Cascadia Mono", 10),
+    "mono_small": ("Cascadia Mono", 9),
+    "button": ("Segoe UI Semibold", 10),
+    "tab": ("Segoe UI Semibold", 9),
 }
 
 STATE_TONES = {
@@ -296,7 +313,7 @@ class GlassButton(tk.Canvas):
             height / 2,
             text=self.label,
             fill=text_color,
-            font=("Segoe UI", 10 if self.tone != "tab" else 9, "bold"),
+            font=FONTS["button"] if self.tone != "tab" else FONTS["tab"],
             anchor=self.anchor,
         )
 
@@ -326,6 +343,154 @@ class GlassButton(tk.Canvas):
         if inside:
             self.pulse()
             self.invoke()
+
+
+class RoundedPanel(tk.Frame):
+    """Canvas-backed rounded surface that still hosts regular Tk children."""
+
+    def __init__(
+        self,
+        master: tk.Misc,
+        *,
+        bg: str,
+        border: str,
+        radius: int = 18,
+        border_width: int = 1,
+    ) -> None:
+        super().__init__(master, bg=master.cget("bg"), bd=0, highlightthickness=0, relief=tk.FLAT)
+        self.surface_bg = bg
+        self.surface_border = border
+        self.radius = radius
+        self.border_width = border_width
+        self._canvas = tk.Canvas(self, bg=master.cget("bg"), bd=0, highlightthickness=0, relief=tk.FLAT)
+        self._canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.bind("<Configure>", lambda _event: self._draw())
+        self._draw()
+
+    def _draw(self) -> None:
+        self._canvas.delete("surface")
+        width = max(40, self.winfo_width())
+        height = max(28, self.winfo_height())
+        self._canvas.create_polygon(
+            _rounded_points(1, 1, width - 1, height - 1, self.radius),
+            smooth=True,
+            fill=self.surface_bg,
+            outline=self.surface_border,
+            width=self.border_width,
+            tags="surface",
+        )
+
+    def set_surface(self, *, bg: str | None = None, border: str | None = None) -> None:
+        if bg is not None:
+            self.surface_bg = bg
+        if border is not None:
+            self.surface_border = border
+        self._draw()
+
+    def configure(self, cnf=None, **kw):
+        if cnf:
+            kw.update(cnf)
+        bg = kw.pop("bg", None)
+        border = kw.pop("highlightbackground", None)
+        if bg is not None or border is not None:
+            self.set_surface(bg=bg, border=border)
+        return super().configure(**kw)
+
+    config = configure
+
+    def cget(self, key: str):
+        if key == "bg":
+            return self.surface_bg
+        if key == "highlightbackground":
+            return self.surface_border
+        return super().cget(key)
+
+
+class ThemedScrollbar(tk.Scrollbar):
+    """Dark scrollbar tuned for the current palette."""
+
+    def __init__(self, master: tk.Misc, *, command=None) -> None:
+        super().__init__(
+            master,
+            orient=tk.VERTICAL,
+            command=command,
+            bg=THEME["scroll_thumb"],
+            activebackground=THEME["scroll_thumb_hover"],
+            troughcolor=THEME["scroll_track"],
+            relief=tk.FLAT,
+            bd=0,
+            width=12,
+            highlightthickness=0,
+            elementborderwidth=0,
+            borderwidth=0,
+        )
+
+
+class ScrollableTextPanel(tk.Frame):
+    """Text plus themed scrollbar."""
+
+    def __init__(
+        self,
+        master: tk.Misc,
+        *,
+        bg: str,
+        fg: str,
+        font: tuple[str, int] | tuple[str, int, str],
+        wrap: str = tk.WORD,
+        height: int | None = None,
+        padx: int = 12,
+        pady: int = 12,
+    ) -> None:
+        super().__init__(master, bg=master.cget("bg"), bd=0, highlightthickness=0)
+        self.text = tk.Text(
+            self,
+            wrap=wrap,
+            bg=bg,
+            fg=fg,
+            insertbackground=THEME["text"],
+            relief=tk.FLAT,
+            highlightthickness=0,
+            padx=padx,
+            pady=pady,
+            font=font,
+        )
+        if height is not None:
+            self.text.configure(height=height)
+        self.scrollbar = ThemedScrollbar(self, command=self.text.yview)
+        self.text.configure(yscrollcommand=self.scrollbar.set)
+        self.text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 2), pady=2)
+
+
+class ScrollableListPanel(tk.Frame):
+    """Listbox plus themed scrollbar."""
+
+    def __init__(
+        self,
+        master: tk.Misc,
+        *,
+        bg: str,
+        fg: str,
+        select_bg: str,
+        select_fg: str,
+        font: tuple[str, int] | tuple[str, int, str],
+    ) -> None:
+        super().__init__(master, bg=master.cget("bg"), bd=0, highlightthickness=0)
+        self.listbox = tk.Listbox(
+            self,
+            bg=bg,
+            fg=fg,
+            selectbackground=select_bg,
+            selectforeground=select_fg,
+            relief=tk.FLAT,
+            highlightthickness=0,
+            activestyle="none",
+            font=font,
+        )
+        self.scrollbar = ThemedScrollbar(self, command=self.listbox.yview)
+        self.listbox.configure(yscrollcommand=self.scrollbar.set)
+        self.listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 2), pady=2)
 
 
 class GUIController:
@@ -480,7 +645,7 @@ class ProjectControlGUI:
         self.tab_frames: dict[str, tk.Frame] = {}
         self.tab_order: list[str] = []
         self.tab_buttons: dict[str, GlassButton] = {}
-        self.tab_text_widgets: dict[str, scrolledtext.ScrolledText] = {}
+        self.tab_text_widgets: dict[str, tk.Text] = {}
         self.tab_summary_vars: dict[str, list[tuple[tk.StringVar, tk.StringVar]]] = {}
         self.tab_summary_frames: dict[str, list[tk.Frame]] = {}
         self.tab_summary_badges: dict[str, list[tk.Label]] = {}
@@ -491,9 +656,12 @@ class ProjectControlGUI:
         self.tab_banner_frames: dict[str, tk.Frame] = {}
         self.report_paths_cache: dict[str, Path] = {}
         self.report_listbox: tk.Listbox | None = None
-        self.report_preview: scrolledtext.ScrolledText | None = None
+        self.report_preview: tk.Text | None = None
         self.report_summary_var = tk.StringVar(value="Reports refresh automatically after successful workflows.")
-        self.log_widget: scrolledtext.ScrolledText | None = None
+        self.log_widget: tk.Text | None = None
+        self.quick_start_card: RoundedPanel | None = None
+        self.quick_start_title_var = tk.StringVar(value="Quick Start")
+        self.quick_start_body_var = tk.StringVar(value="")
         self.header_frame: tk.Frame | None = None
         self.footer_frame: tk.Frame | None = None
         self.footer_pill: tk.Frame | None = None
@@ -572,14 +740,14 @@ class ProjectControlGUI:
             text="PROJECT CONTROL",
             bg=THEME["glass"],
             fg=THEME["text"],
-            font=("Segoe UI", 22, "bold"),
+            font=FONTS["display"],
         ).pack(anchor="w", padx=20, pady=(16, 2))
         tk.Label(
             self.header_frame,
             textvariable=self.header_var,
             bg=THEME["glass"],
             fg=THEME["text_soft"],
-            font=("Segoe UI", 10),
+            font=FONTS["body"],
         ).pack(anchor="w", padx=20, pady=(0, 16))
 
         workspace = tk.Frame(content, bg=THEME["bg"])
@@ -606,7 +774,7 @@ class ProjectControlGUI:
             textvariable=self.status_var,
             bg=THEME["glass"],
             fg=THEME["text"],
-            font=("Segoe UI", 11, "bold"),
+            font=FONTS["label"],
             anchor="w",
         )
         self.footer_status_label.pack(side=tk.LEFT)
@@ -618,20 +786,22 @@ class ProjectControlGUI:
             anchor="w",
             justify=tk.LEFT,
             wraplength=1000,
+            font=FONTS["body"],
         )
         self.footer_detail_label.pack(fill=tk.X, padx=14)
-        self.log_widget = scrolledtext.ScrolledText(
-            self.footer_frame,
-            height=5,
-            wrap=tk.WORD,
-            bg=THEME["bg_alt"],
+        log_shell = self._glass_frame(self.footer_frame, bg=THEME["glass_card"], border=THEME["border_soft"])
+        log_shell.pack(fill=tk.X, padx=14, pady=(8, 14))
+        log_panel = ScrollableTextPanel(
+            log_shell,
+            bg=THEME["glass_deep"],
             fg=THEME["text_muted"],
-            insertbackground=THEME["text"],
-            relief=tk.FLAT,
-            highlightthickness=1,
-            highlightbackground=THEME["border_soft"],
+            font=FONTS["mono_small"],
+            height=5,
+            padx=10,
+            pady=10,
         )
-        self.log_widget.pack(fill=tk.X, padx=14, pady=(8, 14))
+        log_panel.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.log_widget = log_panel.text
 
         self._build_sidebar(sidebar)
         self._build_tabs()
@@ -644,7 +814,7 @@ class ProjectControlGUI:
             text="Workflows",
             bg=THEME["bg_soft"],
             fg=THEME["text"],
-            font=("Segoe UI", 14, "bold"),
+            font=FONTS["header"],
         ).pack(anchor="w", padx=18, pady=(18, 10))
 
         button_specs = [
@@ -666,23 +836,25 @@ class ProjectControlGUI:
             button.pack(fill=tk.X, padx=14, pady=5)
             self.sidebar_actions[key] = button
 
-        helper = self._glass_frame(parent, bg=THEME["glass_alt"], border=THEME["border_soft"])
-        helper.pack(fill=tk.X, padx=14, pady=(16, 12))
+        self.quick_start_card = self._glass_frame(parent, bg=THEME["glass_alt"], border=THEME["border_soft"])
+        self.quick_start_card.pack(fill=tk.X, padx=14, pady=(16, 12))
         tk.Label(
-            helper,
-            text="Visual Mode",
+            self.quick_start_card,
+            textvariable=self.quick_start_title_var,
             bg=THEME["glass_alt"],
             fg=THEME["text"],
-            font=("Segoe UI", 10, "bold"),
-        ).pack(anchor="w", padx=12, pady=(10, 4))
+            font=FONTS["label"],
+        ).pack(anchor="w", padx=14, pady=(12, 6))
         tk.Label(
-            helper,
-            text="Glass panels, state banners, hover glow, and faster workflow feedback.",
+            self.quick_start_card,
+            textvariable=self.quick_start_body_var,
             bg=THEME["glass_alt"],
             fg=THEME["text_muted"],
             justify=tk.LEFT,
-            wraplength=190,
-        ).pack(anchor="w", padx=12, pady=(0, 10))
+            wraplength=192,
+            font=FONTS["caption"],
+        ).pack(anchor="w", padx=14, pady=(0, 12))
+        self._refresh_quick_start()
 
     def _build_top_tabs(self, parent: tk.Frame) -> None:
         tab_specs = [
@@ -724,7 +896,7 @@ class ProjectControlGUI:
             textvariable=badge_var,
             bg=THEME["info"],
             fg=THEME["bg"],
-            font=("Segoe UI", 9, "bold"),
+            font=FONTS["badge"],
             padx=10,
             pady=4,
         )
@@ -734,7 +906,7 @@ class ProjectControlGUI:
             textvariable=title_var,
             bg=THEME["glass"],
             fg=THEME["text"],
-            font=("Segoe UI", 13, "bold"),
+            font=FONTS["section"],
         ).pack(side=tk.LEFT)
         tk.Label(
             banner_card,
@@ -743,7 +915,7 @@ class ProjectControlGUI:
             fg=THEME["text_soft"],
             justify=tk.LEFT,
             wraplength=920,
-            font=("Segoe UI", 10),
+            font=FONTS["body"],
         ).pack(fill=tk.X, padx=16, pady=(0, 14))
         self.tab_banner_frames[key] = banner_card
         self.tab_banner_vars[key] = {"badge": badge_var, "title": title_var, "body": body_var}
@@ -767,7 +939,7 @@ class ProjectControlGUI:
                 textvariable=badge_var,
                 bg=THEME["info"],
                 fg=THEME["bg"],
-                font=("Segoe UI", 8, "bold"),
+                font=FONTS["badge"],
                 padx=7,
                 pady=2,
             )
@@ -777,12 +949,12 @@ class ProjectControlGUI:
                 textvariable=icon_var,
                 bg=THEME["glass_card"],
                 fg=THEME["accent_glow"],
-                font=("Segoe UI", 11, "bold"),
+                font=FONTS["label"],
             ).pack(side=tk.RIGHT)
             title_var = tk.StringVar(value="—")
             value_var = tk.StringVar(value="—")
-            tk.Label(card, textvariable=title_var, bg=THEME["glass_card"], fg=THEME["text_faint"], font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=12, pady=(2, 3))
-            tk.Label(card, textvariable=value_var, bg=THEME["glass_card"], fg=THEME["text"], font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=12, pady=(0, 12))
+            tk.Label(card, textvariable=title_var, bg=THEME["glass_card"], fg=THEME["text_faint"], font=FONTS["badge"]).pack(anchor="w", padx=12, pady=(2, 3))
+            tk.Label(card, textvariable=value_var, bg=THEME["glass_card"], fg=THEME["text"], font=("Segoe UI Semibold", 16)).pack(anchor="w", padx=12, pady=(0, 12))
             summary_pairs.append((title_var, value_var))
             summary_frames.append(card)
             summary_badges.append(badge)
@@ -798,24 +970,20 @@ class ProjectControlGUI:
         paths_card.pack(fill=tk.X, padx=10, pady=(0, 10))
         paths_var = tk.StringVar(value="")
         self.tab_paths_var[key] = paths_var
-        tk.Label(paths_card, textvariable=paths_var, bg=THEME["glass_alt"], fg=THEME["text_muted"], justify=tk.LEFT, anchor="w", wraplength=920, font=("Segoe UI", 9)).pack(fill=tk.X, padx=16, pady=12)
+        tk.Label(paths_card, textvariable=paths_var, bg=THEME["glass_alt"], fg=THEME["text_muted"], justify=tk.LEFT, anchor="w", wraplength=920, font=FONTS["caption"]).pack(fill=tk.X, padx=16, pady=12)
 
         text_card = self._glass_frame(frame, bg=THEME["glass"], border=THEME["border"])
         text_card.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
-        text = scrolledtext.ScrolledText(
+        text_panel = ScrollableTextPanel(
             text_card,
-            wrap=tk.WORD,
             bg=THEME["glass_deep"],
             fg=THEME["text"],
-            insertbackground=THEME["text"],
-            relief=tk.FLAT,
-            highlightthickness=0,
+            font=FONTS["body"],
             padx=12,
             pady=12,
-            font=("Cascadia Mono", 10),
         )
-        text.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
-        self.tab_text_widgets[key] = text
+        text_panel.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+        self.tab_text_widgets[key] = text_panel.text
         return frame
 
     def _build_overview_tab(self) -> None:
@@ -828,7 +996,7 @@ class ProjectControlGUI:
         grid = tk.Frame(controls, bg=THEME["glass_alt"])
         grid.pack(fill=tk.X, padx=14, pady=14)
 
-        tk.Label(grid, text="Ghost mode", bg=THEME["glass_alt"], fg=THEME["text_soft"], font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w")
+        tk.Label(grid, text="Ghost mode", bg=THEME["glass_alt"], fg=THEME["text_soft"], font=FONTS["label"]).grid(row=0, column=0, sticky="w")
         ttk.Combobox(grid, textvariable=self.ghost_mode_var, values=("pragmatic", "strict"), width=16, state="readonly").grid(row=0, column=1, padx=(12, 14), sticky="w")
         tk.Checkbutton(
             grid,
@@ -842,7 +1010,7 @@ class ProjectControlGUI:
         ).grid(row=0, column=2, sticky="w", padx=(0, 12))
         self._add_action_button(grid, "Run Ghost", lambda: self._submit("ghost", mode=self.ghost_mode_var.get(), tree=self.ghost_tree_var.get()), row=0, column=3)
 
-        tk.Label(grid, text="Dead threshold", bg=THEME["glass_alt"], fg=THEME["text_soft"], font=("Segoe UI", 10, "bold")).grid(row=1, column=0, sticky="w", pady=(14, 0))
+        tk.Label(grid, text="Dead threshold", bg=THEME["glass_alt"], fg=THEME["text_soft"], font=FONTS["label"]).grid(row=1, column=0, sticky="w", pady=(14, 0))
         tk.Spinbox(
             grid,
             from_=1,
@@ -865,7 +1033,7 @@ class ProjectControlGUI:
         grid = tk.Frame(controls, bg=THEME["glass_alt"])
         grid.pack(fill=tk.X, padx=14, pady=14)
         self._add_action_button(grid, "Run Graph Report", lambda: self._submit("graph_report"), row=0, column=0)
-        tk.Label(grid, text="Trace target", bg=THEME["glass_alt"], fg=THEME["text_soft"], font=("Segoe UI", 10, "bold")).grid(row=1, column=0, sticky="w", pady=(14, 0))
+        tk.Label(grid, text="Trace target", bg=THEME["glass_alt"], fg=THEME["text_soft"], font=FONTS["label"]).grid(row=1, column=0, sticky="w", pady=(14, 0))
         tk.Entry(
             grid,
             textvariable=self.trace_target_var,
@@ -887,8 +1055,8 @@ class ProjectControlGUI:
 
         header = self._glass_frame(frame, bg=THEME["glass"], border=THEME["border_soft"])
         header.pack(fill=tk.X, padx=10, pady=(0, 10))
-        tk.Label(header, text="Reports Workspace", bg=THEME["glass"], fg=THEME["text"], font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=16, pady=(14, 4))
-        tk.Label(header, textvariable=self.report_summary_var, bg=THEME["glass"], fg=THEME["text_soft"], justify=tk.LEFT, wraplength=920, font=("Segoe UI", 10)).pack(fill=tk.X, padx=16, pady=(0, 14))
+        tk.Label(header, text="Reports Workspace", bg=THEME["glass"], fg=THEME["text"], font=FONTS["section"]).pack(anchor="w", padx=16, pady=(14, 4))
+        tk.Label(header, textvariable=self.report_summary_var, bg=THEME["glass"], fg=THEME["text_soft"], justify=tk.LEFT, wraplength=920, font=FONTS["body"]).pack(fill=tk.X, padx=16, pady=(0, 14))
 
         body = tk.Frame(frame, bg=THEME["bg"])
         body.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
@@ -901,21 +1069,19 @@ class ProjectControlGUI:
         right = self._glass_frame(body, bg=THEME["glass"], border=THEME["border"])
         right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        tk.Label(left, text="Generated Reports", bg=THEME["glass"], fg=THEME["text"], font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=16, pady=(14, 6))
+        tk.Label(left, text="Generated Reports", bg=THEME["glass"], fg=THEME["text"], font=FONTS["section"]).pack(anchor="w", padx=16, pady=(14, 6))
         list_shell = self._glass_frame(left, bg=THEME["glass_card"], border=THEME["border_soft"])
         list_shell.pack(fill=tk.BOTH, expand=True, padx=14, pady=(0, 10))
-        self.report_listbox = tk.Listbox(
+        list_panel = ScrollableListPanel(
             list_shell,
             bg=THEME["glass_deep"],
             fg=THEME["text"],
-            selectbackground=THEME["accent_dark"],
-            selectforeground=THEME["text"],
-            relief=tk.FLAT,
-            highlightthickness=0,
-            activestyle="none",
-            font=("Segoe UI", 10),
+            select_bg=THEME["accent_dark"],
+            select_fg=THEME["text"],
+            font=FONTS["body"],
         )
-        self.report_listbox.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+        list_panel.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+        self.report_listbox = list_panel.listbox
         self.report_listbox.bind("<<ListboxSelect>>", lambda _event: self._preview_selected_report())
 
         left_actions = tk.Frame(left, bg=THEME["glass"])
@@ -926,22 +1092,19 @@ class ProjectControlGUI:
         open_button.pack(side=tk.LEFT)
         self.action_buttons.extend([refresh_button, open_button])
 
-        tk.Label(right, text="Preview", bg=THEME["glass"], fg=THEME["text"], font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=16, pady=(14, 6))
+        tk.Label(right, text="Preview", bg=THEME["glass"], fg=THEME["text"], font=FONTS["section"]).pack(anchor="w", padx=16, pady=(14, 6))
         preview_shell = self._glass_frame(right, bg=THEME["glass_card"], border=THEME["border_soft"])
         preview_shell.pack(fill=tk.BOTH, expand=True, padx=14, pady=(0, 14))
-        self.report_preview = scrolledtext.ScrolledText(
+        preview_panel = ScrollableTextPanel(
             preview_shell,
-            wrap=tk.WORD,
             bg=THEME["glass_deep"],
             fg=THEME["text"],
-            insertbackground=THEME["text"],
-            relief=tk.FLAT,
-            highlightthickness=0,
+            font=FONTS["mono"],
             padx=12,
             pady=12,
-            font=("Cascadia Mono", 10),
         )
-        self.report_preview.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+        preview_panel.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+        self.report_preview = preview_panel.text
 
     def _build_audits_tab(self) -> None:
         frame = self._build_result_tab("audits", "Audits")
@@ -953,7 +1116,7 @@ class ProjectControlGUI:
         self._add_action_button(grid, "Run Audit Retention", lambda: self._submit("audit_retention"), row=0, column=1)
         self._add_action_button(grid, "Run VFX Audit", lambda: self._submit("vfx_audit"), row=0, column=2)
 
-        tk.Label(grid, text="UI profile", bg=THEME["glass_alt"], fg=THEME["text_soft"], font=("Segoe UI", 10, "bold")).grid(row=1, column=0, sticky="w", pady=(14, 0))
+        tk.Label(grid, text="UI profile", bg=THEME["glass_alt"], fg=THEME["text_soft"], font=FONTS["label"]).grid(row=1, column=0, sticky="w", pady=(14, 0))
         tk.Entry(
             grid,
             textvariable=self.ui_profile_var,
@@ -977,7 +1140,7 @@ class ProjectControlGUI:
 
         settings_card = self._glass_frame(shell, bg=THEME["glass"], border=THEME["border"])
         settings_card.pack(fill=tk.X)
-        tk.Label(settings_card, text="Settings", bg=THEME["glass"], fg=THEME["text"], font=("Segoe UI", 13, "bold")).grid(row=0, column=0, columnspan=2, sticky="w", padx=16, pady=(16, 8))
+        tk.Label(settings_card, text="Settings", bg=THEME["glass"], fg=THEME["text"], font=FONTS["section"]).grid(row=0, column=0, columnspan=2, sticky="w", padx=16, pady=(16, 8))
         self._settings_row(settings_card, 1, "Project mode", ttk.Combobox(settings_card, textvariable=self.settings_mode_var, values=("js_ts", "python", "mixed"), width=18, state="readonly"))
         self._settings_row(settings_card, 2, "Graph profile", ttk.Combobox(settings_card, textvariable=self.settings_profile_var, values=("pragmatic", "strict"), width=18, state="readonly"))
         self._settings_row(
@@ -1024,7 +1187,7 @@ class ProjectControlGUI:
 
         helper = self._glass_frame(shell, bg=THEME["glass_alt"], border=THEME["border_soft"])
         helper.pack(fill=tk.X, pady=(10, 0))
-        tk.Label(helper, text="State", bg=THEME["glass_alt"], fg=THEME["text"], font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=16, pady=(12, 4))
+        tk.Label(helper, text="State", bg=THEME["glass_alt"], fg=THEME["text"], font=FONTS["label"]).pack(anchor="w", padx=16, pady=(12, 4))
         tk.Label(
             helper,
             text="Settings affect graph defaults, trace depth, and the remembered UI verification behavior for this project.",
@@ -1035,12 +1198,11 @@ class ProjectControlGUI:
         ).pack(fill=tk.X, padx=16, pady=(0, 14))
 
     def _settings_row(self, parent: tk.Frame, row: int, label: str, widget: tk.Widget) -> None:
-        tk.Label(parent, text=label, bg=THEME["glass"], fg=THEME["text_soft"], font=("Segoe UI", 10, "bold")).grid(row=row, column=0, sticky="w", padx=16, pady=7)
+        tk.Label(parent, text=label, bg=THEME["glass"], fg=THEME["text_soft"], font=FONTS["label"]).grid(row=row, column=0, sticky="w", padx=16, pady=7)
         widget.grid(row=row, column=1, sticky="w", padx=16, pady=7)
 
-    def _glass_frame(self, parent: tk.Misc, *, bg: str, border: str) -> tk.Frame:
-        frame = tk.Frame(parent, bg=bg, bd=0, relief=tk.FLAT, highlightthickness=1, highlightbackground=border)
-        return frame
+    def _glass_frame(self, parent: tk.Misc, *, bg: str, border: str) -> RoundedPanel:
+        return RoundedPanel(parent, bg=bg, border=border)
 
     def _add_action_button(
         self,
@@ -1220,6 +1382,7 @@ class ProjectControlGUI:
     def _refresh_overview(self) -> None:
         result = self.controller.get_overview()
         self._display_result("overview", result)
+        self._refresh_quick_start()
 
     def _seed_workflow_onboarding(self) -> None:
         self._display_result("ghost_dead", present_workflow_status(self.project_root, workflow="ghost", title="Ghost / Dead"))
@@ -1248,6 +1411,55 @@ class ProjectControlGUI:
         if reports:
             self.report_listbox.selection_set(0)
             self._preview_selected_report()
+
+    def _project_flags(self) -> tuple[bool, bool, bool]:
+        control_dir = self.project_root / ".project-control"
+        initialized = (control_dir / "patterns.yaml").exists()
+        snapshot_ready = (control_dir / "snapshot.json").exists()
+        graph_ready = (control_dir / "out" / "graph.snapshot.json").exists()
+        return initialized, snapshot_ready, graph_ready
+
+    def _refresh_quick_start(self) -> None:
+        initialized, snapshot_ready, graph_ready = self._project_flags()
+        state_line = (
+            f"Setup {'ready' if initialized else 'needed'} / "
+            f"Snapshot {'ready' if snapshot_ready else 'missing'} / "
+            f"Graph {'ready' if graph_ready else 'missing'}"
+        )
+        if not initialized:
+            lines = [
+                state_line,
+                "",
+                "1. Run Scan",
+                "2. Let PROJECT CONTROL create the first snapshot",
+                "3. Open Graph or Audits next",
+            ]
+        elif not snapshot_ready:
+            lines = [
+                state_line,
+                "",
+                "1. Run Scan",
+                "2. Build the first snapshot",
+                "3. Continue with Graph or Ghost",
+            ]
+        elif not graph_ready:
+            lines = [
+                state_line,
+                "",
+                "1. Run Graph Report",
+                "2. Inspect Graph Trace if needed",
+                "3. Open Reports or Audits",
+            ]
+        else:
+            lines = [
+                state_line,
+                "",
+                "1. Run Ghost or Dead",
+                "2. Run Artifacts or Audit Retention",
+                "3. Open Reports to review outputs",
+            ]
+        self.quick_start_title_var.set("Quick Start")
+        self.quick_start_body_var.set("\n".join(lines))
 
     def _summary_badge_for(self, state: str, key: object) -> str:
         if state == "error":

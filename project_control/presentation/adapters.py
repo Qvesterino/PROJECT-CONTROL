@@ -690,7 +690,7 @@ def present_overview(project_root: Path, state: AppState) -> PresentationResult:
         lines.extend(
             [
                 "This project is not set up yet.",
-                "Run Scan to initialize PROJECT CONTROL and create the first snapshot.",
+                "Run Scan to create the workspace metadata and the first snapshot.",
                 "",
                 "Next steps:",
                 "1. Run Scan",
@@ -703,7 +703,7 @@ def present_overview(project_root: Path, state: AppState) -> PresentationResult:
         lines.extend(
             [
                 "PROJECT CONTROL is ready, but this project has not been scanned yet.",
-                "Run Scan to create the first snapshot.",
+                "Run Scan to create the first snapshot and unlock the analysis workflows.",
                 "",
                 "Next steps:",
                 "1. Run Scan",
@@ -716,12 +716,20 @@ def present_overview(project_root: Path, state: AppState) -> PresentationResult:
         lines.extend(
             [
                 "Snapshot data is ready. The dependency graph is not built yet.",
-                "Run Graph Report to build it.",
+                "Run Graph Report to map imports, metrics, and trace paths.",
                 "",
                 "Next steps:",
                 "1. Run Graph Report",
                 "2. Use Graph Trace",
                 "3. Open Reports",
+                "",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "The project is ready for audits and report review.",
+                "Use Ghost, Graph, Artifacts, or Audit Retention depending on what you need to inspect next.",
                 "",
             ]
         )
