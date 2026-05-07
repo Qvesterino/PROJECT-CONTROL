@@ -7,6 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from project_control.presentation.adapters import (
+    present_ghost,
+    present_graph_status,
     present_scan,
     present_ui_verification,
     present_vfx_audit,
@@ -58,9 +60,46 @@ class PresentationAdapterTests(unittest.TestCase):
             self.assertTrue(result.report_paths["snapshot"].exists())
             self.assertTrue(result.primary_text)
 
+    def test_present_scan_interactive_auto_initializes_fresh_project(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            (project_root / "main.py").write_text("print('ok')\n", encoding="utf-8")
+
+            result = present_scan(project_root, interactive=True)
+
+            self.assertEqual(result.workflow, "scan")
+            self.assertTrue((project_root / ".project-control" / "patterns.yaml").exists())
+            self.assertTrue(result.report_paths["snapshot"].exists())
+            self.assertIn("initialized this project", result.primary_text)
+
+    def test_present_ghost_returns_guided_empty_state_without_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+
+            result = present_ghost(project_root)
+
+            self.assertEqual(result.workflow, "ghost")
+            self.assertEqual(result.summary["snapshot"], "Missing")
+            self.assertIn("Run Scan", result.primary_text)
+
+    def test_present_graph_status_returns_guided_empty_state_without_graph(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            initialize_test_project(project_root)
+            (project_root / "main.py").write_text("print('ok')\n", encoding="utf-8")
+            present_scan(project_root)
+
+            result = present_graph_status(project_root, SimpleNamespace(project_mode="js_ts", graph_profile="pragmatic"))
+
+            self.assertEqual(result.summary["graph"], "Missing")
+            self.assertIn("Run Graph Report", result.primary_text)
+
     def test_present_vfx_audit_preserves_report_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             project_root = Path(temp_dir)
+            initialize_test_project(project_root)
+            snapshot_path = project_root / ".project-control" / "snapshot.json"
+            snapshot_path.write_text('{"files": [], "file_count": 0}', encoding="utf-8")
             markdown_path = project_root / "vfx.md"
             json_path = project_root / "vfx.json"
             fake_result = object()

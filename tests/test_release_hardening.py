@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from project_control.cli.graph_cmd import graph_build
-from project_control.cli.router import dispatch
+from project_control.cli.router import cmd_scan, dispatch
 from project_control.core.pre_flight import HealthStatus, check_ripgrep_available, check_snapshot_valid, health_check
 from project_control.pc import main as pc_main
 from project_control.services.help_service import get_command_reference, get_keyboard_shortcuts_help, get_quick_start
@@ -101,12 +101,27 @@ class ReleaseHardeningTests(unittest.TestCase):
         self.assertEqual(exit_code, 2)
         self.assertIn("pc scan", stderr.getvalue())
 
+    def test_cli_scan_stays_strict_without_init(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            stderr = io.StringIO()
+
+            with patch("project_control.cli.router.PROJECT_DIR", project_root):
+                with redirect_stderr(stderr):
+                    with self.assertRaises(SystemExit) as exit_info:
+                        cmd_scan(Namespace())
+
+        self.assertEqual(exit_info.exception.code, 2)
+        self.assertIn("pc init", stderr.getvalue())
+
     def test_help_content_prefers_tui_wording(self) -> None:
         self.assertIn("pc tui", get_quick_start())
         self.assertIn("pc tui", get_command_reference())
         self.assertIn("TUI", get_command_reference())
         self.assertIn(".\\pc.ps1 gui", get_quick_start())
         self.assertIn("python .\\pc.py gui", get_command_reference())
+        self.assertIn("Run Scan action also initializes", get_quick_start())
+        self.assertIn("CLI 'pc scan' stays explicit", get_command_reference())
         self.assertIn("Quick Actions \u2192 10", get_keyboard_shortcuts_help())
 
     def test_health_check_treats_optional_dependencies_as_warnings(self) -> None:

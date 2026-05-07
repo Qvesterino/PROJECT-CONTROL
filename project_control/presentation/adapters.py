@@ -60,19 +60,182 @@ class PresentationResult:
     report_paths: dict[str, Path] = field(default_factory=dict)
 
 
-def present_scan(project_root: Path) -> PresentationResult:
+def _control_dir(project_root: Path) -> Path:
+    return project_root / ".project-control"
+
+
+def _snapshot_path(project_root: Path) -> Path:
+    return _control_dir(project_root) / "snapshot.json"
+
+
+def _graph_snapshot_path(project_root: Path) -> Path:
+    return _control_dir(project_root) / "out" / "graph.snapshot.json"
+
+
+def _is_initialized(project_root: Path) -> bool:
+    return (_control_dir(project_root) / "patterns.yaml").exists()
+
+
+def _has_snapshot(project_root: Path) -> bool:
+    return _snapshot_path(project_root).exists()
+
+
+def _has_graph(project_root: Path) -> bool:
+    return _graph_snapshot_path(project_root).exists()
+
+
+def _guided_result(
+    project_root: Path,
+    *,
+    workflow: str,
+    title: str,
+    requires_graph: bool = False,
+) -> PresentationResult:
+    initialized = _is_initialized(project_root)
+    snapshot_ready = _has_snapshot(project_root)
+    graph_ready = _has_graph(project_root)
+
+    if not initialized:
+        message = "This project is not set up yet."
+        action = "Run Scan to initialize PROJECT CONTROL and create the first snapshot."
+        status = "Setup required"
+    elif not snapshot_ready:
+        message = "PROJECT CONTROL is ready, but this project has not been scanned yet."
+        action = "Run Scan to create the first snapshot."
+        status = "Scan required"
+    elif requires_graph and not graph_ready:
+        message = "Snapshot data is ready, but the dependency graph is not built yet."
+        action = "Run Graph Report to build the graph and open the report."
+        status = "Graph required"
+    else:
+        message = "This workflow is not ready yet."
+        action = "Run the prerequisite steps below."
+        status = "Not ready"
+
+    steps = ["1. Run Scan"]
+    if requires_graph:
+        steps.append("2. Run Graph Report")
+        steps.append("3. Use Graph Trace or return to other audits")
+    else:
+        steps.append("2. Run Graph Report")
+        steps.append("3. Run Ghost / Artifacts / Audit Retention")
+
+    primary_text = "\n".join(
+        [
+            title,
+            "-" * len(title),
+            message,
+            action,
+            "",
+            "Next steps:",
+            *steps,
+        ]
+    )
+    return PresentationResult(
+        workflow=workflow,
+        title=title,
+        summary={
+            "status": status,
+            "setup": "Ready" if initialized else "Needed",
+            "snapshot": "Ready" if snapshot_ready else "Missing",
+            "graph": "Ready" if graph_ready else "Missing",
+        },
+        primary_text=primary_text,
+        report_paths={
+            "snapshot": _snapshot_path(project_root),
+            "graph": _graph_snapshot_path(project_root),
+        },
+    )
+
+
+def present_graph_status(project_root: Path, state: AppState) -> PresentationResult:
+    """Return a no-side-effect graph onboarding/status view."""
+    if not _is_initialized(project_root) or not _has_snapshot(project_root) or not _has_graph(project_root):
+        return _guided_result(project_root, workflow="graph_report", title="Graph", requires_graph=True)
+    return present_graph_report(project_root, state, build_if_missing=False)
+
+
+def present_workflow_status(
+    project_root: Path,
+    *,
+    workflow: str,
+    title: str,
+    requires_graph: bool = False,
+) -> PresentationResult:
+    """Return a no-side-effect onboarding state for a workflow tab."""
+    initialized = _is_initialized(project_root)
+    snapshot_ready = _has_snapshot(project_root)
+    graph_ready = _has_graph(project_root)
+    if initialized and snapshot_ready and (graph_ready or not requires_graph):
+        lines = [
+            title,
+            "-" * len(title),
+            "This workflow is ready.",
+        ]
+        if requires_graph:
+            lines.extend(
+                [
+                    "Run Graph Report to refresh metrics, or use Graph Trace to inspect a dependency path.",
+                    "",
+                    "Next steps:",
+                    "1. Run Graph Report",
+                    "2. Enter a trace target",
+                    "3. Use Graph Trace",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "Use the actions in this tab when you want to inspect cleanup, risk, or dead-code candidates.",
+                    "",
+                    "Next steps:",
+                    "1. Run Ghost or Run Dead",
+                    "2. Run Artifacts or Audit Retention",
+                    "3. Open Reports",
+                ]
+            )
+        return PresentationResult(
+            workflow=workflow,
+            title=title,
+            summary={
+                "status": "Ready",
+                "setup": "Ready",
+                "snapshot": "Ready",
+                "graph": "Ready" if graph_ready else "Optional",
+            },
+            primary_text="\n".join(lines),
+            report_paths={
+                "snapshot": _snapshot_path(project_root),
+                "graph": _graph_snapshot_path(project_root),
+            },
+        )
+    return _guided_result(project_root, workflow=workflow, title=title, requires_graph=requires_graph)
+
+
+def present_scan(project_root: Path, *, interactive: bool = False) -> PresentationResult:
     """Run scan and return a normalized text result."""
-    result = ScanService().execute(project_root)
+    result = ScanService().execute(project_root, auto_init=interactive)
     if not result.success:
         raise RuntimeError(result.message)
 
     snapshot = result.data.get("snapshot", {})
-    snapshot_path = project_root / ".project-control" / "snapshot.json"
+    initialization = result.data.get("initialization")
+    snapshot_path = _snapshot_path(project_root)
     summary = {
         "file_count": snapshot.get("file_count", result.data.get("file_count", 0)),
         "snapshot_path": snapshot_path,
+        "setup": "Ready",
     }
-    primary_text = "\n".join(
+    lines = []
+    if initialization and getattr(initialization, "initialized_now", False):
+        lines.extend(
+            [
+                "PROJECT CONTROL was not set up for this project yet.",
+                "PROJECT CONTROL initialized this project and created the first snapshot.",
+                "",
+            ]
+        )
+    lines.extend(
         [
             result.message,
             f"Snapshot: {snapshot_path}",
@@ -83,13 +246,16 @@ def present_scan(project_root: Path) -> PresentationResult:
         workflow="scan",
         title="Scan",
         summary=summary,
-        primary_text=primary_text,
+        primary_text="\n".join(lines),
         report_paths={"snapshot": snapshot_path},
     )
 
 
 def present_ghost(project_root: Path, *, mode: str = "pragmatic", tree: bool = True) -> PresentationResult:
     """Run ghost analysis and return markdown/tree aware output."""
+    if not _is_initialized(project_root) or not _has_snapshot(project_root):
+        return _guided_result(project_root, workflow="ghost", title="Ghost / Dead")
+
     args = argparse.Namespace(
         mode=mode,
         max_high=-1,
@@ -150,6 +316,9 @@ def present_ghost(project_root: Path, *, mode: str = "pragmatic", tree: bool = T
 
 def present_dead(project_root: Path, *, threshold: int = 2) -> PresentationResult:
     """Run dead-code analysis using the canonical string-based renderer."""
+    if not _is_initialized(project_root) or not _has_snapshot(project_root):
+        return _guided_result(project_root, workflow="dead", title="Ghost / Dead")
+
     snapshot = load_snapshot(project_root)
     files = [entry.get("path") for entry in snapshot.get("files", []) if entry.get("path")]
     result = analyze_dead_code(files, low_usage_threshold=threshold)
@@ -174,6 +343,9 @@ def present_artifacts(
     by_resolution: bool = False,
 ) -> PresentationResult:
     """Run artifact hygiene and normalize the result for GUI/TUI consumers."""
+    if not _is_initialized(project_root) or not _has_snapshot(project_root):
+        return _guided_result(project_root, workflow="artifacts", title="Audits")
+
     args = argparse.Namespace(
         older_than=older_than,
         min_score=min_score,
@@ -230,6 +402,9 @@ def present_audit_retention(
     by_family: bool = False,
 ) -> PresentationResult:
     """Run audit retention and normalize the result for GUI/TUI consumers."""
+    if not _is_initialized(project_root) or not _has_snapshot(project_root):
+        return _guided_result(project_root, workflow="audit_retention", title="Audits")
+
     args = argparse.Namespace(
         older_than=older_than,
         min_score=min_score,
@@ -280,8 +455,14 @@ def present_audit_retention(
     )
 
 
-def present_graph_report(project_root: Path, state: AppState) -> PresentationResult:
+def present_graph_report(project_root: Path, state: AppState, *, build_if_missing: bool = True) -> PresentationResult:
     """Ensure graph artifacts exist and return summary plus report body."""
+    if not _is_initialized(project_root) or not _has_snapshot(project_root):
+        return _guided_result(project_root, workflow="graph_report", title="Graph", requires_graph=True)
+
+    if not build_if_missing and not _has_graph(project_root):
+        return _guided_result(project_root, workflow="graph_report", title="Graph", requires_graph=True)
+
     cfg = config_with_state(project_root, state)
     from project_control.graph.ensure import ensure_graph
 
@@ -327,6 +508,9 @@ def present_graph_trace(
     direction: str = "both",
 ) -> PresentationResult:
     """Trace graph paths without routing through CLI stdout parsing."""
+    if not _is_initialized(project_root) or not _has_snapshot(project_root) or not _has_graph(project_root):
+        return _guided_result(project_root, workflow="graph_trace", title="Graph", requires_graph=True)
+
     snapshot = load_snapshot(project_root)
     config = config_with_state(project_root, state)
     graph = _load_or_build_graph(project_root, snapshot, config)
@@ -366,6 +550,9 @@ def present_graph_trace(
 
 def present_vfx_audit(project_root: Path) -> PresentationResult:
     """Run the VFX contract audit."""
+    if not _is_initialized(project_root) or not _has_snapshot(project_root):
+        return _guided_result(project_root, workflow="vfx_audit", title="Audits")
+
     result, markdown_path, json_path = run_vfx_contract_audit(project_root)
     data = vfx_contract_result_to_dict(result)
     return PresentationResult(
@@ -431,7 +618,23 @@ def present_ui_verification(
 def present_report_registry(project_root: Path) -> PresentationResult:
     """Return a text-first view of all generated reports."""
     reports = list_all_reports(project_root)
-    lines = ["Available Reports", "-----------------"]
+    available = sum(1 for report in reports if report.get("exists"))
+    lines = ["Reports", "-------"]
+    if available == 0:
+        lines.extend(
+            [
+                "No reports are generated yet.",
+                "Run Scan first, then use Graph, Ghost, or the audit workflows to populate this workspace.",
+                "",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                f"{available} of {len(reports)} report artifacts are available right now.",
+                "",
+            ]
+        )
     for report in reports:
         status = "OK" if report.get("exists") else "MISSING"
         lines.append(f"- {report['name']}: {status} ({report.get('size_kb', 'N/A')})")
@@ -439,7 +642,7 @@ def present_report_registry(project_root: Path) -> PresentationResult:
     return PresentationResult(
         workflow="reports",
         title="Reports",
-        summary={"report_count": len(reports), "available": sum(1 for report in reports if report.get("exists"))},
+        summary={"report_count": len(reports), "available": available},
         primary_text="\n".join(lines),
         report_paths={
             "artifact_markdown": get_artifact_report_path(project_root),
@@ -461,26 +664,72 @@ def present_report_registry(project_root: Path) -> PresentationResult:
 
 def present_overview(project_root: Path, state: AppState) -> PresentationResult:
     """Build a lightweight overview without depending on Rich/dashboard code."""
-    snapshot_path = project_root / ".project-control" / "snapshot.json"
-    graph_path = project_root / ".project-control" / "out" / "graph.snapshot.json"
+    snapshot_path = _snapshot_path(project_root)
+    graph_path = _graph_snapshot_path(project_root)
     report_info = list_all_reports(project_root)
+    initialized = _is_initialized(project_root)
+    snapshot_ready = snapshot_path.exists()
+    graph_ready = graph_path.exists()
 
     summary = {
-        "project": project_root.name,
-        "mode": state.project_mode,
-        "snapshot": snapshot_path.exists(),
-        "graph": graph_path.exists(),
+        "setup": "Ready" if initialized else "Needed",
+        "snapshot": "Ready" if snapshot_ready else "Missing",
+        "graph": "Ready" if graph_ready else "Missing",
         "reports": sum(1 for report in report_info if report.get("exists")),
     }
     lines = [
         f"Project: {project_root.name}",
         f"Mode: {state.project_mode}",
-        f"Snapshot: {'READY' if snapshot_path.exists() else 'MISSING'}",
-        f"Graph: {'READY' if graph_path.exists() else 'MISSING'}",
+        f"Setup: {summary['setup']}",
+        f"Snapshot: {summary['snapshot']}",
+        f"Graph: {summary['graph']}",
         f"Reports available: {summary['reports']}",
         "",
-        "Generated reports:",
     ]
+    if not initialized:
+        lines.extend(
+            [
+                "This project is not set up yet.",
+                "Run Scan to initialize PROJECT CONTROL and create the first snapshot.",
+                "",
+                "Next steps:",
+                "1. Run Scan",
+                "2. Run Graph Report",
+                "3. Run Ghost / Artifacts / Audit Retention",
+                "",
+            ]
+        )
+    elif not snapshot_ready:
+        lines.extend(
+            [
+                "PROJECT CONTROL is ready, but this project has not been scanned yet.",
+                "Run Scan to create the first snapshot.",
+                "",
+                "Next steps:",
+                "1. Run Scan",
+                "2. Run Graph Report",
+                "3. Run Ghost / Artifacts / Audit Retention",
+                "",
+            ]
+        )
+    elif not graph_ready:
+        lines.extend(
+            [
+                "Snapshot data is ready. The dependency graph is not built yet.",
+                "Run Graph Report to build it.",
+                "",
+                "Next steps:",
+                "1. Run Graph Report",
+                "2. Use Graph Trace",
+                "3. Open Reports",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+        "Generated reports:",
+        ]
+    )
     for report in report_info:
         lines.append(f"- {report['name']}: {'OK' if report.get('exists') else 'MISSING'}")
     return PresentationResult(

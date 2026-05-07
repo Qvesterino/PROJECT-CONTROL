@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from project_control.config.patterns_loader import get_scan_extensions, load_patterns
+from project_control.core.project_initializer import InitializationResult, ensure_project_initialized
 from project_control.core.snapshot_service import create_snapshot, save_snapshot
 from project_control.services.base import Service, ServiceResult, with_error_handling
 
@@ -22,6 +23,11 @@ class ScanService:
         Returns:
             ServiceResult with scan results
         """
+        auto_init = bool(kwargs.get("auto_init", False))
+        initialization: InitializationResult | None = None
+        if auto_init:
+            initialization = ensure_project_initialized(project_root)
+
         patterns = load_patterns(project_root)
         snapshot = create_snapshot(
             project_root,
@@ -38,7 +44,8 @@ class ScanService:
             data={
                 "snapshot": snapshot,
                 "file_count": file_count,
-                "patterns": patterns
+                "patterns": patterns,
+                "initialization": initialization,
             },
             exit_code=0
         )
@@ -56,3 +63,8 @@ def run_scan(project_root: Path) -> None:
         print(result.message)
     else:
         raise Exception(result.message)
+
+
+def run_interactive_scan(project_root: Path) -> ServiceResult:
+    """Scan with first-run bootstrap for GUI/TUI flows."""
+    return ScanService().execute(project_root, auto_init=True)

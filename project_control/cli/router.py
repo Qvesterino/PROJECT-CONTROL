@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import argparse
 import logging
-import yaml
 from pathlib import Path
 from typing import Optional
 
-from project_control.config.patterns_loader import get_default_patterns, get_scan_extensions, load_patterns
+from project_control.config.patterns_loader import get_scan_extensions, load_patterns
 from project_control.core.exit_codes import EXIT_OK, EXIT_VALIDATION_ERROR
 from project_control.core.artifact_service import run_artifact_hygiene
 from project_control.core.audit_retention_service import run_audit_retention
 from project_control.core.ghost_service import run_ghost, write_ghost_report, write_ghost_tree_report
 from project_control.core.markdown_renderer import render_writer_report
 from project_control.core.snapshot_service import create_snapshot, load_snapshot, save_snapshot
+from project_control.core.project_initializer import ensure_project_initialized
 from project_control.core.writers import run_writers_analysis
 from project_control.core.error_handler import (
     ErrorHandler,
@@ -45,13 +45,6 @@ logger = logging.getLogger(__name__)
 PROJECT_DIR = Path.cwd()
 CONTROL_DIR = PROJECT_DIR / ".project-control"
 EXPORTS_DIR = CONTROL_DIR / "exports"
-STATUS_FILE = CONTROL_DIR / "status.yaml"
-PATTERNS_FILE = CONTROL_DIR / "patterns.yaml"
-
-
-def ensure_control_dirs() -> None:
-    CONTROL_DIR.mkdir(exist_ok=True)
-    EXPORTS_DIR.mkdir(exist_ok=True)
 
 
 def _load_existing_snapshot() -> Optional[dict]:
@@ -62,38 +55,10 @@ def _load_existing_snapshot() -> Optional[dict]:
         return None
 
 
-def _ensure_gitignore() -> None:
-    """Add .project-control/ to .gitignore if not already present."""
-    gitignore = PROJECT_DIR / ".gitignore"
-    entry = ".project-control/"
-
-    existing_lines: list[str] = []
-    if gitignore.exists():
-        existing_lines = gitignore.read_text(encoding="utf-8").splitlines()
-
-    if any(line.strip() == entry.rstrip("/") or line.strip() == entry for line in existing_lines):
-        return  # Already ignored
-
-    with gitignore.open("a", encoding="utf-8") as f:
-        if existing_lines and existing_lines[-1].strip() != "":
-            f.write("\n")
-        f.write(f"\n# Project Control artifacts\n{entry}\n")
-
-    print(f"  Added '{entry}' to .gitignore")
-
-
 def cmd_init(args: argparse.Namespace) -> int:
-    ensure_control_dirs()
-    _ensure_gitignore()
-
-    if not PATTERNS_FILE.exists():
-        with PATTERNS_FILE.open("w", encoding="utf-8") as f:
-            yaml.dump(get_default_patterns(), f, sort_keys=False)
-
-    if not STATUS_FILE.exists():
-        with STATUS_FILE.open("w", encoding="utf-8") as f:
-            yaml.dump({"tags": {}}, f)
-
+    initialization = ensure_project_initialized(PROJECT_DIR)
+    if initialization.updated_gitignore:
+        print("  Added '.project-control/' to .gitignore")
     print("PROJECT CONTROL initialized.")
     return EXIT_OK
 
@@ -102,7 +67,6 @@ def cmd_scan(args: argparse.Namespace) -> int:
     """Scan project and create snapshot with error handling."""
     try:
         with ErrorContext("Scanning project"):
-            ensure_control_dirs()
             run_scan(PROJECT_DIR)
         return EXIT_OK
     except SystemExit:
@@ -118,7 +82,7 @@ def cmd_checklist(args: argparse.Namespace) -> int:
             require_healthy_snapshot(PROJECT_DIR, operation="checklist generation")
             snapshot = load_snapshot(PROJECT_DIR)
 
-            ensure_control_dirs()
+            ensure_project_initialized(PROJECT_DIR)
 
             output = ["# PROJECT CHECKLIST\n"]
             for file in snapshot["files"]:
@@ -139,7 +103,7 @@ def cmd_quick(args: argparse.Namespace) -> int:
     """Quick analysis - scan, find issues, and build dependencies."""
     try:
         with ErrorContext("Quick analysis"):
-            ensure_control_dirs()
+            ensure_project_initialized(PROJECT_DIR)
             
             # Get flags
             health_only = getattr(args, "health", False)
@@ -237,7 +201,7 @@ def cmd_find(args: argparse.Namespace) -> int:
 
     try:
         with ErrorContext("Searching for symbol"):
-            ensure_control_dirs()
+            ensure_project_initialized(PROJECT_DIR)
 
             result = run_rg(args.symbol)
             output_path = EXPORTS_DIR / f"find_{args.symbol}.md"
@@ -302,7 +266,7 @@ def cmd_ghost(args: argparse.Namespace) -> int:
 
 
 def cmd_writers(args: argparse.Namespace) -> int:
-    ensure_control_dirs()
+    ensure_project_initialized(PROJECT_DIR)
 
     results = run_writers_analysis(PROJECT_DIR)
     output_path = EXPORTS_DIR / "writers_report.md"

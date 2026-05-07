@@ -115,6 +115,31 @@ class TestScanService(TestCase):
         self.assertIn("file_count", snapshot)
         self.assertIn("files", snapshot)
 
+    def test_execute_auto_init_bootstraps_fresh_project(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            (project_root / "demo.py").write_text("print('ok')\n", encoding="utf-8")
+
+            service = ScanService()
+            result = service.execute(project_root, auto_init=True)
+
+            self.assertTrue(result.success)
+            self.assertTrue((project_root / ".project-control" / "patterns.yaml").exists())
+            self.assertTrue((project_root / ".project-control" / "status.yaml").exists())
+            self.assertTrue((project_root / ".project-control" / "snapshot.json").exists())
+            self.assertTrue(result.data["initialization"].initialized_now)
+
+    def test_execute_without_auto_init_stays_strict_for_fresh_project(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            (project_root / "demo.py").write_text("print('ok')\n", encoding="utf-8")
+
+            service = ScanService()
+            result = service.execute(project_root)
+
+            self.assertFalse(result.success)
+            self.assertIn("not initialized", result.message.lower())
+
     def test_execute_with_missing_root(self) -> None:
         """Test scan with non-existent project root."""
         service = ScanService()

@@ -10,10 +10,13 @@ class TUIWordingDocsTests(unittest.TestCase):
 
     def test_readme_uses_tui_as_primary_term(self) -> None:
         readme = (self.repo_root / "README.md").read_text(encoding="utf-8")
+        self.assertIn("## Install / Update / Upgrade", readme)
         self.assertIn("pc tui", readme)
         self.assertIn("was removed in this release", readme)
         self.assertIn(".\\pc.ps1 gui", readme)
         self.assertIn("pipx install .", readme)
+        self.assertIn("python -m pip install -e .", readme)
+        self.assertIn("pipx upgrade project-control", readme)
         self.assertNotIn("python pc.py gui", readme)
         self.assertNotIn("| `pc ui` |", readme)
 

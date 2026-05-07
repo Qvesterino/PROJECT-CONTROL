@@ -13,7 +13,7 @@ from pathlib import Path
 from project_control.ui.state import AppState, load_state, save_state, add_to_history, add_to_favorites, remove_from_favorites
 from project_control.ui.onboarding import should_show_onboarding, show_onboarding, show_help_menu
 from project_control.ui.wizard import should_run_wizard, run_wizard
-from project_control.services.scan_service import run_scan
+from project_control.services.scan_service import run_interactive_scan
 from project_control.services.graph_service import build_graph, show_report
 from project_control.services.analyze_service import ghost_fast, ghost_structural
 from project_control.services.explore_service import run_trace
@@ -306,9 +306,15 @@ def _snapshot_menu(project_root: Path, state: AppState) -> None:
     """Snapshot menu with error handling."""
     print()
     if _confirm("Scan project files?"):
-        with ErrorContext("Scanning project"):
-            run_scan(project_root)
+        print_info("Initializing PROJECT CONTROL if needed, then scanning project files...")
+        result = run_interactive_scan(project_root)
+        if result.success:
+            initialization = result.data.get("initialization")
+            if initialization and getattr(initialization, "initialized_now", False):
+                print_info("PROJECT CONTROL was initialized for this project.")
             print_success("Snapshot created successfully!")
+        else:
+            print_error(result.message)
     input("\nPress Enter to return...")
 
 
@@ -1167,13 +1173,15 @@ def _quick_full_analysis(project_root: Path, state: AppState) -> None:
     if not _confirm("\nProceed with full analysis?"):
         return
 
-    print("\nStep 1/4: Scanning project files...")
-    try:
-        with ErrorContext("Scanning project"):
-            run_scan(project_root)
-            print_success("Scan complete")
-    except Exception as e:
-        ErrorHandler.handle(e, "Scanning project")
+    print("\nStep 1/4: Initializing PROJECT CONTROL (if needed) and scanning project files...")
+    result = run_interactive_scan(project_root)
+    if result.success:
+        initialization = result.data.get("initialization")
+        if initialization and getattr(initialization, "initialized_now", False):
+            print_info("PROJECT CONTROL was initialized for this project.")
+        print_success("Scan complete")
+    else:
+        print_error(result.message)
         input("\nPress Enter to return...")
         return
 

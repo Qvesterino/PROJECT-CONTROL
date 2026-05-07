@@ -30,6 +30,9 @@ def show_onboarding(project_root: Path) -> None:
     print("  Step 2: Run 'pc ghost' to find orphans and dead code")
     print("  Step 3: Run 'pc graph build' to analyze dependencies")
     print()
+    print("  In the GUI or TUI, the Run Scan action also initializes")
+    print("  PROJECT CONTROL automatically the first time you use it.")
+    print()
     
     print_info("MAIN FEATURES")
     print()
@@ -130,6 +133,7 @@ def _show_quick_questions() -> None:
     print("     1. pc scan")
     print("     2. pc ghost")
     print("     3. pc graph build")
+    print("   → In the GUI/TUI, Run Scan also handles first-time setup.")
     print()
     
     print("3) What are 'orphans'?")

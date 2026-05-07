@@ -15,6 +15,7 @@ from project_control.cli.menu import (
     _quick_audit_retention,
     _quick_ui_verify,
     _reports_menu,
+    _snapshot_menu,
 )
 from project_control.config.ui_verification_config import UIVerificationProfileInfo
 from project_control.ui.state import AppState
@@ -45,6 +46,21 @@ class TestUIVerificationMenuIntegration(TestCase):
         self.assertIn("UI Verify", output)
         self.assertIn("Artifact Hygiene", output)
         self.assertIn("Audit Retention", output)
+
+    def test_snapshot_menu_auto_initializes_fresh_project(self) -> None:
+        fresh_root = Path(self.temp_dir.name) / "fresh-project"
+        fresh_root.mkdir(parents=True, exist_ok=True)
+        (fresh_root / "main.py").write_text("print('ok')\n", encoding="utf-8")
+
+        buffer = io.StringIO()
+        with patch("builtins.input", side_effect=["y", ""]):
+            with redirect_stdout(buffer):
+                _snapshot_menu(fresh_root, AppState())
+
+        output = buffer.getvalue()
+        self.assertIn("Initializing PROJECT CONTROL if needed", output)
+        self.assertIn("Snapshot created successfully", output)
+        self.assertTrue((fresh_root / ".project-control" / "snapshot.json").exists())
 
     def test_reports_menu_lists_ui_verification_report(self) -> None:
         export_dir = self.project_root / ".project-control" / "exports"

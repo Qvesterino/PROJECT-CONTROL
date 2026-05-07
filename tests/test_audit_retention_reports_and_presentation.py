@@ -12,14 +12,17 @@ from project_control.services.report_service import (
     get_audit_retention_report_path,
     list_all_reports,
 )
+from tests.test_presentation_adapters import initialize_test_project
 
 
 class AuditRetentionReportsAndPresentationTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.project_root = Path(self.temp_dir.name)
+        initialize_test_project(self.project_root)
         exports_dir = self.project_root / ".project-control" / "exports"
         exports_dir.mkdir(parents=True, exist_ok=True)
+        (self.project_root / ".project-control" / "snapshot.json").write_text('{"files": [], "file_count": 0}', encoding="utf-8")
         get_audit_retention_report_path(self.project_root).write_text("# Audit Retention Report\n", encoding="utf-8")
         get_audit_retention_data_path(self.project_root).write_text('{"summary": {"safe_to_delete": 2}}', encoding="utf-8")
         get_audit_delete_list_path(self.project_root).write_text(".project-control/exports/ghost_old.md\n", encoding="utf-8")

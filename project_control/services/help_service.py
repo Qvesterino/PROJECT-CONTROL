@@ -27,6 +27,9 @@ GET STARTED IN 3 STEPS:
    $ pc scan
    Indexes all files with SHA256 hashing
 
+   In the GUI/TUI, the Run Scan action also initializes the project
+   automatically on first use.
+
 3. ANALYZE
    $ pc ghost          - Find orphan/legacy code
    $ pc graph build    - Build dependency graph
@@ -55,6 +58,7 @@ COMMON WORKFLOW:
 NEED MORE?
    Use 'pc --help' for command reference
    Use 'pc tui' for TUI access with built-in help
+   In GUI/TUI, Run Scan handles first-time setup automatically
 """
 
 
@@ -100,6 +104,10 @@ LAUNCH MODES:
   Python fallback:
     python .\\pc.py gui
     python .\\pc.py tui
+
+  Interactive note:
+    GUI/TUI Run Scan initializes the project automatically on first run.
+    CLI 'pc scan' stays explicit and still expects 'pc init' first.
 
 CODE QUALITY:
   pc writers        Analyze writer patterns in codebase

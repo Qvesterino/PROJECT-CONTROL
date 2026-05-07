@@ -12,6 +12,61 @@ Project Control is a deterministic analysis tool that tells you what is really h
 
 ---
 
+## Install / Update / Upgrade
+
+### Use from any repository
+
+Install it once:
+
+```bash
+pipx install .
+```
+
+Then go to any project and use:
+
+```bash
+pc init
+pc scan
+pc tui
+pc gui
+pc artifacts
+pc audits retention
+```
+
+### Use directly from this repository
+
+From the PROJECT_CONTROL repository root on Windows:
+
+```bash
+.\pc.ps1 tui
+.\pc.cmd gui
+python .\pc.py tui
+python .\pc.py gui
+```
+
+PowerShell does not run local scripts from the current folder unless you prefix them with `.\`.
+
+### Update / Upgrade
+
+If you installed PROJECT CONTROL in editable mode for development:
+
+```bash
+git pull
+python -m pip install -e .
+```
+
+You usually only need the second command when dependencies, packaging metadata, or launcher entrypoints changed.
+
+If you installed it with `pipx`, update it with:
+
+```bash
+pipx upgrade project-control
+```
+
+Do not uninstall first unless you are intentionally cleaning up a broken install.
+
+---
+
 ## 30-Second Demo
 
 ```bash
