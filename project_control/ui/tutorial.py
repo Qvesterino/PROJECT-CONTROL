@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 from project_control.utils.terminal import (
-    print_success, print_warning, print_info, print_header, Colors,
+    print_success, print_warning, print_info, print_header, Colors, Violet,
     print_error
 )
 
@@ -61,7 +61,7 @@ class TutorialStep:
             cmd = self.action_data.get("command", "")
             lines.append("│  Run this command:                           │")
             lines.append("│                                              │")
-            lines.append(f"│  {Colors.CYAN}${Colors.RESET} {cmd}{' ' * (54 - len(cmd))}│")
+            lines.append(f"│  {Violet.BRIGHT}${Colors.RESET} {cmd}{' ' * (54 - len(cmd))}│")
             lines.append("│                                              │")
         elif self.action_type == "menu":
             menu_items = self.action_data.get("menu_items", [])
@@ -74,7 +74,7 @@ class TutorialStep:
             prompt = self.action_data.get("prompt", "")
             lines.append("│  Enter this when prompted:                   │")
             lines.append("│                                              │")
-            lines.append(f"│  {Colors.CYAN}{prompt}{Colors.RESET}{' ' * (54 - len(prompt))}│")
+            lines.append(f"│  {Violet.BRIGHT}{prompt}{Colors.RESET}{' ' * (54 - len(prompt))}│")
             lines.append("│                                              │")
         
         # Expected result
@@ -208,17 +208,17 @@ class Tutorial:
         
         if step.action_type == "command":
             cmd = step.action_data.get("command", "")
-            print(f"{Colors.CYAN}Run this command:{Colors.RESET}")
+            print(f"{Violet.BRIGHT}Run this command:{Colors.RESET}")
             print(f"  {cmd}")
             print()
         elif step.action_type == "menu":
-            print(f"{Colors.CYAN}In the menu:{Colors.RESET}")
+            print(f"{Violet.BRIGHT}In the menu:{Colors.RESET}")
             for item in step.action_data.get("menu_items", []):
                 print(f"  • {item}")
             print()
         elif step.action_type == "input":
             prompt = self.action_data.get("prompt", "")
-            print(f"{Colors.CYAN}Enter this when prompted:{Colors.RESET}")
+            print(f"{Violet.BRIGHT}Enter this when prompted:{Colors.RESET}")
             print(f"  {prompt}")
             print()
     

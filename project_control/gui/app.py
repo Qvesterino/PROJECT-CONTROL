@@ -18,6 +18,7 @@ from project_control.presentation.adapters import (
     present_artifacts,
     present_audit_retention,
     present_dead,
+    present_ghost,
     present_graph_report,
     present_graph_status,
     present_graph_trace,
@@ -31,6 +32,17 @@ from project_control.presentation.adapters import (
 from project_control.services.report_service import list_all_reports
 from project_control.ui.state import AppState, load_state, save_state
 
+# Enable per-monitor DPI awareness on Windows so the GUI renders sharply
+# on high-DPI / HiDPI displays.  Must run before Tk creates any window.
+if sys.platform == "win32":
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
 
 THEME = {
     "bg": "#12071E",
@@ -48,13 +60,13 @@ THEME = {
     "border": "#4E2F78",
     "border_soft": "#3B235C",
     "border_glow": "#6E46A3",
-    "accent": "#2CE6D5",
-    "accent_dark": "#17B7A9",
-    "accent_glow": "#7CF8EC",
+    "accent": "#A855F7",
+    "accent_dark": "#7C3AED",
+    "accent_glow": "#C084FC",
     "success": "#31D686",
     "warning": "#FFCB6B",
     "danger": "#FF6B8A",
-    "info": "#73B8FF",
+    "info": "#A78BFA",
     "shadow": "#0B0413",
     "scroll_track": "#1A0E2A",
     "scroll_thumb": "#4B3370",

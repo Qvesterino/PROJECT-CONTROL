@@ -41,7 +41,9 @@ from project_control.core.validator import (
 from project_control.core.backup import BackupManager, BackupContext
 from project_control.utils.terminal import (
     print_success, print_warning, print_error, print_info,
-    print_header, Status, Colors
+    print_header, print_section, print_divider, print_label,
+    print_badge, print_menu_item, print_quick_action, print_step,
+    Status, Colors, Violet
 )
 
 logger = logging.getLogger(__name__)
@@ -125,11 +127,9 @@ def _graph_status(project_root: Path) -> str:
 
 def run_menu(project_root: Path) -> None:
     """Main menu loop with error handling."""
-    # Show onboarding for new users
     if should_show_onboarding(project_root):
         show_onboarding(project_root)
     
-    # Show wizard for first-time users
     if should_run_wizard(project_root):
         wizard_config = run_wizard(project_root)
         if wizard_config:
@@ -141,25 +141,34 @@ def run_menu(project_root: Path) -> None:
         clear_screen()
         _header(project_root, state)
         
-        # Quick Actions section (moved to top for better UX)
-        print("\n[Quick Actions]")
-        print("  1) Full Analysis      — Scan → Find Issues → Dependencies")
-        print("  2) Quick Health Check — Validate everything")
-        print("  3) Quick Reports      — View all findings")
+        print()
+        print(f"  {Violet.LIGHT}Quick Actions{Colors.RESET}")
+        print_divider("─", 50)
+        print()
+        print_quick_action("1", "Full Analysis", "Scan → Find Issues → Dependencies")
+        print_quick_action("2", "Quick Health Check", "Validate everything")
+        print_quick_action("3", "Quick Reports", "View all findings")
         
-        # Main Tools section
-        print("\n[Main Tools]")
-        print("  4) Scan Project       — Index all files")
-        print("  5) Find Issues        — Dead code, orphans, duplicates")
-        print("  6) Dependencies       — Trace imports & modules")
+        print()
+        print(f"  {Violet.LIGHT}Main Tools{Colors.RESET}")
+        print_divider("─", 50)
+        print()
+        print_menu_item("4", "Scan Project", "Index all files")
+        print_menu_item("5", "Find Issues", "Dead code, orphans, duplicates")
+        print_menu_item("6", "Dependencies", "Trace imports & modules")
         
-        # Advanced section
-        print("\n[Advanced]")
-        print("  S) Settings           — Configuration")
-        print("  H) Help & Docs        — Getting started")
-        print("  0) Exit")
+        print()
+        print(f"  {Violet.LIGHT}Advanced{Colors.RESET}")
+        print_divider("─", 50)
+        print()
+        print_menu_item("S", "Settings", "Configuration")
+        print_menu_item("H", "Help & Docs", "Getting started")
+        print_menu_item("0", "Exit", "")
+        print()
+        print(f"  {Violet.TEXT_MUTED}Tip: Press ? for help at any time{Colors.RESET}")
+        print()
 
-        choice = input("\nSelect (1-6, S, H, 0, or ? for help): ").strip().lower()
+        choice = input(f"  {Violet.ACCENT}▸{Colors.RESET} ").strip().lower()
 
         try:
             if choice == "1":
@@ -196,21 +205,38 @@ def run_menu(project_root: Path) -> None:
 
 def _header(project_root: Path, state: AppState) -> None:
     mode_label = MODE_LABELS.get(state.project_mode, state.project_mode)
-    print("=======================================")
-    print("  PROJECT CONTROL")
-    print("=======================================")
-    print(f"  Project:  {project_root.name}")
-    print(f"  Mode:     {mode_label}")
-    print(f"  Snapshot: {_snapshot_status(project_root)}")
-    print(f"  Graph:    {_graph_status(project_root)}")
-    print("=======================================")
+    
+    width = 54
+    
+    # Top decorative bar
+    print()
+    print(f"  {Violet.MUTED}╭{'─' * width}╮{Colors.RESET}")
+    
+    # Title
+    title = "PROJECT CONTROL"
+    padding = width - len(title)
+    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.BRIGHT}{Colors.BOLD}{title}{Colors.RESET}{' ' * (padding - 2)}{Violet.MUTED}│{Colors.RESET}")
+    
+    # Separator
+    print(f"  {Violet.MUTED}├{'─' * width}┤{Colors.RESET}")
+    
+    # Project info
+    snap_status = _snapshot_status(project_root)
+    graph_status = _graph_status(project_root)
+    
+    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.LIGHT}Project:{Colors.RESET}  {project_root.name}{' ' * (width - 13 - len(project_root.name))}{Violet.MUTED}│{Colors.RESET}")
+    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.LIGHT}Mode:{Colors.RESET}     {mode_label}{' ' * (width - 12 - len(mode_label))}{Violet.MUTED}│{Colors.RESET}")
+    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.LIGHT}Snapshot:{Colors.RESET} {snap_status}{' ' * (width - 15 - len(snap_status))}{Violet.MUTED}│{Colors.RESET}")
+    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.LIGHT}Graph:{Colors.RESET}    {graph_status}{' ' * (width - 14 - len(graph_status))}{Violet.MUTED}│{Colors.RESET}")
+    
+    # Footer bar
+    print(f"  {Violet.MUTED}╰{'─' * width}╯{Colors.RESET}")
 
-    # Smart notifications
     notifications = _get_notifications(project_root, state)
     if notifications:
-        print("\nNotifications:")
+        print()
         for note in notifications:
-            print(f"  [!] {note}")
+            print(f"  {Violet.LIGHT}⊙{Colors.RESET} {Violet.TEXT_SOFT}{note}{Colors.RESET}")
         print()
 
     print()
@@ -253,11 +279,18 @@ def _get_notifications(project_root: Path, state: AppState) -> list[str]:
 
 # ── Health Menu ───────────────────────────────────────────────────────
 
+def _health_menu_header() -> None:
+    width = 52
+    print()
+    print(f"  {Violet.MUTED}╭{'─' * width}╮{Colors.RESET}")
+    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.BRIGHT}{Colors.BOLD}PROJECT HEALTH CHECK{Colors.RESET}{' ' * (width - 21)}{Violet.MUTED}│{Colors.RESET}")
+    print(f"  {Violet.MUTED}╰{'─' * width}╯{Colors.RESET}")
+    print()
+
+
 def _health_menu(project_root: Path) -> None:
     """Display project health check."""
-    print("\n" + "="*60)
-    print("  PROJECT HEALTH CHECK")
-    print("="*60)
+    _health_menu_header()
     
     with ErrorContext("Running health check"):
         report = health_check(project_root)
@@ -305,6 +338,18 @@ def _health_menu(project_root: Path) -> None:
 
 # ── Sub-menus ───────────────────────────────────────────────────────
 
+def _submenu_header(title: str, width: int = 50) -> None:
+    print()
+    print(f"  {Violet.MUTED}╭{'─' * width}╮{Colors.RESET}")
+    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.BRIGHT}{Colors.BOLD}{title}{Colors.RESET}{' ' * (width - len(title) - 2)}{Violet.MUTED}│{Colors.RESET}")
+    print(f"  {Violet.MUTED}╰{'─' * width}╯{Colors.RESET}")
+    print()
+
+
+def _submenu_prompt(text: str = "Select") -> str:
+    return input(f"  {Violet.ACCENT}▸{Colors.RESET} {Violet.TEXT_SOFT}{text}{Colors.RESET} ({Violet.TEXT_MUTED}0={Colors.RESET}{Violet.TEXT_SOFT}back{Colors.RESET}): ").strip()
+
+
 def _snapshot_menu(project_root: Path, state: AppState) -> None:
     """Snapshot menu with error handling."""
     print()
@@ -323,11 +368,11 @@ def _snapshot_menu(project_root: Path, state: AppState) -> None:
 
 def _graph_menu(project_root: Path, state: AppState) -> None:
     """Graph menu with error handling."""
-    print("\nGraph:")
-    print("1) Build / Rebuild graph")
-    print("2) Show graph report")
-    print("0) Back")
-    choice = input("\nSelect (0-2): ").strip()
+    _submenu_header("Graph")
+    print_menu_item("1", "Build / Rebuild graph")
+    print_menu_item("2", "Show graph report")
+    print()
+    choice = _submenu_prompt()
     
     if choice == "1":
         if _confirm("Build graph with current config?"):
@@ -344,11 +389,11 @@ def _graph_menu(project_root: Path, state: AppState) -> None:
 
 def _analyze_menu(project_root: Path, state: AppState) -> None:
     """Analyze menu with error handling."""
-    print("\nAnalyze:")
-    print("1) Ghost detectors (shallow)")
-    print("2) Structural metrics (from graph)")
-    print("0) Back")
-    choice = input("\nSelect (0-2): ").strip()
+    _submenu_header("Analyze")
+    print_menu_item("1", "Ghost detectors", "Shallow analysis")
+    print_menu_item("2", "Structural metrics", "From graph")
+    print()
+    choice = _submenu_prompt()
     
     if choice == "1":
         with ErrorContext("Running ghost analysis"):
@@ -362,19 +407,19 @@ def _analyze_menu(project_root: Path, state: AppState) -> None:
 
 def _explore_menu(project_root: Path, state: AppState) -> AppState:
     """Explore menu with error handling and favorites."""
-    print("\nTrace:")
+    _submenu_header("Trace Dependencies")
     dir_label = DIRECTION_LABELS.get(state.trace_direction, state.trace_direction)
-    print(f"  Current: direction={dir_label}, depth={state.trace_depth}, all={state.trace_all_paths}")
+    print(f"  {Violet.LIGHT}Direction:{Colors.RESET} {dir_label}  {Violet.LIGHT}Depth:{Colors.RESET} {state.trace_depth}  {Violet.LIGHT}All paths:{Colors.RESET} {state.trace_all_paths}")
 
-    # Show favorites if available
     if state.favorites:
-        print(f"\nFavorites ({len(state.favorites)}):")
+        print()
+        print(f"  {Violet.TEXT_MUTED}Favorites:{Colors.RESET}")
         for i, fav in enumerate(state.favorites, 1):
-            print(f"  [{i}] {fav}")
-        print(f"  [f] Add current target to favorites")
+            print(f"    {Violet.BRIGHT}[{i}]{Colors.RESET} {fav}")
+        print(f"    {Violet.BRIGHT}[f]{Colors.RESET} Add current target to favorites")
 
     print()
-    target = input("Target (path, symbol, [1-{0}] for favorite, 0=back): ".format(len(state.favorites))).strip()
+    target = _submenu_prompt(f"Target ({Violet.TEXT_MUTED}path, symbol, or [1-{len(state.favorites)}]{Colors.RESET}{Violet.TEXT_SOFT} for favorite{Colors.RESET})")
 
     if not target or target == "0":
         return state
@@ -412,18 +457,23 @@ def _settings_menu(project_root: Path, state: AppState) -> AppState:
         mode_label = MODE_LABELS.get(state.project_mode, state.project_mode)
         profile_label = PROFILE_LABELS.get(state.graph_profile, state.graph_profile)
 
-        print("\n[Configuration]")
-        print("="*60)
-        print("\nBasic:")
-        print(f"  1) Project Type:  [{mode_label}]")
-        print(f"  2) Strictness:    [{profile_label}]")
-        print(f"  3) Output Format: [Tree files ⭐ recommended]")
-        print("\nAdvanced:")
-        print(f"  4) Trace Options  — direction, depth, all paths")
-        print("\n[?] Help — What do these mean?")
-        print("[0] Back to main menu (saves automatically)")
-        
-        choice = input("\nSelect (1-4, ?, 0): ").strip()
+        _submenu_header("Configuration")
+        print(f"  {Violet.LIGHT}Basic{Colors.RESET}")
+        print_divider("─", 46)
+        print()
+        print_menu_item("1", f"Project Type:  [{Violet.BRIGHT}{mode_label}{Colors.RESET}]")
+        print_menu_item("2", f"Strictness:    [{Violet.BRIGHT}{profile_label}{Colors.RESET}]")
+        print_menu_item("3", f"Output Format: [{Violet.BRIGHT}Tree files{Colors.RESET} {Violet.MUTED}★{Colors.RESET}]")
+        print()
+        print(f"  {Violet.LIGHT}Advanced{Colors.RESET}")
+        print_divider("─", 46)
+        print()
+        print_menu_item("4", "Trace Options", "direction, depth, all paths")
+        print()
+        print(f"  {Violet.ACCENT}?{Colors.RESET}  Help — {Violet.TEXT_MUTED}What do these mean?{Colors.RESET}")
+        print(f"  {Violet.ACCENT}0{Colors.RESET}  Back to main menu {Violet.TEXT_MUTED}(saves automatically){Colors.RESET}")
+        print()
+        choice = _submenu_prompt("1-4, ?")
 
         if choice == "1":
             state = _change_mode_simple(project_root, state)
@@ -443,19 +493,18 @@ def _settings_menu(project_root: Path, state: AppState) -> AppState:
 
 def _change_mode_simple(project_root: Path, state: AppState) -> AppState:
     """Simplified mode selection for new settings menu."""
-    print("\n[Project Type]")
-    print("="*60)
-    print("What kind of project is this?")
+    _submenu_header("Project Type")
+    print(f"  {Violet.TEXT_SOFT}What kind of project is this?{Colors.RESET}")
     print()
-    print("1) JavaScript/TypeScript  — JS, TS, JSX, TSX files")
-    print("2) Python                — .py files")
-    print("3) Mixed                 — Both JS/TS and Python")
+    print_menu_item("1", "JavaScript/TypeScript", "JS, TS, JSX, TSX files")
+    print_menu_item("2", "Python", ".py files")
+    print_menu_item("3", "Mixed", "Both JS/TS and Python")
     print()
-    print("Most projects are auto-detected. Choose this only if")
-    print("auto-detection is wrong.")
+    print(f"  {Violet.TEXT_MUTED}Most projects are auto-detected. Choose this{Colors.RESET}")
+    print(f"  {Violet.TEXT_MUTED}only if auto-detection is wrong.{Colors.RESET}")
     print()
     
-    choice = input("Select (1-3, or 0 to cancel): ").strip()
+    choice = _submenu_prompt("1-3")
     mapping = {"1": "js_ts", "2": "python", "3": "mixed"}
     
     if choice in mapping:
@@ -483,22 +532,21 @@ def _change_mode_simple(project_root: Path, state: AppState) -> AppState:
 
 def _change_profile_simple(project_root: Path, state: AppState) -> AppState:
     """Simplified profile selection for new settings menu."""
-    print("\n[Strictness Level]")
-    print("="*60)
-    print("How strict should the analysis be?")
+    _submenu_header("Strictness Level")
+    print(f"  {Violet.TEXT_SOFT}How strict should the analysis be?{Colors.RESET}")
     print()
-    print("1) Pragmatic (Recommended)")
-    print("   - Balanced approach")
-    print("   - Some false positives allowed")
-    print("   - Good for everyday use")
+    print(f"  {Violet.BRIGHT}1{Colors.RESET}  {Colors.BOLD}Pragmatic{Colors.RESET} {Violet.LIGHT}(Recommended){Colors.RESET}")
+    print(f"     {Violet.TEXT_MUTED}Balanced approach{Colors.RESET}")
+    print(f"     {Violet.TEXT_MUTED}Some false positives allowed{Colors.RESET}")
+    print(f"     {Violet.TEXT_MUTED}Good for everyday use{Colors.RESET}")
     print()
-    print("2) Strict")
-    print("   - More rigorous analysis")
-    print("   - Fewer false positives")
-    print("   - More noise, but more accurate")
+    print(f"  {Violet.BRIGHT}2{Colors.RESET}  {Colors.BOLD}Strict{Colors.RESET}")
+    print(f"     {Violet.TEXT_MUTED}More rigorous analysis{Colors.RESET}")
+    print(f"     {Violet.TEXT_MUTED}Fewer false positives{Colors.RESET}")
+    print(f"     {Violet.TEXT_MUTED}More noise, but more accurate{Colors.RESET}")
     print()
     
-    choice = input("Select (1-2, or 0 to cancel): ").strip()
+    choice = _submenu_prompt("1-2")
     mapping = {"1": "pragmatic", "2": "strict"}
     
     if choice in mapping:
@@ -526,21 +574,23 @@ def _change_profile_simple(project_root: Path, state: AppState) -> AppState:
 
 def _output_format_info(project_root: Path) -> None:
     """Show output format information."""
-    print("\n[Output Format]")
-    print("="*60)
-    print("Recommended: ASCII Tree Files ⭐")
+    _submenu_header("Output Format")
+    print(f"  {Violet.BRIGHT}★{Colors.RESET} {Colors.BOLD}Recommended:{Colors.RESET} {Violet.LIGHT}ASCII Tree Files{Colors.RESET}")
     print()
-    print("What you get:")
-    print("  • ASCII Tree Files ⭐ — Visual structure, easy to read (recommended)")
-    print("                         Perfect for human review and understanding")
+    print(f"  {Violet.LIGHT}What you get:{Colors.RESET}")
+    print(f"    {Violet.ACCENT}•{Colors.RESET} {Colors.BOLD}ASCII Tree Files{Colors.RESET} {Violet.MUTED}★{Colors.RESET}")
+    print(f"      {Violet.TEXT_MUTED}Visual structure, easy to read{Colors.RESET}")
+    print(f"      {Violet.TEXT_MUTED}Perfect for human review{Colors.RESET}")
     print()
-    print("  • Markdown Reports     — Detailed analysis with explanations")
-    print("  • JSON Files          — For automation and tools")
+    print(f"    {Violet.ACCENT}•{Colors.RESET} {Colors.BOLD}Markdown Reports{Colors.RESET}")
+    print(f"      {Violet.TEXT_MUTED}Detailed analysis with explanations{Colors.RESET}")
     print()
-    print("Location: .project-control/exports/")
+    print(f"    {Violet.ACCENT}•{Colors.RESET} {Colors.BOLD}JSON Files{Colors.RESET}")
+    print(f"      {Violet.TEXT_MUTED}For automation and tools{Colors.RESET}")
     print()
-    print_info("Tree files are human-readable and show file relationships clearly.")
-    print("They're the best choice for most users!")
+    print(f"  {Violet.TEXT_MUTED}Location: .project-control/exports/{Colors.RESET}")
+    print()
+    print(f"  {Violet.BRIGHT}◇{Colors.RESET} Tree files are human-readable and show file relationships clearly.")
     
     input("\nPress Enter...")
 
@@ -550,22 +600,19 @@ def _trace_options_menu(project_root: Path, state: AppState) -> AppState:
     while True:
         dir_label = DIRECTION_LABELS.get(state.trace_direction, state.trace_direction)
         
-        print("\n[Trace Options (Advanced)]")
-        print("="*60)
-        print(f"1) Direction:  [{dir_label}]")
-        print(f"   Inbound  = Who depends on this?")
-        print(f"   Outbound = What does this depend on?")
-        print(f"   Both     = Both directions")
+        _submenu_header("Trace Options (Advanced)")
+        print(f"  {Violet.BRIGHT}1{Colors.RESET}  {Colors.BOLD}Direction:{Colors.RESET}  [{Violet.BRIGHT}{dir_label}{Colors.RESET}]")
+        print(f"     {Violet.TEXT_MUTED}Inbound  = Who depends on this?{Colors.RESET}")
+        print(f"     {Violet.TEXT_MUTED}Outbound = What does this depend on?{Colors.RESET}")
+        print(f"     {Violet.TEXT_MUTED}Both     = Both directions{Colors.RESET}")
         print()
-        print(f"2) Depth:     [{state.trace_depth}]")
-        print("   How many levels to trace")
+        print(f"  {Violet.BRIGHT}2{Colors.RESET}  {Colors.BOLD}Depth:{Colors.RESET}     [{Violet.BRIGHT}{state.trace_depth}{Colors.RESET}]")
+        print(f"     {Violet.TEXT_MUTED}How many levels to trace{Colors.RESET}")
         print()
-        print(f"3) All Paths: [{'Yes' if state.trace_all_paths else 'No'}]")
-        print("   Show all paths or just one per target")
+        print(f"  {Violet.BRIGHT}3{Colors.RESET}  {Colors.BOLD}All Paths:{Colors.RESET} [{Violet.BRIGHT}{'Yes' if state.trace_all_paths else 'No'}{Colors.RESET}]")
+        print(f"     {Violet.TEXT_MUTED}Show all paths or just one per target{Colors.RESET}")
         print()
-        print("[0] Back to settings")
-        
-        choice = input("\nSelect (1-3, or 0): ").strip()
+        choice = _submenu_prompt("1-3")
         
         if choice == "1":
             state = _change_direction(project_root, state)
@@ -584,19 +631,17 @@ def _trace_options_menu(project_root: Path, state: AppState) -> AppState:
 
 def _settings_help() -> None:
     """Show help for settings menu."""
-    print("\n[?] Configuration Help")
-    print("="*60)
+    _submenu_header("Configuration Help")
+    print(f"  {Violet.LIGHT}PROJECT TYPE{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Determines which language features to analyze.{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Auto-detected by default. Change only if wrong.{Colors.RESET}")
     print()
-    print("[PROJECT TYPE]")
-    print("   Determines which language features to analyze.")
-    print("   Auto-detected by default. Change only if wrong.")
+    print(f"  {Violet.LIGHT}STRICTNESS{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Controls how strict the analysis is.{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Pragmatic = Balanced, good for everyday use{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Strict    = More rigorous, more accurate{Colors.RESET}")
     print()
-    print("[STRICTNESS]")
-    print("   Controls how strict the analysis is.")
-    print("   Pragmatic = Balanced, good for everyday use")
-    print("   Strict     = More rigorous, more accurate")
-    print()
-    print("[OUTPUT FORMAT]")
+    print(f"  {Violet.LIGHT}OUTPUT FORMAT{Colors.RESET}")
     print("   What kind of reports to generate.")
     print("   Currently generates all formats automatically.")
     print()
@@ -611,46 +656,42 @@ def _settings_help() -> None:
 
 def _main_menu_help() -> None:
     """Show help for main menu."""
-    print("\n[?] Main Menu Help")
-    print("="*60)
+    _submenu_header("Main Menu Help")
+    
+    print(f"  {Violet.LIGHT}QUICK ACTIONS{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Fast workflows for common tasks.{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Full Analysis = Scan → Find Issues → Dependencies{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Health Check  = Validate everything{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Quick Reports  = View all findings{Colors.RESET}")
     print()
-    print("[QUICK ACTIONS]")
-    print("   Fast workflows for common tasks.")
-    print("   Full Analysis = Scan → Find Issues → Dependencies")
-    print("   Health Check = Validate everything")
-    print("   Quick Reports = View all findings")
+    print(f"  {Violet.LIGHT}MAIN TOOLS{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Individual tools for specific tasks.{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Scan Project   = Index your files{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Find Issues    = Dead code, orphans, duplicates{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Dependencies   = Trace imports & modules{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}UI Verify      = Run configurable browser verification{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}VFX Audit      = Audit FX contract compliance{Colors.RESET}")
     print()
-    print("[MAIN TOOLS]")
-    print("   Individual tools for specific tasks.")
-    print("   Scan Project = Index your files")
-    print("   Find Issues  = Dead code, orphans, duplicates")
-    print("   Dependencies = Trace imports & modules")
-    print("   UI Verify    = Run configurable browser verification")
-    print("   VFX Audit    = Audit FX contract compliance")
+    print(f"  {Violet.LIGHT}ADVANCED{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Settings and help for power users.{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Settings = Configuration options{Colors.RESET}")
+    print(f"    {Violet.TEXT_MUTED}Help     = Documentation and tutorials{Colors.RESET}")
     print()
-    print("[ADVANCED]")
-    print("   Settings and help for power users.")
-    print("   Settings  = Configuration options")
-    print("   Help      = Documentation and tutorials")
-    print()
-    print("[TIP] Use 'Full Analysis' for a complete overview!")
+    print(f"  {Violet.BRIGHT}💡{Colors.RESET} {Violet.TEXT_SOFT}Use 'Full Analysis' for a complete overview!{Colors.RESET}")
     
     input("\nPress Enter...")
 
 
 def _reports_menu(project_root: Path) -> None:
     """View all available reports."""
-    print("\n[Quick Reports]")
-    print("="*60)
+    _submenu_header("Quick Reports")
     
-    # Check what reports exist
     control_dir = project_root / ".project-control"
     exports_dir = control_dir / "exports"
     
     reports = []
     
     if exports_dir.exists():
-        # Check for various reports
         artifact_report = exports_dir / "artifact_candidates.md"
         if artifact_report.exists():
             reports.append(("Artifact Hygiene Report", artifact_report))
@@ -687,26 +728,25 @@ def _reports_menu(project_root: Path) -> None:
         if audit_retention_report.exists():
             reports.append(("Audit Retention Report", audit_retention_report))
         
-        # Check for tree files
         tree_files = list(exports_dir.glob("*_tree.txt"))
         if tree_files:
             reports.append((f"ASCII Trees ({len(tree_files)} files)", exports_dir))
     
     if not reports:
-        print("\nNo reports found yet.")
-        print("Run 'Full Analysis', 'Artifact Hygiene', 'Audit Retention', 'UI Verify', 'VFX Audit', 'pc audit patron', or 'pc ecosystem health' to generate reports.")
+        print(f"  {Violet.TEXT_MUTED}No reports found yet.{Colors.RESET}")
+        print(f"  {Violet.TEXT_MUTED}Run 'Full Analysis' or other tools to generate reports.{Colors.RESET}")
     else:
-        print(f"\nFound {len(reports)} report(s):\n")
+        print(f"  {Violet.TEXT_SOFT}Found {len(reports)} report(s):{Colors.RESET}\n")
         for i, (name, path) in enumerate(reports, 1):
             if path.is_file():
                 size = path.stat().st_size / 1024
-                print(f"{i}) {name}")
-                print(f"   {path.name} ({size:.1f} KB)")
+                print(f"  {Violet.BRIGHT}{i}{Colors.RESET}  {Colors.BOLD}{name}{Colors.RESET}")
+                print(f"      {Violet.TEXT_MUTED}{path.name} ({size:.1f} KB){Colors.RESET}")
             else:
-                print(f"{i}) {name}")
-                print(f"   Multiple files in {path.name}")
+                print(f"  {Violet.BRIGHT}{i}{Colors.RESET}  {name}")
+                print(f"      {Violet.TEXT_MUTED}Multiple files in {path.name}{Colors.RESET}")
     
-    print("\nAll reports are in: .project-control/exports/")
+    print(f"\n  {Violet.TEXT_MUTED}All reports are in: .project-control/exports/{Colors.RESET}")
     
     input("\nPress Enter to return...")
 
@@ -825,17 +865,16 @@ def _toggle_all_paths(project_root: Path, state: AppState) -> AppState:
 def _tools_menu(project_root: Path) -> None:
     """Tools menu for backups, cache, and diagnostics."""
     while True:
-        print("\nTools:")
-        print("1) List Backups         — show all available backups")
-        print("2) Create Manual Backup — create a named backup")
-        print("3) Restore Backup       — restore from a backup")
-        print("4) Delete Backup        — delete a specific backup")
-        print("5) Cleanup Old Backups  — remove old backups (keep latest 5)")
-        print("6) Clear Graph Cache    — remove .project-control/out/")
-        print("7) Show Diagnostics     — display system information")
-        print("0) Back")
-
-        choice = input("\nSelect (0-7): ").strip()
+        _submenu_header("Tools")
+        print_menu_item("1", "List Backups", "show all available backups")
+        print_menu_item("2", "Create Manual Backup", "create a named backup")
+        print_menu_item("3", "Restore Backup", "restore from a backup")
+        print_menu_item("4", "Delete Backup", "delete a specific backup")
+        print_menu_item("5", "Cleanup Old Backups", "remove old backups (keep latest 5)")
+        print_menu_item("6", "Clear Graph Cache", "remove .project-control/out/")
+        print_menu_item("7", "Show Diagnostics", "display system information")
+        print()
+        choice = _submenu_prompt("0-7")
 
         if choice == "0":
             return
@@ -859,9 +898,7 @@ def _tools_menu(project_root: Path) -> None:
 
 def _list_backups_menu(project_root: Path) -> None:
     """List all available backups."""
-    print("\n" + "="*60)
-    print("  AVAILABLE BACKUPS")
-    print("="*60)
+    _submenu_header("Available Backups")
 
     try:
         manager = BackupManager(project_root)
@@ -889,9 +926,7 @@ def _list_backups_menu(project_root: Path) -> None:
 
 def _create_backup_menu(project_root: Path) -> None:
     """Create a manual backup with custom name."""
-    print("\n" + "="*60)
-    print("  CREATE BACKUP")
-    print("="*60)
+    _submenu_header("Create Backup")
 
     name = input("\nBackup name (leave empty for timestamp): ").strip()
     description = input("Description (optional): ").strip() or None
@@ -910,9 +945,7 @@ def _create_backup_menu(project_root: Path) -> None:
 
 def _restore_backup_menu(project_root: Path) -> None:
     """Restore from a backup."""
-    print("\n" + "="*60)
-    print("  RESTORE BACKUP")
-    print("="*60)
+    _submenu_header("Restore Backup")
 
     try:
         manager = BackupManager(project_root)
@@ -949,9 +982,7 @@ def _restore_backup_menu(project_root: Path) -> None:
 
 def _delete_backup_menu(project_root: Path) -> None:
     """Delete a specific backup."""
-    print("\n" + "="*60)
-    print("  DELETE BACKUP")
-    print("="*60)
+    _submenu_header("Delete Backup")
 
     try:
         manager = BackupManager(project_root)
@@ -994,9 +1025,7 @@ def _delete_backup_menu(project_root: Path) -> None:
 
 def _cleanup_backups_menu(project_root: Path) -> None:
     """Cleanup old backups, keeping only the most recent ones."""
-    print("\n" + "="*60)
-    print("  CLEANUP OLD BACKUPS")
-    print("="*60)
+    _submenu_header("Cleanup Old Backups")
 
     keep = input("\nHow many recent backups to keep? (default: 5): ").strip()
     try:
@@ -1022,9 +1051,7 @@ def _cleanup_backups_menu(project_root: Path) -> None:
 
 def _clear_cache_menu(project_root: Path) -> None:
     """Clear the graph cache directory."""
-    print("\n" + "="*60)
-    print("  CLEAR GRAPH CACHE")
-    print("="*60)
+    _submenu_header("Clear Graph Cache")
 
     cache_dir = project_root / ".project-control" / "out"
     if not cache_dir.exists():
@@ -1066,9 +1093,7 @@ def _clear_cache_menu(project_root: Path) -> None:
 
 def _show_diagnostics_menu(project_root: Path) -> None:
     """Show system and project diagnostics."""
-    print("\n" + "="*60)
-    print("  DIAGNOSTICS")
-    print("="*60)
+    _submenu_header("Diagnostics")
 
     import sys
     import platform
@@ -1116,7 +1141,7 @@ def _show_diagnostics_menu(project_root: Path) -> None:
     ollama = shutil.which("ollama")
     print(f"  Ollama:    {Status.OK if ollama else Status.WARN}  {ollama if ollama else 'Not found (optional)'}")
 
-    print("\n" + "="*60)
+    print_divider("━", 50)
 
     input("\nPress Enter to return...")
 
@@ -1124,25 +1149,22 @@ def _show_diagnostics_menu(project_root: Path) -> None:
 def _quick_actions_menu(project_root: Path, state: AppState) -> None:
     """Quick Actions menu for common operations."""
     while True:
-        print("\n" + "="*60)
-        print("  QUICK ACTIONS")
-        print("="*60)
-        print("\n1) Full Analysis      — scan → ghost → graph → report")
-        print("2) Health Check       — validate everything")
-        print("3) Find Orphans       — quick orphan scan")
-        print("4) Find Cycles        — quick cycle detection")
-        print("5) Dependency Audit   — analyze dependency graph")
-        print("6) VFX Audit          — audit FX contract compliance")
-        print("7) UI Verify          — run configurable browser verification")
-        print("8) Artifact Hygiene   — find temporary screenshots and debug assets")
-        print("9) Audit Retention    — find stale generated audits and reports")
-        print("10) Patron Path Audit — smoke-test downstream contract")
-        print("11) Ecosystem Health  — validate Nebula and downstream readiness")
-        print("12) Favorites         — manage favorite trace targets")
-        print("13) History           — view recent actions")
-        print("0) Back")
-
-        choice = input("\nSelect (0-13): ").strip()
+        _submenu_header("Quick Actions")
+        print_menu_item("1", "Full Analysis", "scan → ghost → graph → report")
+        print_menu_item("2", "Health Check", "validate everything")
+        print_menu_item("3", "Find Orphans", "quick orphan scan")
+        print_menu_item("4", "Find Cycles", "quick cycle detection")
+        print_menu_item("5", "Dependency Audit", "analyze dependency graph")
+        print_menu_item("6", "VFX Audit", "audit FX contract compliance")
+        print_menu_item("7", "UI Verify", "run configurable browser verification")
+        print_menu_item("8", "Artifact Hygiene", "find temporary screenshots and debug assets")
+        print_menu_item("9", "Audit Retention", "find stale generated audits and reports")
+        print_menu_item("10", "Patron Path Audit", "smoke-test downstream contract")
+        print_menu_item("11", "Ecosystem Health", "validate Nebula and downstream readiness")
+        print_menu_item("12", "Favorites", "manage favorite trace targets")
+        print_menu_item("13", "History", "view recent actions")
+        print()
+        choice = _submenu_prompt("0-13")
 
         if choice == "0":
             return
@@ -1178,14 +1200,12 @@ def _quick_actions_menu(project_root: Path, state: AppState) -> None:
 
 def _quick_full_analysis(project_root: Path, state: AppState) -> None:
     """Quick full analysis: scan → ghost → graph → report."""
-    print("\n" + "="*60)
-    print("  FULL ANALYSIS")
-    print("="*60)
-    print("\nThis will run:")
-    print("  1. Scan project files")
-    print("  2. Run ghost analysis")
-    print("  3. Build dependency graph")
-    print("  4. Show report")
+    _submenu_header("Full Analysis")
+    print(f"  {Violet.TEXT_SOFT}This will run:{Colors.RESET}")
+    print(f"    {Violet.ACCENT}1.{Colors.RESET} Scan project files")
+    print(f"    {Violet.ACCENT}2.{Colors.RESET} Run ghost analysis")
+    print(f"    {Violet.ACCENT}3.{Colors.RESET} Build dependency graph")
+    print(f"    {Violet.ACCENT}4.{Colors.RESET} Show report")
 
     if not _confirm("\nProceed with full analysis?"):
         return
@@ -1230,9 +1250,10 @@ def _quick_full_analysis(project_root: Path, state: AppState) -> None:
     except Exception as e:
         ErrorHandler.handle(e, "Showing report")
 
-    print("\n" + "="*60)
-    print_success("Full analysis complete!")
-    print("="*60)
+    print()
+    print_divider("━", 50)
+    print(f"  {Colors.GREEN}{Colors.BOLD}[OK]{Colors.RESET} Full analysis complete!")
+    print_divider("━", 50)
 
     input("\nPress Enter to return...")
 
@@ -1244,9 +1265,7 @@ def _quick_health_check(project_root: Path) -> None:
 
 def _quick_find_orphans(project_root: Path) -> None:
     """Quick orphan scan."""
-    print("\n" + "="*60)
-    print("  FIND ORPHANS")
-    print("="*60)
+    _submenu_header("Find Orphans")
 
     try:
         with ErrorContext("Finding orphans"):
@@ -1259,9 +1278,7 @@ def _quick_find_orphans(project_root: Path) -> None:
 
 def _quick_find_cycles(project_root: Path, state: AppState) -> None:
     """Quick cycle detection."""
-    print("\n" + "="*60)
-    print("  FIND CYCLES")
-    print("="*60)
+    _submenu_header("Find Cycles")
 
     try:
         with ErrorContext("Finding cycles"):
@@ -1274,9 +1291,7 @@ def _quick_find_cycles(project_root: Path, state: AppState) -> None:
 
 def _quick_dependency_audit(project_root: Path, state: AppState) -> None:
     """Dependency audit - analyze dependency graph."""
-    print("\n" + "="*60)
-    print("  DEPENDENCY AUDIT")
-    print("="*60)
+    _submenu_header("Dependency Audit")
 
     graph_path = project_root / ".project-control" / "out" / "graph.snapshot.json"
     if not graph_path.exists():
@@ -1297,18 +1312,17 @@ def _quick_dependency_audit(project_root: Path, state: AppState) -> None:
     except Exception as e:
         ErrorHandler.handle(e, "Running dependency audit")
 
-    print("\n" + "="*60)
+    print()
+    print_divider("━", 50)
     print_success("Dependency audit complete!")
-    print("="*60)
+    print_divider("━", 50)
 
     input("\nPress Enter to return...")
 
 
 def _quick_vfx_audit(project_root: Path) -> None:
     """Quick VFX contract audit."""
-    print("\n" + "="*60)
-    print("  VFX CONTRACT AUDIT")
-    print("="*60)
+    _submenu_header("VFX Contract Audit")
 
     try:
         with ErrorContext("Running VFX contract audit"):
@@ -1325,9 +1339,7 @@ def _quick_vfx_audit(project_root: Path) -> None:
 
 def _quick_patron_path_audit(project_root: Path) -> None:
     """Quick Patron's Path contract audit."""
-    print("\n" + "="*60)
-    print("  PATRON'S PATH CONTRACT")
-    print("="*60)
+    _submenu_header("Patron's Path Contract")
 
     try:
         with ErrorContext("Running Patron's Path audit"):
@@ -1344,9 +1356,7 @@ def _quick_patron_path_audit(project_root: Path) -> None:
 
 def _quick_ecosystem_health(project_root: Path) -> None:
     """Quick ecosystem health check."""
-    print("\n" + "="*60)
-    print("  ECOSYSTEM HEALTH")
-    print("="*60)
+    _submenu_header("Ecosystem Health")
 
     try:
         with ErrorContext("Running ecosystem health check"):
@@ -1364,9 +1374,7 @@ def _quick_ecosystem_health(project_root: Path) -> None:
 
 def _quick_artifact_hygiene(project_root: Path) -> None:
     """Quick artifact hygiene workflow."""
-    print("\n" + "="*60)
-    print("  ARTIFACT HYGIENE")
-    print("="*60)
+    _submenu_header("Artifact Hygiene")
 
     args = argparse.Namespace(
         older_than=None,
@@ -1398,9 +1406,7 @@ def _quick_artifact_hygiene(project_root: Path) -> None:
 
 def _quick_audit_retention(project_root: Path) -> None:
     """Quick audit retention workflow."""
-    print("\n" + "="*60)
-    print("  AUDIT RETENTION")
-    print("="*60)
+    _submenu_header("Audit Retention")
 
     args = argparse.Namespace(
         older_than=None,
@@ -1434,9 +1440,7 @@ def _quick_audit_retention(project_root: Path) -> None:
 
 def _quick_ui_verify(project_root: Path, state: AppState) -> AppState:
     """Quick UI verification using discovered project profiles."""
-    print("\n" + "="*60)
-    print("  UI VERIFICATION")
-    print("="*60)
+    _submenu_header("UI Verification")
 
     profiles = list_ui_verification_profiles(project_root)
     valid_profiles = [profile for profile in profiles if profile.is_valid]
@@ -1539,23 +1543,21 @@ def _pick_ui_verification_profile(profiles: list) -> str | None:
 def _quick_favorites_menu(project_root: Path, state: AppState) -> AppState:
     """Manage favorite trace targets."""
     while True:
-        print("\n" + "="*60)
-        print("  FAVORITES")
-        print("="*60)
+        _submenu_header("Favorites")
 
         if not state.favorites:
-            print("\nNo favorites saved yet.")
+            print(f"  {Violet.TEXT_MUTED}No favorites saved yet.{Colors.RESET}")
         else:
-            print(f"\nFavorites ({len(state.favorites)}):")
+            print(f"  {Violet.TEXT_SOFT}Favorites ({len(state.favorites)}):{Colors.RESET}")
             for i, fav in enumerate(state.favorites, 1):
-                print(f"  {i}) {fav}")
+                print(f"    {Violet.BRIGHT}{i}{Colors.RESET}  {fav}")
 
-        print("\n1) Add current target to favorites")
-        print("2) Trace a favorite")
-        print("3) Remove a favorite")
-        print("0) Back")
-
-        choice = input("\nSelect (0-3): ").strip()
+        print()
+        print_menu_item("1", "Add current target to favorites")
+        print_menu_item("2", "Trace a favorite")
+        print_menu_item("3", "Remove a favorite")
+        print()
+        choice = _submenu_prompt("0-3")
 
         if choice == "0":
             return state
@@ -1636,25 +1638,23 @@ def _quick_favorites_menu(project_root: Path, state: AppState) -> AppState:
 
 def _quick_history_menu(project_root: Path, state: AppState) -> None:
     """View recent actions history."""
-    print("\n" + "="*60)
-    print("  RECENT ACTIONS")
-    print("="*60)
+    _submenu_header("Recent Actions")
 
     if not state.history:
-        print("\nNo recent actions recorded.")
+        print(f"  {Violet.TEXT_MUTED}No recent actions recorded.{Colors.RESET}")
     else:
-        print(f"\nRecent actions ({len(state.history)}):")
+        print(f"  {Violet.TEXT_SOFT}Recent actions ({len(state.history)}):{Colors.RESET}")
         for i, action in enumerate(state.history, 1):
-            print(f"  {i}) {action}")
+            print(f"    {Violet.BRIGHT}{i}{Colors.RESET}  {action}")
 
-    print("\n" + "="*60)
+    print_divider("─", 50)
 
     input("\nPress Enter to return...")
 
 
 def _confirm(summary: str) -> bool:
-    print(summary)
-    resp = input("Proceed? [y/N]: ").strip().lower()
+    print(f"  {Violet.TEXT_SOFT}{summary}{Colors.RESET}")
+    resp = input(f"  {Violet.ACCENT}▸{Colors.RESET} Proceed? {Violet.TEXT_MUTED}[y/N]{Colors.RESET}: ").strip().lower()
     return resp == "y"
 
 
@@ -1668,25 +1668,21 @@ def _presets_menu(project_root: Path) -> None:
 
     while True:
         clear_screen()
-        print("\n" + "="*60)
-        print("  PROJECT PRESETS")
-        print("="*60)
+        _submenu_header("Project Presets")
 
-        # Show current preset
         current = manager.get_current_preset_name()
         if current:
-            print(f"\nCurrent preset: {current}")
+            print(f"  {Violet.LIGHT}Current preset:{Colors.RESET} {Violet.BRIGHT}{current}{Colors.RESET}")
         else:
-            print("\nCurrent configuration: Custom")
+            print(f"  {Violet.TEXT_MUTED}Current configuration: Custom{Colors.RESET}")
 
-        print("\nActions:")
-        print("1) List Presets      — Show all available presets")
-        print("2) Apply Preset       — Apply a preset to project")
-        print("3) Save Custom        — Save current config as custom preset")
-        print("4) Delete Custom      — Delete a custom preset")
-        print("B) Back              — Return to main menu")
-
-        choice = input("\nSelect (1-4, B): ").strip().lower()
+        print()
+        print_menu_item("1", "List Presets", "Show all available presets")
+        print_menu_item("2", "Apply Preset", "Apply a preset to project")
+        print_menu_item("3", "Save Custom", "Save current config as custom preset")
+        print_menu_item("4", "Delete Custom", "Delete a custom preset")
+        print()
+        choice = _submenu_prompt("1-4, B")
 
         if choice == "1":
             _preset_list_submenu(manager)
@@ -1705,15 +1701,13 @@ def _presets_menu(project_root: Path) -> None:
 def _preset_list_submenu(manager: PresetManager) -> None:
     """List all presets."""
     clear_screen()
-    print("\n" + "="*60)
-    print("  AVAILABLE PRESETS")
-    print("="*60)
+    _submenu_header("Available Presets")
 
     presets = manager.list_presets()
     for preset in presets:
-        category_mark = " [builtin]" if preset["category"] == "builtin" else " [custom]"
-        print(f"\n  {preset['name']}{category_mark}")
-        print(f"    {preset['description']}")
+        cat = Violet.BRIGHT + "builtin" + Colors.RESET if preset["category"] == "builtin" else Violet.LIGHT + "custom" + Colors.RESET
+        print(f"  {Violet.ACCENT}◆{Colors.RESET}  {Colors.BOLD}{preset['name']}{Colors.RESET}  [{cat}]")
+        print(f"      {Violet.TEXT_MUTED}{preset['description']}{Colors.RESET}")
 
     input("\nPress Enter to return...")
 
@@ -1721,16 +1715,15 @@ def _preset_list_submenu(manager: PresetManager) -> None:
 def _preset_apply_submenu(manager: PresetManager) -> None:
     """Apply a preset."""
     clear_screen()
-    print("\n" + "="*60)
-    print("  APPLY PRESET")
-    print("="*60)
+    _submenu_header("Apply Preset")
 
     presets = manager.list_presets()
-    print("\nAvailable presets:")
+    print(f"  {Violet.TEXT_SOFT}Available presets:{Colors.RESET}\n")
     for i, preset in enumerate(presets, 1):
-        print(f"  {i}) {preset['name']} - {preset['description']}")
+        print(f"  {Violet.BRIGHT}{i}{Colors.RESET}  {Colors.BOLD}{preset['name']}{Colors.RESET}")
+        print(f"      {Violet.TEXT_MUTED}{preset['description']}{Colors.RESET}")
 
-    choice = input("\nSelect preset (number): ").strip()
+    choice = _submenu_prompt("preset number")
     try:
         index = int(choice) - 1
         if 0 <= index < len(presets):
@@ -1753,11 +1746,9 @@ def _preset_apply_submenu(manager: PresetManager) -> None:
 def _preset_save_submenu(manager: PresetManager) -> None:
     """Save current config as custom preset."""
     clear_screen()
-    print("\n" + "="*60)
-    print("  SAVE CUSTOM PRESET")
-    print("="*60)
+    _submenu_header("Save Custom Preset")
 
-    name = input("\nPreset name: ").strip()
+    name = input(f"\n  {Violet.ACCENT}▸{Colors.RESET} Preset name: ").strip()
     if not name:
         print_error("Preset name is required")
         input("\nPress Enter to return...")
@@ -1776,9 +1767,7 @@ def _preset_save_submenu(manager: PresetManager) -> None:
 def _preset_delete_submenu(manager: PresetManager) -> None:
     """Delete a custom preset."""
     clear_screen()
-    print("\n" + "="*60)
-    print("  DELETE CUSTOM PRESET")
-    print("="*60)
+    _submenu_header("Delete Custom Preset")
 
     presets = [p for p in manager.list_presets() if p["category"] == "custom"]
 
@@ -1787,11 +1776,12 @@ def _preset_delete_submenu(manager: PresetManager) -> None:
         input("\nPress Enter to return...")
         return
 
-    print("\nCustom presets:")
+    print(f"  {Violet.TEXT_SOFT}Custom presets:{Colors.RESET}\n")
     for i, preset in enumerate(presets, 1):
-        print(f"  {i}) {preset['name']} - {preset['description']}")
+        print(f"  {Violet.BRIGHT}{i}{Colors.RESET}  {Colors.BOLD}{preset['name']}{Colors.RESET}")
+        print(f"      {Violet.TEXT_MUTED}{preset['description']}{Colors.RESET}")
 
-    choice = input("\nSelect preset to delete (number): ").strip()
+    choice = _submenu_prompt("preset to delete")
     try:
         index = int(choice) - 1
         if 0 <= index < len(presets):
@@ -1820,16 +1810,12 @@ def _export_import_menu(project_root: Path) -> None:
 
     while True:
         clear_screen()
-        print("\n" + "="*60)
-        print("  EXPORT / IMPORT STATE")
-        print("="*60)
+        _submenu_header("Export / Import State")
 
-        print("\nActions:")
-        print("1) Export State       — Export current settings to file")
-        print("2) Import State       — Import settings from file")
-        print("B) Back              — Return to main menu")
-
-        choice = input("\nSelect (1-2, B): ").strip().lower()
+        print_menu_item("1", "Export State", "Export current settings to file")
+        print_menu_item("2", "Import State", "Import settings from file")
+        print()
+        choice = _submenu_prompt("1-2, B")
 
         if choice == "1":
             _export_state_submenu(manager)
@@ -1844,15 +1830,13 @@ def _export_import_menu(project_root: Path) -> None:
 def _export_state_submenu(manager: StateManager) -> None:
     """Export state to file."""
     clear_screen()
-    print("\n" + "="*60)
-    print("  EXPORT STATE")
-    print("="*60)
+    _submenu_header("Export State")
 
-    print("\nExport options:")
-    print("1) Export with metadata (includes project-specific info)")
-    print("2) Export without metadata (portable, git-friendly)")
+    print(f"  {Violet.TEXT_SOFT}Export options:{Colors.RESET}\n")
+    print_menu_item("1", "Export with metadata", "includes project-specific info")
+    print_menu_item("2", "Export without metadata", "portable, git-friendly")
 
-    choice = input("\nSelect (1-2): ").strip()
+    choice = _submenu_prompt("1-2")
     include_metadata = choice != "2"
 
     custom_path = input("\nCustom path (leave empty for default): ").strip()
@@ -1870,11 +1854,9 @@ def _export_state_submenu(manager: StateManager) -> None:
 def _import_state_submenu(manager: StateManager) -> None:
     """Import state from file."""
     clear_screen()
-    print("\n" + "="*60)
-    print("  IMPORT STATE")
-    print("="*60)
+    _submenu_header("Import State")
 
-    import_path_str = input("\nPath to import file: ").strip()
+    import_path_str = input(f"\n  {Violet.ACCENT}▸{Colors.RESET} Path to import file: ").strip()
     if not import_path_str:
         print_error("Path is required")
         input("\nPress Enter to return...")
@@ -1886,11 +1868,11 @@ def _import_state_submenu(manager: StateManager) -> None:
         input("\nPress Enter to return...")
         return
 
-    print("\nImport mode:")
-    print("1) Replace  — Replace all settings")
-    print("2) Merge    — Merge with existing settings")
+    print(f"\n  {Violet.TEXT_SOFT}Import mode:{Colors.RESET}")
+    print(f"    {Violet.BRIGHT}1{Colors.RESET}  Replace  {Violet.TEXT_MUTED}— Replace all settings{Colors.RESET}")
+    print(f"    {Violet.BRIGHT}2{Colors.RESET}  Merge    {Violet.TEXT_MUTED}— Merge with existing settings{Colors.RESET}")
 
-    mode_choice = input("\nSelect (1-2): ").strip()
+    mode_choice = _submenu_prompt("1-2")
     merge = mode_choice == "2"
 
     summary = f"This will {'merge' if merge else 'replace'} settings from {import_path.name}."
@@ -1915,25 +1897,22 @@ def _file_explorer_menu(project_root: Path) -> None:
     while True:
         clear_screen()
 
-        # Show current path
         rel_path = explorer.get_current_path().relative_to(project_root)
-        print("\n" + "="*60)
-        print(f"  FILE EXPLORER - {rel_path}")
-        print("="*60)
+        _submenu_header(f"File Explorer — {rel_path}")
 
         # Show directory listing
         output = explorer.render_file_list()
         _safe_print(output)
 
-        print("\nActions:")
-        print("[path]  — Change to directory (e.g., 'src', '..')")
-        print("D [path] — Show file/directory details")
-        print("S [term] — Search files")
-        print("U       — Go up one level")
-        print("R       — Refresh")
-        print("B) Back — Return to main menu")
+        print(f"  {Violet.LIGHT}Actions:{Colors.RESET}")
+        print(f"    {Violet.ACCENT}[path]{Colors.RESET}  {Violet.TEXT_MUTED}—{Colors.RESET} Change to directory {Violet.TEXT_MUTED}(e.g., 'src', '..'){Colors.RESET}")
+        print(f"    {Violet.ACCENT}D [path]{Colors.RESET} {Violet.TEXT_MUTED}—{Colors.RESET} Show file/directory details")
+        print(f"    {Violet.ACCENT}S [term]{Colors.RESET} {Violet.TEXT_MUTED}—{Colors.RESET} Search files")
+        print(f"    {Violet.ACCENT}U{Colors.RESET}       {Violet.TEXT_MUTED}—{Colors.RESET} Go up one level")
+        print(f"    {Violet.ACCENT}R{Colors.RESET}       {Violet.TEXT_MUTED}—{Colors.RESET} Refresh")
+        print(f"    {Violet.ACCENT}B{Colors.RESET}       {Violet.TEXT_MUTED}—{Colors.RESET} Back to main menu")
 
-        choice = input("\nCommand: ").strip()
+        choice = _submenu_prompt("command")
 
         if choice.lower() == "b":
             return
@@ -1947,8 +1926,7 @@ def _file_explorer_menu(project_root: Path) -> None:
             if term:
                 results = explorer.search_files(term)
                 clear_screen()
-                print(f"\nSearch results for '{term}':")
-                print("="*60)
+                _submenu_header(f"Search: {term}")
                 if results:
                     for r in results:
                         print(f"  {r.path} ({r.size} bytes)")

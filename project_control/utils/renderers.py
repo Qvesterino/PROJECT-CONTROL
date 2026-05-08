@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from project_control.utils.terminal import Colors
+from project_control.utils.terminal import Colors, Violet
 from project_control.render.dead_renderer import render_dead as render_dead_text
 
 
@@ -23,7 +23,7 @@ def render_dead(result: dict, colored: bool = True) -> str:
         return output
     return (
         output.replace(Colors.BOLD, "")
-        .replace(Colors.BLUE, "")
+        .replace(Violet.BRIGHT, "")
         .replace(Colors.DIM, "")
         .replace(Colors.RED, "")
         .replace(Colors.YELLOW, "")
@@ -54,7 +54,7 @@ def render_unused(result: dict, colored: bool = True) -> str:
 
     # Title
     if colored:
-        lines.append(f"{Colors.BOLD}{Colors.BLUE}Unused Systems Scan{Colors.RESET}")
+        lines.append(f"{Colors.BOLD}{Violet.BRIGHT}Unused Systems Scan{Colors.RESET}")
         lines.append(f"{Colors.DIM}{'=' * 50}{Colors.RESET}")
     else:
         lines.append("Unused Systems Scan")
@@ -127,14 +127,14 @@ def render_unused(result: dict, colored: bool = True) -> str:
 
     # LOW priority section (score 1)
     if colored:
-        lines.append(f"\n{Colors.BOLD}{Colors.CYAN}LOW (Suspicious){Colors.RESET}: {len(low)}")
+        lines.append(f"\n{Colors.BOLD}{Violet.LIGHT}LOW (Suspicious){Colors.RESET}: {len(low)}")
     else:
         lines.append(f"\nLOW (Suspicious): {len(low)}")
 
     if low:
         for item in low:
             if colored:
-                lines.append(f"  {Colors.CYAN}*{Colors.RESET} {item['file']}")
+                lines.append(f"  {Violet.LIGHT}*{Colors.RESET} {item['file']}")
                 lines.append(f"    {Colors.DIM}System:{Colors.RESET} {item['system_name']}")
                 lines.append(f"    {Colors.DIM}Score:{Colors.RESET} {item['score']}/4")
                 if item.get("reasons"):
@@ -158,10 +158,10 @@ def render_unused(result: dict, colored: bool = True) -> str:
     # Stats
     if colored:
         lines.append(f"\n{Colors.DIM}{'-' * 50}{Colors.RESET}")
-        lines.append(f"{Colors.CYAN}Total systems analyzed:{Colors.RESET} {stats.get('total_systems', 0)}")
+        lines.append(f"{Violet.BRIGHT}Total systems analyzed:{Colors.RESET} {stats.get('total_systems', 0)}")
         lines.append(f"{Colors.RED}High priority (unused):{Colors.RESET} {stats.get('high_priority', 0)}")
         lines.append(f"{Colors.YELLOW}Medium priority (barely used):{Colors.RESET} {stats.get('medium_priority', 0)}")
-        lines.append(f"{Colors.CYAN}Low priority (suspicious):{Colors.RESET} {stats.get('low_priority', 0)}")
+        lines.append(f"{Violet.LIGHT}Low priority (suspicious):{Colors.RESET} {stats.get('low_priority', 0)}")
     else:
         lines.append("\n" + "-" * 50)
         lines.append(f"Total systems analyzed: {stats.get('total_systems', 0)}")
@@ -187,7 +187,7 @@ def render_patterns(result: dict, colored: bool = True) -> str:
 
     # Title
     if colored:
-        lines.append(f"{Colors.BOLD}{Colors.BLUE}Suspicious Patterns{Colors.RESET}")
+        lines.append(f"{Colors.BOLD}{Violet.BRIGHT}Suspicious Patterns{Colors.RESET}")
         lines.append(f"{Colors.DIM}{'=' * 50}{Colors.RESET}")
     else:
         lines.append("Suspicious Patterns")
@@ -208,7 +208,7 @@ def render_patterns(result: dict, colored: bool = True) -> str:
             # Show first 10 matches
             for match in matches[:10]:
                 if colored:
-                    lines.append(f"  {Colors.RED}*{Colors.RESET} {match['file']}:{Colors.CYAN}{match['line']}{Colors.RESET}")
+                    lines.append(f"  {Colors.RED}*{Colors.RESET} {match['file']}:{Violet.BRIGHT}{match['line']}{Colors.RESET}")
                     lines.append(f"    {Colors.DIM}{match['text'][:80]}{Colors.RESET}")
                 else:
                     lines.append(f"  * {match['file']}:{match['line']}")
@@ -228,7 +228,7 @@ def render_patterns(result: dict, colored: bool = True) -> str:
     # Stats
     if colored:
         lines.append(f"\n{Colors.DIM}{'-' * 50}{Colors.RESET}")
-        lines.append(f"{Colors.CYAN}Total patterns checked:{Colors.RESET} {stats.get('total_patterns', 0)}")
+        lines.append(f"{Violet.BRIGHT}Total patterns checked:{Colors.RESET} {stats.get('total_patterns', 0)}")
         lines.append(f"{Colors.YELLOW}Patterns with matches:{Colors.RESET} {stats.get('matched_patterns', 0)}")
         lines.append(f"{Colors.MAGENTA}Total matches:{Colors.RESET} {stats.get('total_matches', 0)}")
     else:
@@ -255,7 +255,7 @@ def render_search(result: dict, colored: bool = True) -> str:
 
     # Title
     if colored:
-        lines.append(f"{Colors.BOLD}{Colors.BLUE}Search Results{Colors.RESET}")
+        lines.append(f"{Colors.BOLD}{Violet.BRIGHT}Search Results{Colors.RESET}")
         lines.append(f"{Colors.DIM}{'=' * 50}{Colors.RESET}")
     else:
         lines.append("Search Results")
@@ -275,13 +275,13 @@ def render_search(result: dict, colored: bool = True) -> str:
         if files_only:
             for match in matches:
                 if colored:
-                    lines.append(f"  {Colors.CYAN}*{Colors.RESET} {match['file']}")
+                    lines.append(f"  {Violet.LIGHT}*{Colors.RESET} {match['file']}")
                 else:
                     lines.append(f"  * {match['file']}")
         else:
             for match in matches:
                 if colored:
-                    lines.append(f"  {Colors.CYAN}*{Colors.RESET} {match['file']}:{Colors.YELLOW}{match['line']}{Colors.RESET}")
+                    lines.append(f"  {Violet.LIGHT}*{Colors.RESET} {match['file']}:{Colors.YELLOW}{match['line']}{Colors.RESET}")
                     lines.append(f"    {Colors.DIM}{match['text']}{Colors.RESET}")
                 else:
                     lines.append(f"  * {match['file']}:{match['line']}")

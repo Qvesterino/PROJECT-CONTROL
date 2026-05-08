@@ -2,17 +2,50 @@
 
 Cross-platform color support with graceful fallback for terminals
 that don't support ANSI escape codes.
+
+Violet/purple aesthetic theme for a professional, modern look.
 """
 
 from __future__ import annotations
 
 import sys
 
-# Import ANSI support from progress.py
 from project_control.utils.progress import ANSI
 
 
-# ── Color Constants ─────────────────────────────────────────────────────
+# ── Violet Color Palette ─────────────────────────────────────────────────
+
+class Violet:
+    """Violet color palette for the PROJECT_CONTROL design system.
+
+    Four violet shades + white = clean, minimal, readable aesthetic.
+    """
+
+    # Core violet palette
+    DEEP = "\033[38;2;15;6;26m" if ANSI.supports_ansi() else ""       # #0F061A
+    DARK = "\033[38;2;28;10;46m" if ANSI.supports_ansi() else ""      # #1C0A2E
+    MEDIUM = "\033[38;2;46;21;84m" if ANSI.supports_ansi() else ""    # #2E1554
+    SURFACE = "\033[38;2;61;31;110m" if ANSI.supports_ansi() else ""  # #3D1F6E
+    ACCENT = "\033[38;2;124;58;237m" if ANSI.supports_ansi() else ""  # #7C3AED
+    BRIGHT = "\033[38;2;168;85;247m" if ANSI.supports_ansi() else ""  # #A855F7
+    LIGHT = "\033[38;2;192;132;252m" if ANSI.supports_ansi() else ""  # #C084FC
+    MUTED = "\033[38;2;109;40;217m" if ANSI.supports_ansi() else ""   # #6D28D9
+
+    # Background variants
+    BG_DEEP = "\033[48;2;15;6;26m" if ANSI.supports_ansi() else ""
+    BG_DARK = "\033[48;2;28;10;46m" if ANSI.supports_ansi() else ""
+    BG_MEDIUM = "\033[48;2;46;21;84m" if ANSI.supports_ansi() else ""
+    BG_ACCENT = "\033[48;2;124;58;237m" if ANSI.supports_ansi() else ""
+
+    # White variants
+    WHITE = "\033[38;2;255;255;255m" if ANSI.supports_ansi() else ""
+    WHITE_SOFT = "\033[38;2;245;240;255m" if ANSI.supports_ansi() else ""  # #F5F0FF
+    TEXT = "\033[38;2;248;244;255m" if ANSI.supports_ansi() else ""        # #F8F4FF
+    TEXT_SOFT = "\033[38;2;212;197;249m" if ANSI.supports_ansi() else ""   # #D4C5F9
+    TEXT_MUTED = "\033[38;2;154;132;201m" if ANSI.supports_ansi() else ""  # #9A84C9
+
+
+# ── Color Constants (keep for backwards compatibility) ──────────────────
 
 class Colors:
     """
@@ -63,128 +96,114 @@ class Colors:
     # Reset
     RESET = "\033[0m" if ANSI.supports_ansi() else ""
 
+    # Violet palette (convenience access)
+    VIOLET_DEEP = Violet.DEEP
+    VIOLET_DARK = Violet.DARK
+    VIOLET_MEDIUM = Violet.MEDIUM
+    VIOLET_SURFACE = Violet.SURFACE
+    VIOLET_ACCENT = Violet.ACCENT
+    VIOLET_BRIGHT = Violet.BRIGHT
+    VIOLET_LIGHT = Violet.LIGHT
+    VIOLET_MUTED = Violet.MUTED
+    WHITE_SOFT = Violet.WHITE_SOFT
+    TEXT_SOFT = Violet.TEXT_SOFT
+    TEXT_MUTED = Violet.TEXT_MUTED
+
 
 # ── Styled Print Functions ───────────────────────────────────────────────
 
 def print_success(msg: str, prefix: str = "OK") -> None:
-    """
-    Print a success message in green.
-
-    Args:
-        msg: Message to print
-        prefix: Prefix before message (default: "OK")
-    """
     print(f"{Colors.GREEN}[{prefix}]{Colors.RESET} {msg}")
 
 
 def print_warning(msg: str, prefix: str = "WARN") -> None:
-    """
-    Print a warning message in yellow.
-
-    Args:
-        msg: Message to print
-        prefix: Prefix before message (default: "WARN")
-    """
     print(f"{Colors.YELLOW}[{prefix}]{Colors.RESET} {msg}")
 
 
 def print_error(msg: str, prefix: str = "ERROR") -> None:
-    """
-    Print an error message in red.
-
-    Args:
-        msg: Message to print
-        prefix: Prefix before message (default: "ERROR")
-    """
     print(f"{Colors.RED}[{prefix}]{Colors.RESET} {msg}", file=sys.stderr)
 
 
 def print_info(msg: str, prefix: str = "INFO") -> None:
-    """
-    Print an info message in cyan.
-
-    Args:
-        msg: Message to print
-        prefix: Prefix before message (default: "INFO")
-    """
-    print(f"{Colors.CYAN}[{prefix}]{Colors.RESET} {msg}")
+    print(f"{Violet.BRIGHT}◇{Colors.RESET} {Colors.BOLD}{msg}{Colors.RESET}")
 
 
 def print_debug(msg: str, prefix: str = "DEBUG") -> None:
-    """
-    Print a debug message in dim gray.
-
-    Args:
-        msg: Message to print
-        prefix: Prefix before message (default: "DEBUG")
-    """
     print(f"{Colors.DIM}{Colors.BLACK}[{prefix}]{Colors.RESET} {msg}")
 
 
+def print_step(msg: str, prefix: str = "▸") -> None:
+    print(f"  {Violet.LIGHT}{prefix}{Colors.RESET} {msg}")
+
+
 def print_header(msg: str, width: int = 60) -> None:
-    """
-    Print a header with message centered in a line.
-
-    Args:
-        msg: Header message
-        width: Total width of header line
-    """
-    line = "=" * width
-    print(f"{Colors.CYAN}{line}{Colors.RESET}")
-    print(f"{Colors.CYAN}  {msg}{Colors.RESET}")
-    print(f"{Colors.CYAN}{line}{Colors.RESET}")
+    line = Violet.MUTED + "━" * width + Colors.RESET
+    print()
+    print(line)
+    print(f"  {Violet.BRIGHT}{Colors.BOLD}{msg}{Colors.RESET}")
+    print(line)
+    print()
 
 
-def print_section(msg: str, char: str = "-", width: int = 60) -> None:
-    """
-    Print a section divider with message.
+def print_section(msg: str, char: str = "─", width: int = 60) -> None:
+    divider = Violet.TEXT_MUTED + char * width + Colors.RESET
+    print()
+    print(divider)
+    print(f"  {Violet.LIGHT}{msg}{Colors.RESET}")
+    print(divider)
+    print()
 
-    Args:
-        msg: Section message
-        char: Character to use for divider (default: "-")
-        width: Total width of section line
-    """
-    divider = char * width
-    print(f"\n{Colors.CYAN}{divider}{Colors.RESET}")
-    print(f"{Colors.CYAN}{msg}{Colors.RESET}")
-    print(f"{Colors.CYAN}{divider}{Colors.RESET}\n")
+
+def print_divider(char: str = "─", width: int = 60) -> None:
+    print(Violet.TEXT_MUTED + char * width + Colors.RESET)
+
+
+def print_label(label: str, value: str) -> None:
+    print(f"  {Violet.LIGHT}{label}:{Colors.RESET} {value}")
+
+
+def print_badge(text: str) -> None:
+    print(f"  {Violet.WHITE_SOFT}{Violet.BG_ACCENT} {text} {Colors.RESET}")
 
 
 def print_table(headers: list[str], rows: list[list[str]]) -> None:
-    """
-    Print a simple formatted table.
-
-    Args:
-        headers: List of column headers
-        rows: List of rows, each a list of string values
-    """
     if not headers or not rows:
         return
 
-    # Calculate column widths
     col_widths = [len(str(h)) for h in headers]
     for row in rows:
         for i, cell in enumerate(row):
             if i < len(col_widths):
                 col_widths[i] = max(col_widths[i], len(str(cell)))
 
-    # Print header
-    header_row = " | ".join(
-        f"{Colors.BOLD}{Colors.CYAN}{str(headers[i]).ljust(col_widths[i])}{Colors.RESET}"
+    header_row = " │ ".join(
+        f"{Colors.BOLD}{Violet.BRIGHT}{str(headers[i]).ljust(col_widths[i])}{Colors.RESET}"
         for i in range(len(headers))
     )
-    divider = "-+-".join("-" * w for w in col_widths)
+    divider = Violet.TEXT_MUTED + "─" + "─┼─".join("─" * w for w in col_widths) + Colors.RESET + Violet.TEXT_MUTED + "─" + Colors.RESET
 
-    print(f"{Colors.BOLD}{Colors.CYAN}{header_row}{Colors.RESET}")
-    print(f"{Colors.CYAN}{divider}{Colors.RESET}")
+    print(f"  {Violet.MUTED}┌{'─' * (sum(col_widths) + 3 * (len(col_widths) - 1) + 2)}┐{Colors.RESET}")
+    print(f"  {Violet.MUTED}│{Colors.RESET} {header_row} {Violet.MUTED}│{Colors.RESET}")
+    print(f"  {Violet.MUTED}│{Colors.RESET}{divider}{Violet.MUTED}│{Colors.RESET}")
 
-    # Print rows
     for row in rows:
         cells = []
         for i, cell in enumerate(row):
             if i < len(col_widths):
                 cells.append(str(cell).ljust(col_widths[i]))
-        print(" | ".join(cells))
+        print(f"  {Violet.MUTED}│{Colors.RESET} {' │ '.join(cells)} {Violet.MUTED}│{Colors.RESET}")
+
+    print(f"  {Violet.MUTED}└{'─' * (sum(col_widths) + 3 * (len(col_widths) - 1) + 2)}┘{Colors.RESET}")
+
+
+def print_menu_item(key: str, label: str, description: str = "") -> None:
+    desc = f" {Violet.TEXT_MUTED}{description}{Colors.RESET}" if description else ""
+    print(f"  {Violet.BRIGHT}{key}{Colors.RESET}  {label}{desc}")
+
+
+def print_quick_action(key: str, label: str, description: str) -> None:
+    print(f"  {Violet.ACCENT}{key}{Colors.RESET}  {Colors.BOLD}{label}{Colors.RESET}")
+    print(f"     {Violet.TEXT_MUTED}{description}{Colors.RESET}")
 
 
 # ── Status Indicators ───────────────────────────────────────────────────
@@ -195,59 +214,35 @@ class Status:
     OK = f"{Colors.GREEN}OK{Colors.RESET}"
     FAIL = f"{Colors.RED}FAIL{Colors.RESET}"
     WARN = f"{Colors.YELLOW}WARN{Colors.RESET}"
-    INFO = f"{Colors.CYAN}INFO{Colors.RESET}"
+    INFO = f"{Violet.BRIGHT}INFO{Colors.RESET}"
     SKIP = f"{Colors.DIM}SKIP{Colors.RESET}"
 
     @staticmethod
     def ok(msg: str = "OK") -> str:
-        """Return OK status with custom message."""
         return f"{Colors.GREEN}[{msg}]{Colors.RESET}"
 
     @staticmethod
     def fail(msg: str = "FAIL") -> str:
-        """Return FAIL status with custom message."""
         return f"{Colors.RED}[{msg}]{Colors.RESET}"
 
     @staticmethod
     def warn(msg: str = "WARN") -> str:
-        """Return WARN status with custom message."""
         return f"{Colors.YELLOW}[{msg}]{Colors.RESET}"
 
     @staticmethod
     def info(msg: str = "INFO") -> str:
-        """Return INFO status with custom message."""
-        return f"{Colors.CYAN}[{msg}]{Colors.RESET}"
+        return f"{Violet.BRIGHT}[{msg}]{Colors.RESET}"
 
 
 # ── Helper Functions ───────────────────────────────────────────────────
 
 def colorize(text: str, color: str, bold: bool = False) -> str:
-    """
-    Wrap text in ANSI color codes.
-
-    Args:
-        text: Text to colorize
-        color: Color code from Colors class
-        bold: Whether to make text bold
-
-    Returns:
-        Colorized text
-    """
     if bold:
         return f"{Colors.BOLD}{color}{text}{Colors.RESET}"
     return f"{color}{text}{Colors.RESET}"
 
 
 def strip_ansi(text: str) -> str:
-    """
-    Remove ANSI escape codes from text.
-
-    Args:
-        text: Text that may contain ANSI codes
-
-    Returns:
-        Text without ANSI codes
-    """
     import re
     ansi_escape = re.compile(r'\033\[[0-9;]*m')
     return ansi_escape.sub('', text)
@@ -258,12 +253,6 @@ def strip_ansi(text: str) -> str:
 class ColorOutput:
     """
     Context manager that temporarily disables color output.
-
-    Useful for testing or when writing to files.
-
-    Usage:
-        with ColorOutput(enabled=False):
-            print_success("This won't be colored")
     """
 
     def __init__(self, enabled: bool = True):
@@ -272,13 +261,11 @@ class ColorOutput:
 
     def __enter__(self):
         self.original_support = ANSI.supports_ansi
-        # Temporarily override supports_ansi
         if not self.enabled:
             ANSI.supports_ansi = lambda: False
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # Restore original support check
         if self.original_support:
             ANSI.supports_ansi = self.original_support
         return False

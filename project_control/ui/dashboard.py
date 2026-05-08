@@ -408,13 +408,13 @@ class DashboardRenderer:
 
         # Create header text
         header_text = Text()
-        header_text.append("PROJECT CONTROL DASHBOARD", style="bold blue")
+        header_text.append("PROJECT CONTROL DASHBOARD", style="bold #A855F7")
         header_text.append("\n\n")
         header_text.append(f"Project: ", style="dim")
-        header_text.append(state.project_name, style="bold cyan")
+        header_text.append(state.project_name, style="bold #C084FC")
         header_text.append("  |  ", style="dim")
         header_text.append(f"Mode: ", style="dim")
-        header_text.append(state.mode.upper(), style="bold magenta")
+        header_text.append(state.mode.upper(), style="bold violet")
         header_text.append("  |  ", style="dim")
         header_text.append(f"Status: ", style="dim")
         header_text.append(f"{status_icon} {state.health_status.upper()}", style=f"bold {status_color}")
@@ -440,8 +440,8 @@ class DashboardRenderer:
 
         return Panel(
             columns,
-            title="[bold cyan]Project Overview[/bold cyan]",
-            border_style="cyan",
+            title="[bold #C084FC]Project Overview[/bold #C084FC]",
+            border_style="#A855F7",
             box=box.SQUARE
         )
 
@@ -489,7 +489,7 @@ class DashboardRenderer:
         return Panel(
             Text.from_markup(status_text),
             title="[bold]Status[/bold]",
-            border_style="blue",
+            border_style="#7C3AED",
             box=box.SQUARE
         )
 
@@ -530,7 +530,7 @@ class DashboardRenderer:
 
         # Create main metrics table
         table = RichTable(title="Project Metrics", box=box.SQUARE)
-        table.add_column("Metric", style="cyan", width=20)
+        table.add_column("Metric", style="#A855F7", width=20)
         table.add_column("Value", justify="right", style="bold")
         table.add_column("Notes", style="dim")
 
@@ -560,8 +560,8 @@ class DashboardRenderer:
 
         return Panel(
             table,
-            title="[bold magenta]Detailed Metrics[/bold magenta]",
-            border_style="magenta",
+            title="[bold #C084FC]Detailed Metrics[/bold #C084FC]",
+            border_style="#C084FC",
             box=box.SQUARE
         )
 
@@ -569,9 +569,9 @@ class DashboardRenderer:
         """Render warnings using Rich."""
         if not state.warnings:
             return Panel(
-                Text("[green]✓ No warnings or errors detected![/green]\n\n[dim]Project is in good shape.[/dim]", justify="center"),
-                title="[bold green]All Clear[/bold green]",
-                border_style="green"
+                Text("[#34D399]✓ No warnings or errors detected![/#34D399]\n\n[dim]Project is in good shape.[/dim]", justify="center"),
+                title="[bold #34D399]All Clear[/bold #34D399]",
+                border_style="#34D399"
             )
 
         # Group warnings by level
@@ -615,7 +615,7 @@ class DashboardRenderer:
     def _render_content_actions_rich(self, state: DashboardState) -> Panel:
         """Render quick actions using Rich."""
         actions_table = RichTable(show_header=True, box=box.SQUARE)
-        actions_table.add_column("Key", style="bold cyan", width=5)
+        actions_table.add_column("Key", style="bold #A855F7", width=5)
         actions_table.add_column("Action", style="white")
         actions_table.add_column("Description", style="dim")
 
@@ -636,8 +636,8 @@ class DashboardRenderer:
 
         return Panel(
             actions_table,
-            title="[bold green]Quick Actions[/bold green]",
-            border_style="green",
+            title="[bold #34D399]Quick Actions[/bold #34D399]",
+            border_style="#34D399",
             box=box.SQUARE
         )
 
@@ -656,7 +656,7 @@ class DashboardRenderer:
                 tab_text.append(" | ", style="dim")
 
             if tab_id == state.selected_tab:
-                tab_text.append(f"[{i+1}] {tab_name}", style="bold cyan")
+                tab_text.append(f"[{i+1}] {tab_name}", style="bold #C084FC")
             else:
                 tab_text.append(f"[{i+1}] {tab_name}", style="dim")
 
@@ -989,7 +989,7 @@ if RICH_AVAILABLE and READCHAR_AVAILABLE:
             console.clear()
 
             help_text = Text()
-            help_text.append("\n[bold cyan]Keyboard Shortcuts[/bold cyan]\n\n")
+            help_text.append("\n[bold #C084FC]Keyboard Shortcuts[/bold #C084FC]\n\n")
             help_text.append("[bold]Tab Navigation:[/bold]\n", style="yellow")
             help_text.append("  [1-4]       - Switch to tab (1=Overview, 2=Metrics, 3=Warnings, 4=Actions)\n")
             help_text.append("  ←/→         - Navigate between tabs\n\n")
@@ -1000,8 +1000,8 @@ if RICH_AVAILABLE and READCHAR_AVAILABLE:
 
             help_panel = Panel(
                 help_text,
-                title="[bold cyan]Help[/bold cyan]",
-                border_style="cyan",
+                title="[bold #C084FC]Help[/bold #C084FC]",
+                border_style="#A855F7",
                 padding=(1, 2)
             )
             console.print(help_panel)

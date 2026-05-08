@@ -215,19 +215,21 @@ def render_ui_verification_html(report: VerificationReport) -> str:
     <meta charset="UTF-8">
     <title>{escape(report.app_name)} UI Verification Report</title>
     <style>
-        body {{ font-family: system-ui, -apple-system, sans-serif; margin: 2rem; background: #0f172a; color: #e2e8f0; }}
-        h1, h2 {{ color: #f8fafc; }}
+        body {{ font-family: system-ui, -apple-system, sans-serif; margin: 2rem; background: #0E041A; color: #E9D5FF; }}
+        h1, h2 {{ color: #F5F0FF; }}
+        h1 {{ border-bottom: 2px solid #7C3AED; padding-bottom: 0.5rem; }}
+        h2 {{ color: #C084FC; }}
         .summary {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1rem 0; }}
-        .card {{ background: #1e293b; padding: 1rem; border-radius: 0.5rem; text-align: center; }}
+        .card {{ background: #1C0A2E; padding: 1rem; border-radius: 0.5rem; text-align: center; border: 1px solid #3D1F6E; }}
         .card .number {{ font-size: 2rem; font-weight: bold; }}
-        .pass {{ color: #22c55e; }} .fail {{ color: #ef4444; }}
-        .skip {{ color: #9ca3af; }} .na {{ color: #60a5fa; }} .warn {{ color: #f59e0b; }}
+        .pass {{ color: #34D399; }} .fail {{ color: #F87171; }}
+        .skip {{ color: #9A84C9; }} .na {{ color: #A78BFA; }} .warn {{ color: #FBBF24; }}
         table {{ width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }}
-        th {{ background: #1e293b; padding: 0.75rem; text-align: left; position: sticky; top: 0; }}
-        td {{ padding: 0.5rem 0.75rem; border-bottom: 1px solid #334155; }}
-        tr:hover {{ background: #1e293b; }}
-        code {{ background: #334155; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.8rem; }}
-        .meta {{ color: #94a3b8; margin-bottom: 1rem; }}
+        th {{ background: #1C0A2E; padding: 0.75rem; text-align: left; position: sticky; top: 0; color: #C084FC; border-bottom: 2px solid #7C3AED; }}
+        td {{ padding: 0.5rem 0.75rem; border-bottom: 1px solid #2E1554; }}
+        tr:hover {{ background: #2E1554; }}
+        code {{ background: #2E1554; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.8rem; color: #C084FC; }}
+        .meta {{ color: #9A84C9; margin-bottom: 1rem; }}
     </style>
 </head>
 <body>
