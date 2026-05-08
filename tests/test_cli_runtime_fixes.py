@@ -37,7 +37,7 @@ class CLIRuntimeFixTests(unittest.TestCase):
 
         output = buffer.getvalue()
         self.assertIn("PROJECT CONTROL", output)
-        self.assertIn("Goodbye.", output)
+        self.assertIn("next time", output)
 
     def test_cmd_quick_uses_current_graph_path(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

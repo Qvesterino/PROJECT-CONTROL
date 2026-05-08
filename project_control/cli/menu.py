@@ -41,8 +41,10 @@ from project_control.core.validator import (
 from project_control.core.backup import BackupManager, BackupContext
 from project_control.utils.terminal import (
     print_success, print_warning, print_error, print_info,
-    print_header, print_section, print_divider, print_label,
-    print_badge, print_menu_item, print_quick_action, print_step,
+    print_divider, print_menu_item, print_quick_action,
+    print_notification,
+    print_pc_splash_compact, print_status_bar, print_separator,
+    print_prompt, print_exit_message, print_section_title,
     Status, Colors, Violet
 )
 
@@ -137,38 +139,45 @@ def run_menu(project_root: Path) -> None:
     
     state = load_state(project_root)
 
+    # Show splash on first render
+    from project_control.utils.terminal import print_pc_splash
+    clear_screen()
+    print_pc_splash(width=54)
+    import time
+    time.sleep(0.3)
+
     while True:
         clear_screen()
         _header(project_root, state)
         
+        # ── Quick Actions ──
         print()
-        print(f"  {Violet.LIGHT}Quick Actions{Colors.RESET}")
-        print_divider("─", 50)
+        print_section_title("Quick Actions")
         print()
         print_quick_action("1", "Full Analysis", "Scan → Find Issues → Dependencies")
         print_quick_action("2", "Quick Health Check", "Validate everything")
         print_quick_action("3", "Quick Reports", "View all findings")
         
+        # ── Main Tools ──
         print()
-        print(f"  {Violet.LIGHT}Main Tools{Colors.RESET}")
-        print_divider("─", 50)
+        print_section_title("Main Tools")
         print()
         print_menu_item("4", "Scan Project", "Index all files")
         print_menu_item("5", "Find Issues", "Dead code, orphans, duplicates")
         print_menu_item("6", "Dependencies", "Trace imports & modules")
         
+        # ── Advanced ──
         print()
-        print(f"  {Violet.LIGHT}Advanced{Colors.RESET}")
-        print_divider("─", 50)
+        print_section_title("Advanced")
         print()
         print_menu_item("S", "Settings", "Configuration")
         print_menu_item("H", "Help & Docs", "Getting started")
         print_menu_item("0", "Exit", "")
         print()
-        print(f"  {Violet.TEXT_MUTED}Tip: Press ? for help at any time{Colors.RESET}")
+        print(f"  {Violet.TEXT_MUTED}Press ? for help{Colors.RESET}")
         print()
 
-        choice = input(f"  {Violet.ACCENT}▸{Colors.RESET} ").strip().lower()
+        choice = print_prompt()
 
         try:
             if choice == "1":
@@ -191,12 +200,11 @@ def run_menu(project_root: Path) -> None:
                 _main_menu_help()
             elif choice == "0":
                 save_state(project_root, state)
-                print("Goodbye.")
+                print_exit_message()
                 return
             else:
                 input("Invalid selection. Press Enter...")
         except SystemExit:
-            # Re-raise to exit cleanly
             raise
         except Exception as e:
             ErrorHandler.handle(e, "Menu operation")
@@ -208,38 +216,42 @@ def _header(project_root: Path, state: AppState) -> None:
     
     width = 54
     
-    # Top decorative bar
-    print()
-    print(f"  {Violet.MUTED}╭{'─' * width}╮{Colors.RESET}")
+    # ── Compact branded header bar ──
+    print_pc_splash_compact(width)
     
-    # Title
-    title = "PROJECT CONTROL"
-    padding = width - len(title)
-    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.BRIGHT}{Colors.BOLD}{title}{Colors.RESET}{' ' * (padding - 2)}{Violet.MUTED}│{Colors.RESET}")
-    
-    # Separator
-    print(f"  {Violet.MUTED}├{'─' * width}┤{Colors.RESET}")
-    
-    # Project info
+    # ── Status bar with live project data ──
     snap_status = _snapshot_status(project_root)
     graph_status = _graph_status(project_root)
+    snap_colored = _color_status(snap_status)
+    graph_colored = _color_status(graph_status)
     
-    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.LIGHT}Project:{Colors.RESET}  {project_root.name}{' ' * (width - 13 - len(project_root.name))}{Violet.MUTED}│{Colors.RESET}")
-    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.LIGHT}Mode:{Colors.RESET}     {mode_label}{' ' * (width - 12 - len(mode_label))}{Violet.MUTED}│{Colors.RESET}")
-    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.LIGHT}Snapshot:{Colors.RESET} {snap_status}{' ' * (width - 15 - len(snap_status))}{Violet.MUTED}│{Colors.RESET}")
-    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.LIGHT}Graph:{Colors.RESET}    {graph_status}{' ' * (width - 14 - len(graph_status))}{Violet.MUTED}│{Colors.RESET}")
+    entries = [
+        ("Project", project_root.name, Violet.TEXT),
+        ("Mode", mode_label, Violet.TEXT),
+        ("Snapshot", snap_colored, ""),
+        ("Graph", graph_colored, ""),
+    ]
+    print_status_bar(entries, width=width)
     
-    # Footer bar
-    print(f"  {Violet.MUTED}╰{'─' * width}╯{Colors.RESET}")
-
+    # ── Smart notifications ──
     notifications = _get_notifications(project_root, state)
     if notifications:
         print()
         for note in notifications:
-            print(f"  {Violet.LIGHT}⊙{Colors.RESET} {Violet.TEXT_SOFT}{note}{Colors.RESET}")
-        print()
+            print_notification(note, "info")
 
     print()
+
+
+def _color_status(status: str) -> str:
+    """Colorize a status string based on its content."""
+    if "OK" in status and "INVALID" not in status and "!" not in status:
+        return f"{Colors.GREEN}{status}{Colors.RESET}"
+    elif "MISSING" in status or "ERROR" in status or "CORRUPTED" in status:
+        return f"{Colors.RED}{status}{Colors.RESET}"
+    elif "INVALID" in status or "[!]" in status:
+        return f"{Colors.YELLOW}{status}{Colors.RESET}"
+    return f"{Violet.TEXT}{status}{Colors.RESET}"
 
 
 def _get_notifications(project_root: Path, state: AppState) -> list[str]:
@@ -282,9 +294,9 @@ def _get_notifications(project_root: Path, state: AppState) -> list[str]:
 def _health_menu_header() -> None:
     width = 52
     print()
-    print(f"  {Violet.MUTED}╭{'─' * width}╮{Colors.RESET}")
-    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.BRIGHT}{Colors.BOLD}PROJECT HEALTH CHECK{Colors.RESET}{' ' * (width - 21)}{Violet.MUTED}│{Colors.RESET}")
-    print(f"  {Violet.MUTED}╰{'─' * width}╯{Colors.RESET}")
+    print(f"  {Violet.SURFACE}╔{'═' * width}╗{Colors.RESET}")
+    print(f"  {Violet.SURFACE}║{Colors.RESET}  {Violet.BRIGHT}{Colors.BOLD}PROJECT HEALTH CHECK{Colors.RESET}{' ' * (width - 21)}{Violet.SURFACE}║{Colors.RESET}")
+    print(f"  {Violet.SURFACE}╚{'═' * width}╝{Colors.RESET}")
     print()
 
 
@@ -340,9 +352,9 @@ def _health_menu(project_root: Path) -> None:
 
 def _submenu_header(title: str, width: int = 50) -> None:
     print()
-    print(f"  {Violet.MUTED}╭{'─' * width}╮{Colors.RESET}")
-    print(f"  {Violet.MUTED}│{Colors.RESET}  {Violet.BRIGHT}{Colors.BOLD}{title}{Colors.RESET}{' ' * (width - len(title) - 2)}{Violet.MUTED}│{Colors.RESET}")
-    print(f"  {Violet.MUTED}╰{'─' * width}╯{Colors.RESET}")
+    print(f"  {Violet.SURFACE}╔{'═' * width}╗{Colors.RESET}")
+    print(f"  {Violet.SURFACE}║{Colors.RESET}  {Violet.BRIGHT}{Colors.BOLD}{title}{Colors.RESET}{' ' * (width - len(title) - 2)}{Violet.SURFACE}║{Colors.RESET}")
+    print(f"  {Violet.SURFACE}╚{'═' * width}╝{Colors.RESET}")
     print()
 
 
@@ -458,15 +470,15 @@ def _settings_menu(project_root: Path, state: AppState) -> AppState:
         profile_label = PROFILE_LABELS.get(state.graph_profile, state.graph_profile)
 
         _submenu_header("Configuration")
-        print(f"  {Violet.LIGHT}Basic{Colors.RESET}")
-        print_divider("─", 46)
+        print(f"  {Violet.BRIGHT}{Colors.BOLD}Basic{Colors.RESET}")
+        print(f"  {Violet.ELEVATED}{'─' * 46}{Colors.RESET}")
         print()
         print_menu_item("1", f"Project Type:  [{Violet.BRIGHT}{mode_label}{Colors.RESET}]")
         print_menu_item("2", f"Strictness:    [{Violet.BRIGHT}{profile_label}{Colors.RESET}]")
-        print_menu_item("3", f"Output Format: [{Violet.BRIGHT}Tree files{Colors.RESET} {Violet.MUTED}★{Colors.RESET}]")
+        print_menu_item("3", f"Output Format: [{Violet.BRIGHT}Tree files{Colors.RESET} {Violet.GLOW}★{Colors.RESET}]")
         print()
-        print(f"  {Violet.LIGHT}Advanced{Colors.RESET}")
-        print_divider("─", 46)
+        print(f"  {Violet.BRIGHT}{Colors.BOLD}Advanced{Colors.RESET}")
+        print(f"  {Violet.ELEVATED}{'─' * 46}{Colors.RESET}")
         print()
         print_menu_item("4", "Trace Options", "direction, depth, all paths")
         print()
@@ -535,12 +547,12 @@ def _change_profile_simple(project_root: Path, state: AppState) -> AppState:
     _submenu_header("Strictness Level")
     print(f"  {Violet.TEXT_SOFT}How strict should the analysis be?{Colors.RESET}")
     print()
-    print(f"  {Violet.BRIGHT}1{Colors.RESET}  {Colors.BOLD}Pragmatic{Colors.RESET} {Violet.LIGHT}(Recommended){Colors.RESET}")
+    print(f"  {Violet.ACCENT}1{Colors.RESET}  {Colors.BOLD}Pragmatic{Colors.RESET} {Violet.GLOW}(Recommended){Colors.RESET}")
     print(f"     {Violet.TEXT_MUTED}Balanced approach{Colors.RESET}")
     print(f"     {Violet.TEXT_MUTED}Some false positives allowed{Colors.RESET}")
     print(f"     {Violet.TEXT_MUTED}Good for everyday use{Colors.RESET}")
     print()
-    print(f"  {Violet.BRIGHT}2{Colors.RESET}  {Colors.BOLD}Strict{Colors.RESET}")
+    print(f"  {Violet.ACCENT}2{Colors.RESET}  {Colors.BOLD}Strict{Colors.RESET}")
     print(f"     {Violet.TEXT_MUTED}More rigorous analysis{Colors.RESET}")
     print(f"     {Violet.TEXT_MUTED}Fewer false positives{Colors.RESET}")
     print(f"     {Violet.TEXT_MUTED}More noise, but more accurate{Colors.RESET}")
@@ -575,17 +587,17 @@ def _change_profile_simple(project_root: Path, state: AppState) -> AppState:
 def _output_format_info(project_root: Path) -> None:
     """Show output format information."""
     _submenu_header("Output Format")
-    print(f"  {Violet.BRIGHT}★{Colors.RESET} {Colors.BOLD}Recommended:{Colors.RESET} {Violet.LIGHT}ASCII Tree Files{Colors.RESET}")
+    print(f"  {Violet.GLOW}★{Colors.RESET} {Colors.BOLD}Recommended:{Colors.RESET} {Violet.LIGHT}ASCII Tree Files{Colors.RESET}")
     print()
     print(f"  {Violet.LIGHT}What you get:{Colors.RESET}")
-    print(f"    {Violet.ACCENT}•{Colors.RESET} {Colors.BOLD}ASCII Tree Files{Colors.RESET} {Violet.MUTED}★{Colors.RESET}")
+    print(f"    {Violet.ACCENT}●{Colors.RESET} {Colors.BOLD}ASCII Tree Files{Colors.RESET} {Violet.GLOW}★{Colors.RESET}")
     print(f"      {Violet.TEXT_MUTED}Visual structure, easy to read{Colors.RESET}")
     print(f"      {Violet.TEXT_MUTED}Perfect for human review{Colors.RESET}")
     print()
-    print(f"    {Violet.ACCENT}•{Colors.RESET} {Colors.BOLD}Markdown Reports{Colors.RESET}")
+    print(f"    {Violet.ACCENT}●{Colors.RESET} {Colors.BOLD}Markdown Reports{Colors.RESET}")
     print(f"      {Violet.TEXT_MUTED}Detailed analysis with explanations{Colors.RESET}")
     print()
-    print(f"    {Violet.ACCENT}•{Colors.RESET} {Colors.BOLD}JSON Files{Colors.RESET}")
+    print(f"    {Violet.ACCENT}●{Colors.RESET} {Colors.BOLD}JSON Files{Colors.RESET}")
     print(f"      {Violet.TEXT_MUTED}For automation and tools{Colors.RESET}")
     print()
     print(f"  {Violet.TEXT_MUTED}Location: .project-control/exports/{Colors.RESET}")
@@ -658,26 +670,22 @@ def _main_menu_help() -> None:
     """Show help for main menu."""
     _submenu_header("Main Menu Help")
     
-    print(f"  {Violet.LIGHT}QUICK ACTIONS{Colors.RESET}")
+    print(f"  {Violet.BRIGHT}{Colors.BOLD}QUICK ACTIONS{Colors.RESET}")
     print(f"    {Violet.TEXT_MUTED}Fast workflows for common tasks.{Colors.RESET}")
     print(f"    {Violet.TEXT_MUTED}Full Analysis = Scan → Find Issues → Dependencies{Colors.RESET}")
     print(f"    {Violet.TEXT_MUTED}Health Check  = Validate everything{Colors.RESET}")
     print(f"    {Violet.TEXT_MUTED}Quick Reports  = View all findings{Colors.RESET}")
     print()
-    print(f"  {Violet.LIGHT}MAIN TOOLS{Colors.RESET}")
+    print(f"  {Violet.BRIGHT}{Colors.BOLD}MAIN TOOLS{Colors.RESET}")
     print(f"    {Violet.TEXT_MUTED}Individual tools for specific tasks.{Colors.RESET}")
     print(f"    {Violet.TEXT_MUTED}Scan Project   = Index your files{Colors.RESET}")
     print(f"    {Violet.TEXT_MUTED}Find Issues    = Dead code, orphans, duplicates{Colors.RESET}")
     print(f"    {Violet.TEXT_MUTED}Dependencies   = Trace imports & modules{Colors.RESET}")
-    print(f"    {Violet.TEXT_MUTED}UI Verify      = Run configurable browser verification{Colors.RESET}")
-    print(f"    {Violet.TEXT_MUTED}VFX Audit      = Audit FX contract compliance{Colors.RESET}")
     print()
-    print(f"  {Violet.LIGHT}ADVANCED{Colors.RESET}")
+    print(f"  {Violet.BRIGHT}{Colors.BOLD}ADVANCED{Colors.RESET}")
     print(f"    {Violet.TEXT_MUTED}Settings and help for power users.{Colors.RESET}")
-    print(f"    {Violet.TEXT_MUTED}Settings = Configuration options{Colors.RESET}")
-    print(f"    {Violet.TEXT_MUTED}Help     = Documentation and tutorials{Colors.RESET}")
     print()
-    print(f"  {Violet.BRIGHT}💡{Colors.RESET} {Violet.TEXT_SOFT}Use 'Full Analysis' for a complete overview!{Colors.RESET}")
+    print(f"  {Violet.GLOW}Tip:{Colors.RESET} {Violet.TEXT_SOFT}Use 'Full Analysis' for a complete overview!{Colors.RESET}")
     
     input("\nPress Enter...")
 
@@ -1251,9 +1259,9 @@ def _quick_full_analysis(project_root: Path, state: AppState) -> None:
         ErrorHandler.handle(e, "Showing report")
 
     print()
-    print_divider("━", 50)
+    print_separator("thick", 50)
     print(f"  {Colors.GREEN}{Colors.BOLD}[OK]{Colors.RESET} Full analysis complete!")
-    print_divider("━", 50)
+    print_separator("thick", 50)
 
     input("\nPress Enter to return...")
 

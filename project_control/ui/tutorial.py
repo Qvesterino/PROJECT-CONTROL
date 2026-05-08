@@ -13,7 +13,7 @@ from typing import Callable, Dict, List, Optional
 
 from project_control.utils.terminal import (
     print_success, print_warning, print_info, print_header, Colors, Violet,
-    print_error
+    print_error, print_brand_header, print_step
 )
 
 
@@ -185,19 +185,16 @@ class Tutorial:
     def _show_intro(self) -> None:
         """Show tutorial introduction."""
         print()
-        print_header(f"📚 TUTORIAL: {self.name}")
+        print_brand_header(f"TUTORIAL: {self.name}", f"{self.difficulty} · {self.duration}")
         print()
-        print(f"  Difficulty:  {self.difficulty}")
-        print(f"  Duration:    {self.duration}")
-        print()
-        print(f"  {self.description}")
+        print(f"  {Violet.TEXT_SOFT}{self.description}{Colors.RESET}")
         print()
         print_info("This tutorial will guide you through each step with:")
         print()
-        print("  • Clear explanations of what you're doing")
-        print("  • Step-by-step instructions")
-        print("  • Expected results")
-        print("  • Ability to skip steps if needed")
+        print_step("•", "Clear explanations of what you're doing")
+        print_step("•", "Step-by-step instructions")
+        print_step("•", "Expected results")
+        print_step("•", "Ability to skip steps if needed")
         print()
         print_warning("You can quit anytime by pressing 'Q'")
         print()
@@ -226,17 +223,17 @@ class Tutorial:
         """Show tutorial completion screen."""
         self._clear_screen()
         print()
-        print_success("✅ Tutorial Completed!")
+        print_success("Tutorial Completed!")
         print()
         print_info(f"You've learned: {self.name}")
         print()
-        print("What you can do now:")
+        print(f"  {Violet.TEXT_SOFT}What you can do now:{Colors.RESET}")
         print()
-        print("  • Try running the workflow on your own")
-        print("  • Explore other tutorials")
-        print("  • Check the documentation for more details")
+        print_step("•", "Try running the workflow on your own")
+        print_step("•", "Explore other tutorials")
+        print_step("•", "Check the documentation for more details")
         print()
-        print_success("Great job! 🎉")
+        print_success("Great job!")
         print()
         input("Press Enter to return...")
     
@@ -525,7 +522,7 @@ class TutorialManager:
         while True:
             self._clear_screen()
             print()
-            print_header("📚 INTERACTIVE TUTORIALS")
+            print_brand_header("Interactive Tutorials")
             print()
             
             tutorials = self.list_tutorials()
@@ -537,9 +534,9 @@ class TutorialManager:
                     "Advanced": Colors.RED
                 }.get(tutorial["difficulty"], "")
                 
-                print(f"{i}) {tutorial['name']}")
-                print(f"   {tutorial['description']}")
-                print(f"   Difficulty: {difficulty_color}{tutorial['difficulty']}{Colors.RESET} | Duration: {tutorial['duration']} | Steps: {tutorial['steps']}")
+                print(f"  {Violet.ACCENT}{i}{Colors.RESET}  {Colors.BOLD}{tutorial['name']}{Colors.RESET}")
+                print(f"     {Violet.TEXT_MUTED}{tutorial['description']}{Colors.RESET}")
+                print(f"     {difficulty_color}{tutorial['difficulty']}{Colors.RESET} {Violet.TEXT_MUTED}· {tutorial['duration']} · {tutorial['steps']} steps{Colors.RESET}")
                 print()
             
             print("0) Back to main menu")

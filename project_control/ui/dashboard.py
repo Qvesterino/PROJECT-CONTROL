@@ -390,7 +390,6 @@ class DashboardRenderer:
 
     def _render_header_rich(self, state: DashboardState) -> Panel:
         """Render dashboard header using Rich."""
-        # Status color
         status_colors = {
             "healthy": "green",
             "warning": "yellow",
@@ -398,7 +397,6 @@ class DashboardRenderer:
         }
         status_color = status_colors.get(state.health_status, "white")
 
-        # Status icon
         status_icons = {
             "healthy": "✓",
             "warning": "⚠",
@@ -406,43 +404,39 @@ class DashboardRenderer:
         }
         status_icon = status_icons.get(state.health_status, "?")
 
-        # Create header text
         header_text = Text()
-        header_text.append("PROJECT CONTROL DASHBOARD", style="bold #A855F7")
+        header_text.append("PROJECT CONTROL", style="bold #D8B4FE")
         header_text.append("\n\n")
-        header_text.append(f"Project: ", style="dim")
+        header_text.append("Project: ", style="dim")
         header_text.append(state.project_name, style="bold #C084FC")
-        header_text.append("  |  ", style="dim")
-        header_text.append(f"Mode: ", style="dim")
-        header_text.append(state.mode.upper(), style="bold violet")
-        header_text.append("  |  ", style="dim")
-        header_text.append(f"Status: ", style="dim")
+        header_text.append("  │  ", style="dim")
+        header_text.append("Mode: ", style="dim")
+        header_text.append(state.mode.upper(), style="bold #A855F7")
+        header_text.append("  │  ", style="dim")
+        header_text.append("Status: ", style="dim")
         header_text.append(f"{status_icon} {state.health_status.upper()}", style=f"bold {status_color}")
 
-        # Path on next line
         header_text.append(f"\nPath: {state.project_path}", style="dim")
 
         return Panel(
             header_text,
             style=f"bold {status_color}",
             padding=(1, 2),
-            box=box.SQUARE
+            box=box.HEAVY
         )
 
     def _render_content_overview_rich(self, state: DashboardState) -> Panel:
         """Render overview content using Rich."""
-        # Create two columns: snapshot/graph status and quick metrics
         left_panel = self._render_status_panel_rich(state)
         right_panel = self._render_quick_metrics_panel_rich(state.metrics)
 
-        # Combine columns
         columns = Columns([left_panel, right_panel], equal=True)
 
         return Panel(
             columns,
             title="[bold #C084FC]Project Overview[/bold #C084FC]",
-            border_style="#A855F7",
-            box=box.SQUARE
+            border_style="#7C3AED",
+            box=box.HEAVY
         )
 
     def _render_status_panel_rich(self, state: DashboardState) -> Panel:
@@ -489,8 +483,8 @@ class DashboardRenderer:
         return Panel(
             Text.from_markup(status_text),
             title="[bold]Status[/bold]",
-            border_style="#7C3AED",
-            box=box.SQUARE
+            border_style="#581C87",
+            box=box.HEAVY
         )
 
     def _render_quick_metrics_panel_rich(self, metrics: DashboardMetrics) -> Panel:
@@ -520,8 +514,8 @@ class DashboardRenderer:
         return Panel(
             table,
             title="[bold]Quick Metrics[/bold]",
-            border_style="green",
-            box=box.SQUARE
+            border_style="#34D399",
+            box=box.HEAVY
         )
 
     def _render_content_metrics_rich(self, state: DashboardState) -> Panel:
@@ -529,10 +523,10 @@ class DashboardRenderer:
         m = state.metrics
 
         # Create main metrics table
-        table = RichTable(title="Project Metrics", box=box.SQUARE)
+        table = RichTable(title="Project Metrics", box=box.HEAVY)
         table.add_column("Metric", style="#A855F7", width=20)
-        table.add_column("Value", justify="right", style="bold")
-        table.add_column("Notes", style="dim")
+        table.add_column("Value", justify="right", style="bold white")
+        table.add_column("Notes", style="dim #9A84C9")
 
         # File metrics
         table.add_row("Total Files", str(m.total_files), "All files in snapshot")
@@ -562,7 +556,7 @@ class DashboardRenderer:
             table,
             title="[bold #C084FC]Detailed Metrics[/bold #C084FC]",
             border_style="#C084FC",
-            box=box.SQUARE
+            box=box.HEAVY
         )
 
     def _render_content_warnings_rich(self, state: DashboardState) -> Panel:
@@ -571,7 +565,8 @@ class DashboardRenderer:
             return Panel(
                 Text("[#34D399]✓ No warnings or errors detected![/#34D399]\n\n[dim]Project is in good shape.[/dim]", justify="center"),
                 title="[bold #34D399]All Clear[/bold #34D399]",
-                border_style="#34D399"
+                border_style="#34D399",
+                box=box.HEAVY
             )
 
         # Group warnings by level
@@ -609,15 +604,15 @@ class DashboardRenderer:
             content,
             title=f"[bold yellow]Warnings ({len(state.warnings)})[/bold yellow]",
             border_style="yellow",
-            box=box.SQUARE
+            box=box.HEAVY
         )
 
     def _render_content_actions_rich(self, state: DashboardState) -> Panel:
         """Render quick actions using Rich."""
-        actions_table = RichTable(show_header=True, box=box.SQUARE)
-        actions_table.add_column("Key", style="bold #A855F7", width=5)
+        actions_table = RichTable(show_header=True, box=box.HEAVY)
+        actions_table.add_column("Key", style="bold #D8B4FE", width=5)
         actions_table.add_column("Action", style="white")
-        actions_table.add_column("Description", style="dim")
+        actions_table.add_column("Description", style="dim #9A84C9")
 
         actions = [
             ("1", "Scan project", "Update snapshot with current files"),
@@ -638,7 +633,7 @@ class DashboardRenderer:
             actions_table,
             title="[bold #34D399]Quick Actions[/bold #34D399]",
             border_style="#34D399",
-            box=box.SQUARE
+            box=box.HEAVY
         )
 
     def _render_footer_rich(self, state: DashboardState) -> Panel:
@@ -656,9 +651,9 @@ class DashboardRenderer:
                 tab_text.append(" | ", style="dim")
 
             if tab_id == state.selected_tab:
-                tab_text.append(f"[{i+1}] {tab_name}", style="bold #C084FC")
+                tab_text.append(f"[{i+1}] {tab_name}", style="bold #A855F7")
             else:
-                tab_text.append(f"[{i+1}] {tab_name}", style="dim")
+                tab_text.append(f"[{i+1}] {tab_name}", style="dim #9A84C9")
 
         # Add quit hint
         tab_text.append("     [q]uit", style="dim")
@@ -989,7 +984,7 @@ if RICH_AVAILABLE and READCHAR_AVAILABLE:
             console.clear()
 
             help_text = Text()
-            help_text.append("\n[bold #C084FC]Keyboard Shortcuts[/bold #C084FC]\n\n")
+            help_text.append("\n[bold #D8B4FE]Keyboard Shortcuts[/bold #D8B4FE]\n\n")
             help_text.append("[bold]Tab Navigation:[/bold]\n", style="yellow")
             help_text.append("  [1-4]       - Switch to tab (1=Overview, 2=Metrics, 3=Warnings, 4=Actions)\n")
             help_text.append("  ←/→         - Navigate between tabs\n\n")
@@ -1000,8 +995,8 @@ if RICH_AVAILABLE and READCHAR_AVAILABLE:
 
             help_panel = Panel(
                 help_text,
-                title="[bold #C084FC]Help[/bold #C084FC]",
-                border_style="#A855F7",
+                title="[bold #D8B4FE]Help[/bold #D8B4FE]",
+                border_style="#7C3AED",
                 padding=(1, 2)
             )
             console.print(help_panel)

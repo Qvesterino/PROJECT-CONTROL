@@ -69,6 +69,7 @@ project_control/analysis/duplicate_detector.py
 project_control/analysis/layer_boundary_validator.py
 project_control/analysis/legacy_detector.py
 project_control/analysis/orphan_detector.py
+project_control/analysis/patron_path_analyzer.py
 project_control/analysis/patterns_analyzer.py
 project_control/analysis/search_analyzer.py
 project_control/analysis/self_architecture_validator.py
@@ -82,6 +83,7 @@ project_control/cli/menu.py
 project_control/cli/router.py
 project_control/config/__init__.py
 project_control/config/graph_config.py
+project_control/config/patron_path_loader.py
 project_control/config/patterns_loader.py
 project_control/config/presets.py
 project_control/config/ui_verification_config.py
@@ -102,6 +104,7 @@ project_control/core/image_metadata.py
 project_control/core/import_parser.py
 project_control/core/markdown_renderer.py
 project_control/core/pre_flight.py
+project_control/core/project_initializer.py
 project_control/core/scanner.py
 project_control/core/snapshot_service.py
 project_control/core/snapshot_validator.py
@@ -142,6 +145,8 @@ project_control/graph/extractors/python_ast.py
 project_control/graph/extractors/registry.py
 project_control/gui/__init__.py
 project_control/gui/app.py
+project_control/nebula/__init__.py
+project_control/nebula/schema.py
 project_control/persistence/__init__.py
 project_control/persistence/drift_history_repository.py
 project_control/persistence/state_manager.py
@@ -155,9 +160,12 @@ project_control/services/__init__.py
 project_control/services/_config.py
 project_control/services/analyze_service.py
 project_control/services/base.py
+project_control/services/ecosystem_health_service.py
 project_control/services/explore_service.py
 project_control/services/graph_service.py
 project_control/services/help_service.py
+project_control/services/nebula_export_service.py
+project_control/services/patron_path_service.py
 project_control/services/report_service.py
 project_control/services/scan_service.py
 project_control/services/ui_verification_service.py
@@ -191,6 +199,7 @@ tests/test_audit_retention_reports_and_presentation.py
 tests/test_cli_runtime_fixes.py
 tests/test_dead_analyzer.py
 tests/test_duplicate_detector.py
+tests/test_ecosystem_health.py
 tests/test_extractors_trace.py
 tests/test_file_explorer.py
 tests/test_ghost_graph_core.py
@@ -199,8 +208,10 @@ tests/test_gui_app.py
 tests/test_image_metadata.py
 tests/test_integration.py
 tests/test_menu_builder.py
+tests/test_nebula_export.py
 tests/test_orphan_detector.py
 tests/test_packaging_metadata.py
+tests/test_patron_path_audit.py
 tests/test_presentation_adapters.py
 tests/test_presets.py
 tests/test_release_hardening.py

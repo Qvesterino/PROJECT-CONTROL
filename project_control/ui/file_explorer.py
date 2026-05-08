@@ -615,8 +615,8 @@ class InteractiveFileExplorer:
         self.console.clear()
         panel = Panel(
             details,
-            title=f"[bold blue]File Details[/bold blue]",
-            border_style="blue",
+            title=f"[bold #C084FC]File Details[/bold #C084FC]",
+            border_style="#7C3AED",
             padding=(1, 2)
         )
         self.console.print(panel)
@@ -629,8 +629,8 @@ class InteractiveFileExplorer:
         self.console.clear()
         help_panel = Panel(
             "\n".join(self.help_text),
-            title="[bold cyan]Keyboard Shortcuts[/bold cyan]",
-            border_style="cyan",
+            title="[bold #D8B4FE]Keyboard Shortcuts[/bold #D8B4FE]",
+            border_style="#7C3AED",
             padding=(1, 2)
         )
         self.console.print(help_panel)
@@ -663,11 +663,11 @@ class InteractiveFileExplorer:
         self.console.clear()
         self.console.print(f"\n[bold]Search Results:[/bold] {search_term} ({len(results)} found)\n")
 
-        table = RichTable(show_header=True, header_style="bold magenta")
-        table.add_column("Name", style="cyan")
-        table.add_column("Path", style="dim")
-        table.add_column("Size", style="green")
-        table.add_column("Modified", style="yellow")
+        table = RichTable(show_header=True, header_style="bold #A855F7")
+        table.add_column("Name", style="#C084FC")
+        table.add_column("Path", style="dim #9A84C9")
+        table.add_column("Size", style="#34D399")
+        table.add_column("Modified", style="#D4C5F9")
 
         for file_info in results[:50]:  # Show max 50 results
             table.add_row(
@@ -735,24 +735,24 @@ class InteractiveFileExplorer:
         # Header
         current_rel_path = self.explorer.get_current_path().relative_to(self.explorer.project_root)
         header_text = Text.assemble(
-            ("FILE EXPLORER", "bold blue"),
-            (" - ", "dim"),
-            (str(current_rel_path), "cyan"),
+            ("FILE EXPLORER", "bold #7C3AED"),
+            (" — ", "dim"),
+            (str(current_rel_path), "#C084FC"),
         )
         header = Panel(
             header_text,
-            style="blue",
+            style="#581C87",
             padding=(0, 1)
         )
         self.console.print(header)
 
         # File table
-        table = RichTable(show_header=True, header_style="bold magenta")
-        table.add_column("", width=3)  # Selection indicator
-        table.add_column("Name", style="cyan")
+        table = RichTable(show_header=True, header_style="bold #A855F7")
+        table.add_column("", width=3)
+        table.add_column("Name", style="#C084FC")
         table.add_column("Type", width=8, justify="center")
-        table.add_column("Size", width=10, justify="right")
-        table.add_column("Modified", width=16)
+        table.add_column("Size", width=10, justify="right", style="#34D399")
+        table.add_column("Modified", width=16, style="#D4C5F9")
         table.add_column("Status", width=15)
 
         # Calculate visible range
@@ -766,25 +766,25 @@ class InteractiveFileExplorer:
 
             # Selection indicator
             if is_selected:
-                indicator = Text("►", style="bold yellow")
-                row_style = Style(bgcolor="yellow", color="black")
+                indicator = Text("▸", style="bold #C084FC")
+                row_style = Style(bgcolor="#2E1554", color="#F8F4FF")
             else:
                 indicator = Text(" ")
                 row_style = None
 
             # File name styling
             if file_info.is_dir:
-                name_style = "bold blue"
+                name_style = "bold #C084FC"
             else:
-                name_style = "cyan"
+                name_style = "#D8B4FE"
 
             # Determine type
             if file_info.is_dir:
-                file_type = Text("DIR", style="bold blue")
-                size_str = Text("-")
+                file_type = Text("DIR", style="bold #C084FC")
+                size_str = Text("—")
             else:
-                file_type = Text(file_info.extensions[0] if file_info.extensions else "FILE", style="dim")
-                size_str = Text(self.explorer._format_size(file_info.size), style="green")
+                file_type = Text(file_info.extensions[0] if file_info.extensions else "FILE", style="dim #9A84C9")
+                size_str = Text(self.explorer._format_size(file_info.size), style="#34D399")
 
             # Get status indicators
             status_parts = []
@@ -808,7 +808,7 @@ class InteractiveFileExplorer:
 
             # Add row
             name = Text(file_info.name, style=name_style)
-            modified = Text(file_info.modified, style="yellow")
+            modified = Text(file_info.modified, style="#D4C5F9")
 
             if row_style:
                 table.add_row(
@@ -836,10 +836,10 @@ class InteractiveFileExplorer:
         file_count = len(self.files)
         selected_text = f"Selected: {self.selected_index + 1}/{file_count}" if self.files else "No files"
         footer = Text.assemble(
-            ("[h]elp  ", "dim"),
-            ("[q]uit  ", "dim"),
-            ("[/]search  ", "dim"),
-            ("[Enter]open  ", "dim"),
-            (f"  |  {selected_text}", "cyan"),
+            ("[h]elp  ", "dim #9A84C9"),
+            ("[q]uit  ", "dim #9A84C9"),
+            ("[/]search  ", "dim #9A84C9"),
+            ("[Enter]open  ", "dim #9A84C9"),
+            (f"  │  {selected_text}", "#C084FC"),
         )
         self.console.print(footer)

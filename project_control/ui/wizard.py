@@ -10,7 +10,7 @@ from typing import Callable, Dict, List, Optional
 from project_control.ui.state import AppState, load_state, save_state
 from project_control.utils.terminal import (
     print_success, print_warning, print_info, print_header, Colors,
-    print_error
+    print_brand_header, print_step, Violet
 )
 
 
@@ -29,36 +29,40 @@ class WizardStep:
         """Render the wizard step as a formatted string."""
         lines = []
         
-        # Header
-        lines.append("┌" + "─" * 51 + "┐")
-        lines.append(f"│  Welcome to PROJECT CONTROL! 🎉{' ' * 22}│")
-        lines.append("├" + "─" * 51 + "┤")
-        lines.append("│                                      │")
+        # Header with double-line border (premium feel)
+        lines.append("╔" + "═" * 51 + "╗")
+        lines.append(f"║  Welcome to PROJECT CONTROL!{' ' * 24}║")
+        lines.append("╟" + "─" * 51 + "╢")
+        lines.append("║                                              ║")
         
         # Step info
-        lines.append(f"│  Step {self.step_number}/{self.total_steps}: {self.title:<30}│")
-        lines.append("│                                      │")
-        lines.append("├" + "─" * 51 + "┤")
-        lines.append("│                                      │")
+        lines.append(f"║  Step {self.step_number}/{self.total_steps}: {self.title:<30}║")
+        lines.append("║                                              ║")
+        lines.append("╟" + "─" * 51 + "╢")
+        lines.append("║                                              ║")
         
         # Description
         for line in self._wrap_text(self.description, 48):
-            lines.append(f"│  {line:<48}│")
-        lines.append("│                                      │")
+            lines.append(f"║  {line:<48}║")
+        lines.append("║                                              ║")
         
-        # Options
+        # Options with refined selector
         for i, option in enumerate(self.options, 1):
-            marker = "→" if i - 1 == self.default_option else " "
-            lines.append(f"│  {marker} {i}) {option['label']:<35}│")
+            if i - 1 == self.default_option:
+                marker = "▸"
+            else:
+                marker = " "
+            lines.append(f"║  {marker} {i}) {option['label']:<35}║")
         
-        lines.append("│                                      │")
+        lines.append("║                                              ║")
         
         # Footer
-        lines.append("│  [1-{}] Select                       │".format(len(self.options)))
-        lines.append("│  [S] Skip (use defaults)            │")
-        lines.append("│  [Q] Quit                           │")
-        lines.append("│                                      │")
-        lines.append("└" + "─" * 51 + "┘")
+        lines.append("╟" + "─" * 51 + "╢")
+        lines.append("║  [1-{}] Select                       ║".format(len(self.options)))
+        lines.append("║  [S] Skip (use defaults)            ║")
+        lines.append("║  [Q] Quit                           ║")
+        lines.append("║                                              ║")
+        lines.append("╚" + "═" * 51 + "╝")
         
         return "\n".join(lines)
     
@@ -196,55 +200,55 @@ class Wizard:
     def _show_welcome(self) -> None:
         """Show welcome screen."""
         print()
-        print_header("Welcome to PROJECT CONTROL!")
+        print_brand_header("Welcome to PROJECT CONTROL!", "Architectural Analysis Engine")
         print()
-        print("PROJECT CONTROL helps you understand your codebase structure")
-        print("and find dead code, orphans, and dependencies.")
+        print(f"  {Violet.TEXT_SOFT}PROJECT CONTROL helps you understand your codebase structure{Colors.RESET}")
+        print(f"  {Violet.TEXT_MUTED}and find dead code, orphans, and dependencies.{Colors.RESET}")
         print()
         print_info("We'll walk you through a few quick setup steps:")
         print()
-        print("  1) Choose your project type")
-        print("  2) Select analysis strictness")
-        print("  3) Pick your preferred output format")
-        print("  4) Run your first scan")
+        print_step("1", "Choose your project type")
+        print_step("2", "Select analysis strictness")
+        print_step("3", "Pick your preferred output format")
+        print_step("4", "Run your first scan")
         print()
         print_warning("You can skip any step by pressing 'S'")
-        print("You can quit the wizard by pressing 'Q'")
+        print(f"  {Violet.TEXT_MUTED}You can quit the wizard by pressing 'Q'{Colors.RESET}")
     
     def _show_completion(self) -> None:
         """Show completion screen."""
         self._clear_screen()
         print()
-        print_success("✓ Setup Complete!")
+        print_success("Setup Complete!")
         print()
         print_info("Your configuration:")
         print()
-        print(f"  Project Type:   {self._format_project_type(self.config.project_type)}")
-        print(f"  Strictness:     {self.config.strictness.capitalize()}")
-        print(f"  Output Format:  {self._format_output_format(self.config.output_format)}")
-        print(f"  First Scan:     {'Yes' if self.config.run_first_scan else 'No'}")
+        print(f"  {Violet.LIGHT}Project Type:{Colors.RESET}   {self._format_project_type(self.config.project_type)}")
+        print(f"  {Violet.LIGHT}Strictness:{Colors.RESET}     {self.config.strictness.capitalize()}")
+        print(f"  {Violet.LIGHT}Output Format:{Colors.RESET}  {self._format_output_format(self.config.output_format)}")
+        print(f"  {Violet.LIGHT}First Scan:{Colors.RESET}     {'Yes' if self.config.run_first_scan else 'No'}")
         print()
         
         if self.config.run_first_scan:
             print_info("NEXT STEPS:")
             print()
-            print("  Run these commands to get started:")
+            print(f"  {Violet.TEXT_MUTED}Run these commands to get started:{Colors.RESET}")
             print()
-            print("  1) pc scan        — Index your project files")
-            print("  2) pc ghost       — Find issues")
-            print("  3) pc ghost --tree — View ASCII results")
+            print_step("1", "pc scan        — Index your project files")
+            print_step("2", "pc ghost       — Find issues")
+            print_step("3", "pc graph build — Build dependency graph")
             print()
-            print_success("Ready to analyze! 🚀")
+            print_success("Ready to analyze!")
         else:
             print_info("READY TO GO!")
             print()
-            print("  Your settings are saved. When you're ready:")
+            print(f"  {Violet.TEXT_MUTED}Your settings are saved. When you're ready:{Colors.RESET}")
             print()
-            print("  1) pc scan        — Index your project files")
-            print("  2) pc ghost       — Find issues")
-            print("  3) pc ghost --tree — View ASCII results")
+            print_step("1", "pc scan        — Index your project files")
+            print_step("2", "pc ghost       — Find issues")
+            print_step("3", "pc ghost --tree — View ASCII results")
             print()
-            print_success("Configuration saved! ✨")
+            print_success("Configuration saved!")
         
         input("\nPress Enter to continue...")
     
