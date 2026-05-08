@@ -94,7 +94,12 @@ pc patterns    # Detect suspicious patterns
 pc search TODO # Smart search
 pc artifacts   # Find temporary screenshots and debug assets
 pc audits retention # Find stale generated audits and reports
+pc audit vfx   # Audit FX contract compliance
+pc audit patron # Smoke-test the Patron's Path integration contract
+pc ecosystem health # Validate Project Control, Nebula export, and downstream readiness
 ```
+
+The Patron's Path audit keeps the downstream contract explicit for Codebase Nebula and File Genome consumers, while `pc ecosystem health` runs a single readiness pass over Project Control plus the Nebula bridge export.
 
 That's it. You now understand your codebase.
 

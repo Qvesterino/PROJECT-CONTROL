@@ -21,13 +21,16 @@ from project_control.core.artifact_service import run_artifact_hygiene
 from project_control.core.audit_retention_service import run_audit_retention
 from project_control.services.report_service import (
     view_ghost_report, view_graph_report, view_checklist, view_writers_report,
-    view_ui_verification_report, view_vfx_contract_report, display_report_list, list_all_reports
+    view_ui_verification_report, view_vfx_contract_report, view_patron_path_report,
+    view_ecosystem_health_report, display_report_list, list_all_reports
 )
 from project_control.services.ui_verification_service import (
     get_default_ui_verification_config_path,
     list_ui_verification_profiles,
     run_ui_verification_profile,
 )
+from project_control.services.patron_path_service import run_patron_path_audit
+from project_control.services.ecosystem_health_service import run_ecosystem_health
 from project_control.services.vfx_contract_service import run_vfx_contract_audit
 from project_control.core.error_handler import ErrorHandler, ErrorContext
 from project_control.core.pre_flight import health_check
@@ -672,6 +675,14 @@ def _reports_menu(project_root: Path) -> None:
         if vfx_report.exists():
             reports.append(("VFX Contract Audit", vfx_report))
 
+        patron_report = exports_dir / "patron_path_contract_report.md"
+        if patron_report.exists():
+            reports.append(("Patron's Path Contract", patron_report))
+
+        ecosystem_report = exports_dir / "ecosystem_health_report.md"
+        if ecosystem_report.exists():
+            reports.append(("Ecosystem Health Report", ecosystem_report))
+
         audit_retention_report = exports_dir / "audit_retention_candidates.md"
         if audit_retention_report.exists():
             reports.append(("Audit Retention Report", audit_retention_report))
@@ -683,7 +694,7 @@ def _reports_menu(project_root: Path) -> None:
     
     if not reports:
         print("\nNo reports found yet.")
-        print("Run 'Full Analysis', 'Artifact Hygiene', 'Audit Retention', 'UI Verify', or 'VFX Audit' to generate reports.")
+        print("Run 'Full Analysis', 'Artifact Hygiene', 'Audit Retention', 'UI Verify', 'VFX Audit', 'pc audit patron', or 'pc ecosystem health' to generate reports.")
     else:
         print(f"\nFound {len(reports)} report(s):\n")
         for i, (name, path) in enumerate(reports, 1):
@@ -1125,19 +1136,25 @@ def _quick_actions_menu(project_root: Path, state: AppState) -> None:
         print("7) UI Verify          — run configurable browser verification")
         print("8) Artifact Hygiene   — find temporary screenshots and debug assets")
         print("9) Audit Retention    — find stale generated audits and reports")
-        print("10) Favorites         — manage favorite trace targets")
-        print("11) History           — view recent actions")
+        print("10) Patron Path Audit — smoke-test downstream contract")
+        print("11) Ecosystem Health  — validate Nebula and downstream readiness")
+        print("12) Favorites         — manage favorite trace targets")
+        print("13) History           — view recent actions")
         print("0) Back")
 
-        choice = input("\nSelect (0-11): ").strip()
+        choice = input("\nSelect (0-13): ").strip()
 
         if choice == "0":
             return
         elif choice == "1":
             _quick_full_analysis(project_root, state)
-        elif choice == "2":
+        elif choice == "10":
+            _quick_patron_path_audit(project_root)
+        elif choice == "11":
+            _quick_ecosystem_health(project_root)
+        elif choice == "12":
             _quick_health_check(project_root)
-        elif choice == "3":
+        elif choice == "13":
             _quick_find_orphans(project_root)
         elif choice == "4":
             _quick_find_cycles(project_root, state)
@@ -1302,6 +1319,45 @@ def _quick_vfx_audit(project_root: Path) -> None:
             view_vfx_contract_report(project_root, show_content=True)
     except Exception as e:
         ErrorHandler.handle(e, "Running VFX contract audit")
+
+    input("\nPress Enter to return...")
+
+
+def _quick_patron_path_audit(project_root: Path) -> None:
+    """Quick Patron's Path contract audit."""
+    print("\n" + "="*60)
+    print("  PATRON'S PATH CONTRACT")
+    print("="*60)
+
+    try:
+        with ErrorContext("Running Patron's Path audit"):
+            _result, markdown_path, json_path = run_patron_path_audit(project_root)
+            print_success("Patron's Path audit complete")
+            print(f"Report saved: {markdown_path}")
+            print(f"Data saved:   {json_path}")
+            view_patron_path_report(project_root, show_content=True)
+    except Exception as e:
+        ErrorHandler.handle(e, "Running Patron's Path audit")
+
+    input("\nPress Enter to return...")
+
+
+def _quick_ecosystem_health(project_root: Path) -> None:
+    """Quick ecosystem health check."""
+    print("\n" + "="*60)
+    print("  ECOSYSTEM HEALTH")
+    print("="*60)
+
+    try:
+        with ErrorContext("Running ecosystem health check"):
+            result, markdown_path, json_path = run_ecosystem_health(project_root)
+            print_success("Ecosystem health check complete")
+            print(f"Overall status: {result['summary']['overallStatus']}")
+            print(f"Report saved:   {markdown_path}")
+            print(f"Data saved:     {json_path}")
+            view_ecosystem_health_report(project_root, show_content=True)
+    except Exception as e:
+        ErrorHandler.handle(e, "Running ecosystem health check")
 
     input("\nPress Enter to return...")
 

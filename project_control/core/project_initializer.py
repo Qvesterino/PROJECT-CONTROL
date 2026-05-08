@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 from project_control.config.patterns_loader import get_default_patterns
+from project_control.config.patron_path_loader import get_default_patron_path_contract, get_patron_path_contract_path
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,7 @@ def ensure_project_initialized(project_root: Path) -> InitializationResult:
     exports_dir = control_dir / "exports"
     out_dir = control_dir / "out"
     patterns_file = control_dir / "patterns.yaml"
+    patron_path_file = get_patron_path_contract_path(project_root)
     status_file = control_dir / "status.yaml"
 
     created_control_dir = False
@@ -70,6 +72,12 @@ def ensure_project_initialized(project_root: Path) -> InitializationResult:
             yaml.dump(get_default_patterns(), handle, sort_keys=False)
         created_patterns = True
 
+    created_patron_path = False
+    if not patron_path_file.exists():
+        with patron_path_file.open("w", encoding="utf-8") as handle:
+            yaml.dump(get_default_patron_path_contract(), handle, sort_keys=False)
+        created_patron_path = True
+
     created_status = False
     if not status_file.exists():
         with status_file.open("w", encoding="utf-8") as handle:
@@ -85,6 +93,7 @@ def ensure_project_initialized(project_root: Path) -> InitializationResult:
             created_patterns,
             created_status,
             updated_gitignore,
+            created_patron_path,
         )
     )
 

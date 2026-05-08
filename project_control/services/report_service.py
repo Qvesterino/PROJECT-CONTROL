@@ -80,6 +80,26 @@ def get_vfx_contract_data_path(project_root: Path) -> Path:
     return get_exports_dir(project_root) / "vfx_contract_audit_data.json"
 
 
+def get_patron_path_report_path(project_root: Path) -> Path:
+    """Get Patron's Path contract markdown report path."""
+    return get_exports_dir(project_root) / "patron_path_contract_report.md"
+
+
+def get_patron_path_data_path(project_root: Path) -> Path:
+    """Get Patron's Path contract JSON data path."""
+    return get_exports_dir(project_root) / "patron_path_contract_data.json"
+
+
+def get_ecosystem_health_report_path(project_root: Path) -> Path:
+    """Get ecosystem health markdown report path."""
+    return get_exports_dir(project_root) / "ecosystem_health_report.md"
+
+
+def get_ecosystem_health_data_path(project_root: Path) -> Path:
+    """Get ecosystem health JSON data path."""
+    return get_exports_dir(project_root) / "ecosystem_health_data.json"
+
+
 def get_ui_verification_report_path(project_root: Path) -> Path:
     """Get UI verification markdown report path."""
     return get_exports_dir(project_root) / "ui_verification_report.md"
@@ -285,6 +305,98 @@ def view_vfx_contract_report(project_root: Path, show_content: bool = False) -> 
         print_error(f"Failed to read VFX contract report: {e}")
 
 
+def view_patron_path_report(project_root: Path, show_content: bool = False) -> None:
+    """View the Patron's Path contract report with summary metadata."""
+
+    report_path = get_patron_path_report_path(project_root)
+    data_path = get_patron_path_data_path(project_root)
+
+    if not report_path.exists():
+        print_warning("Patron's Path report not found. Run 'pc audit patron' first.")
+        return
+
+    try:
+        payload = {}
+        if data_path.exists():
+            try:
+                payload = json.loads(data_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                payload = {}
+
+        summary = payload.get("summary", {}) if isinstance(payload, dict) else {}
+
+        print(f"\n{'='*60}")
+        print("  PATRON'S PATH CONTRACT")
+        print(f"{'='*60}")
+
+        if summary:
+            print("\nSummary:")
+            print(f"  Overall: {summary.get('overallStatus', '?')}")
+            print(f"  OK:      {summary.get('okCount', '?')}")
+            print(f"  Warn:    {summary.get('warningCount', '?')}")
+            print(f"  Error:   {summary.get('errorCount', '?')}")
+
+        print(f"\nFile: {report_path}")
+
+        if show_content:
+            content = report_path.read_text(encoding="utf-8")
+            print(f"\n{'='*60}")
+            print("FULL REPORT CONTENT")
+            print(f"{'='*60}\n")
+            print(content)
+        else:
+            print("\nUse 'View Full Report' to see complete content.")
+
+    except Exception as e:
+        print_error(f"Failed to read Patron's Path report: {e}")
+
+
+def view_ecosystem_health_report(project_root: Path, show_content: bool = False) -> None:
+    """View the ecosystem health report with summary metadata."""
+
+    report_path = get_ecosystem_health_report_path(project_root)
+    data_path = get_ecosystem_health_data_path(project_root)
+
+    if not report_path.exists():
+        print_warning("Ecosystem health report not found. Run 'pc ecosystem health' first.")
+        return
+
+    try:
+        payload = {}
+        if data_path.exists():
+            try:
+                payload = json.loads(data_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                payload = {}
+
+        summary = payload.get("summary", {}) if isinstance(payload, dict) else {}
+
+        print(f"\n{'='*60}")
+        print("  ECOSYSTEM HEALTH REPORT")
+        print(f"{'='*60}")
+
+        if summary:
+            print("\nSummary:")
+            print(f"  Overall:   {summary.get('overallStatus', '?')}")
+            print(f"  Project:   {summary.get('projectControlStatus', '?')}")
+            print(f"  Nebula:    {summary.get('nebulaBridgeStatus', '?')}")
+            print(f"  Downstream:{summary.get('downstreamStatus', '?')}")
+
+        print(f"\nFile: {report_path}")
+
+        if show_content:
+            content = report_path.read_text(encoding="utf-8")
+            print(f"\n{'='*60}")
+            print("FULL REPORT CONTENT")
+            print(f"{'='*60}\n")
+            print(content)
+        else:
+            print("\nUse 'View Full Report' to see complete content.")
+
+    except Exception as e:
+        print_error(f"Failed to read ecosystem health report: {e}")
+
+
 def view_ui_verification_report(project_root: Path, show_content: bool = False) -> None:
     """View the UI verification report with summary metadata."""
 
@@ -415,6 +527,30 @@ def list_all_reports(project_root: Path) -> list[dict]:
             "description": "VFX contract audit results",
             "path": get_vfx_contract_report_path(project_root),
             "type": "vfx_contract"
+        },
+        {
+            "name": "Patron's Path Contract",
+            "description": "Downstream contract between Project Control, Codebase Nebula, Patron's Path, and File Genome",
+            "path": get_patron_path_report_path(project_root),
+            "type": "patron_path_contract"
+        },
+        {
+            "name": "Patron's Path Data",
+            "description": "Structured Patron's Path contract payload",
+            "path": get_patron_path_data_path(project_root),
+            "type": "patron_path_contract_json"
+        },
+        {
+            "name": "Ecosystem Health Report",
+            "description": "Cross-project health check for Project Control, Nebula, and downstream readiness",
+            "path": get_ecosystem_health_report_path(project_root),
+            "type": "ecosystem_health"
+        },
+        {
+            "name": "Ecosystem Health Data",
+            "description": "Structured ecosystem health payload",
+            "path": get_ecosystem_health_data_path(project_root),
+            "type": "ecosystem_health_json"
         },
         {
             "name": "UI Verification Report",

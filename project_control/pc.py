@@ -74,7 +74,8 @@ def build_parser() -> argparse.ArgumentParser:
     nebula_parser = subparsers.add_parser("nebula", help="Codebase Nebula bridge commands")
     nebula_parser.add_argument("--project-root", help="Project root path")
     nebula_subparsers = nebula_parser.add_subparsers(dest="nebula_cmd")
-    nebula_subparsers.add_parser("export", help="Export the locked nebula_bridge.json artifact")
+    export_parser = nebula_subparsers.add_parser("export", help="Export the locked nebula_bridge.json artifact")
+    export_parser.add_argument("--project-root", help="Project root path")
 
     search_parser = subparsers.add_parser("search", help="Smart Search - power-user code search")
     search_parser.add_argument("pattern", nargs="+", help="Pattern(s) to search for")
@@ -93,6 +94,19 @@ def build_parser() -> argparse.ArgumentParser:
     audit_vfx_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
     audit_vfx_parser.add_argument("--output", help="Output directory for reports")
     audit_vfx_parser.add_argument("--json", action="store_true", help="Print JSON to stdout")
+
+    audit_patron_parser = audit_subparsers.add_parser("patron", help="Patron's Path integration contract smoke test")
+    audit_patron_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+    audit_patron_parser.add_argument("--output", help="Output directory for reports")
+    audit_patron_parser.add_argument("--json", action="store_true", help="Print JSON to stdout")
+
+    ecosystem_parser = subparsers.add_parser("ecosystem", help="Cross-project ecosystem health checks")
+    ecosystem_parser.add_argument("--project-root", help="Project root path")
+    ecosystem_subparsers = ecosystem_parser.add_subparsers(dest="ecosystem_cmd")
+    ecosystem_health_parser = ecosystem_subparsers.add_parser("health", help="Validate Project Control, Nebula export, and downstream readiness")
+    ecosystem_health_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+    ecosystem_health_parser.add_argument("--output", help="Output directory for reports")
+    ecosystem_health_parser.add_argument("--json", action="store_true", help="Print JSON to stdout")
 
     audits_parser = subparsers.add_parser("audits", help="Retention and hygiene workflows for generated audits")
     audits_subparsers = audits_parser.add_subparsers(dest="audits_cmd")

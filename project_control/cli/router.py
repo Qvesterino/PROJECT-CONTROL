@@ -36,6 +36,8 @@ from project_control.analysis.search_analyzer import smart_search
 from project_control.analysis.vfx_contract_audit import vfx_contract_result_to_dict
 from project_control.services.ui_verification_service import list_ui_verification_profiles, run_ui_verification_profile
 from project_control.services.nebula_export_service import run_nebula_export
+from project_control.services.patron_path_service import run_patron_path_audit
+from project_control.services.ecosystem_health_service import run_ecosystem_health
 from project_control.services.vfx_contract_service import run_vfx_contract_audit
 import json
 from project_control.cli.menu import run_menu
@@ -43,18 +45,33 @@ from project_control.graph.ensure import ensure_graph
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_PROJECT_DIR = Path.cwd().resolve()
+_DEFAULT_CONTROL_DIR = _DEFAULT_PROJECT_DIR / ".project-control"
+_DEFAULT_EXPORTS_DIR = _DEFAULT_CONTROL_DIR / "exports"
+
+PROJECT_DIR = _DEFAULT_PROJECT_DIR
+CONTROL_DIR = _DEFAULT_CONTROL_DIR
+EXPORTS_DIR = _DEFAULT_EXPORTS_DIR
+
 def _resolve_project_root(args: argparse.Namespace | None = None) -> Path:
     project_root = getattr(args, "project_root", None) if args is not None else None
     if project_root:
         return Path(project_root).resolve()
-    return Path.cwd()
+    patched_project_dir = Path(PROJECT_DIR).resolve()
+    if patched_project_dir != _DEFAULT_PROJECT_DIR:
+        return patched_project_dir
+    return Path.cwd().resolve()
 
 
 def _control_dir(project_root: Path) -> Path:
+    if project_root == Path(PROJECT_DIR).resolve() and Path(CONTROL_DIR).resolve() != _DEFAULT_CONTROL_DIR:
+        return Path(CONTROL_DIR).resolve()
     return project_root / ".project-control"
 
 
 def _exports_dir(project_root: Path) -> Path:
+    if project_root == Path(PROJECT_DIR).resolve() and Path(EXPORTS_DIR).resolve() != _DEFAULT_EXPORTS_DIR:
+        return Path(EXPORTS_DIR).resolve()
     return _control_dir(project_root) / "exports"
 
 
@@ -533,6 +550,69 @@ def cmd_audit_vfx(args: argparse.Namespace) -> int:
         return ErrorHandler.handle(e, "VFX contract audit")
 
 
+def cmd_audit_patron(args: argparse.Namespace) -> int:
+    """Patron's Path integration contract audit."""
+    try:
+        with ErrorContext("Running Patron's Path audit"):
+            project_root = Path(getattr(args, "project_root", ".")).resolve()
+            json_output = getattr(args, "json", False)
+            output_dir = getattr(args, "output", None)
+            result, markdown_path, json_path = run_patron_path_audit(
+                project_root,
+                Path(output_dir).resolve() if output_dir else None,
+            )
+
+            if json_output:
+                print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+            else:
+                print("\nPatron's Path Integration Contract")
+                print("----------------------------------")
+                print(f"Project root: {result.project_root}")
+                print(f"Contract file: {result.contract_path}")
+                print(f"Overall status: {result.summary['overallStatus']}")
+                print(f"OK: {result.summary['okCount']}")
+                print(f"Warnings: {result.summary['warningCount']}")
+                print(f"Errors: {result.summary['errorCount']}")
+                print(f"Report saved: {markdown_path}")
+                print(f"Data saved:   {json_path}")
+        return EXIT_OK
+    except SystemExit:
+        raise
+    except Exception as e:
+        return ErrorHandler.handle(e, "Patron's Path audit")
+
+
+def cmd_ecosystem_health(args: argparse.Namespace) -> int:
+    """Cross-project ecosystem health check."""
+    try:
+        with ErrorContext("Running ecosystem health check"):
+            project_root = Path(getattr(args, "project_root", ".")).resolve()
+            json_output = getattr(args, "json", False)
+            output_dir = getattr(args, "output", None)
+            result, markdown_path, json_path = run_ecosystem_health(
+                project_root,
+                Path(output_dir).resolve() if output_dir else None,
+            )
+
+            if json_output:
+                print(json.dumps(result, indent=2, ensure_ascii=False))
+            else:
+                print("\nEcosystem Health")
+                print("----------------")
+                print(f"Project root: {result['projectRoot']}")
+                print(f"Overall status: {result['summary']['overallStatus']}")
+                print(f"Project Control: {result['summary']['projectControlStatus']}")
+                print(f"Nebula bridge:  {result['summary']['nebulaBridgeStatus']}")
+                print(f"Downstream:     {result['summary']['downstreamStatus']}")
+                print(f"Report saved:   {markdown_path}")
+                print(f"Data saved:     {json_path}")
+        return EXIT_OK
+    except SystemExit:
+        raise
+    except Exception as e:
+        return ErrorHandler.handle(e, "Ecosystem health")
+
+
 def cmd_ui_verify(args: argparse.Namespace) -> int:
     """Run configurable browser-based UI verification."""
     try:
@@ -641,7 +721,14 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "audit":
         if getattr(args, "audit_cmd", None) == "vfx":
             return cmd_audit_vfx(args)
+        if getattr(args, "audit_cmd", None) == "patron":
+            return cmd_audit_patron(args)
         print("Unknown audit command.")
+        return EXIT_VALIDATION_ERROR
+    if args.command == "ecosystem":
+        if getattr(args, "ecosystem_cmd", None) == "health":
+            return cmd_ecosystem_health(args)
+        print("Unknown ecosystem command.")
         return EXIT_VALIDATION_ERROR
     if args.command == "audits":
         if getattr(args, "audits_cmd", None) == "retention":
