@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import json
 import hashlib
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_INCLUDE_GLOBS = ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx", "**/*.mjs", "**/*.cjs", "**/*.py"]
@@ -94,7 +97,8 @@ def load_graph_config(project_root: Path, config_path: Optional[Path] = None) ->
             try:
                 merged = _load_yaml(path)
                 break
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to load graph config from {path}: {e}")
                 merged = {}
                 break
 

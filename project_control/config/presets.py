@@ -10,6 +10,7 @@ Provides pre-configured settings for different project types:
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -17,6 +18,8 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from project_control.config.patterns_loader import ARTIFACT_DEFAULTS, AUDIT_RETENTION_DEFAULTS
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -377,13 +380,15 @@ class PresetManager:
         if patterns is None and self.patterns_file.exists():
             try:
                 patterns = yaml.safe_load(self.patterns_file.read_text(encoding="utf-8"))
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to load patterns.yaml: {e}")
                 patterns = {}
 
         if graph_config is None and self.graph_config_file.exists():
             try:
                 graph_config = yaml.safe_load(self.graph_config_file.read_text(encoding="utf-8"))
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to load graph.config.yaml: {e}")
                 graph_config = {}
 
         preset_data = {

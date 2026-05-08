@@ -38,10 +38,12 @@ if sys.platform == "win32":
     try:
         import ctypes
         ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
-    except Exception:
+    except Exception as e:
+        # Fallback to older API if SetProcessDpiAwareness is not available
         try:
             ctypes.windll.user32.SetProcessDPIAware()
-        except Exception:
+        except Exception as e2:
+            # DPI awareness is optional - GUI will still work, just not as sharp
             pass
 
 THEME = {

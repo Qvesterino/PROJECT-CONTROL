@@ -83,11 +83,16 @@ class ContentStore:
 
     def iter_files(self) -> Iterator[Tuple[str, str]]:
         """Iterate over all files with their paths and contents."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         for file in self.snapshot.get("files", []):
             path = file.get("path")
             if path:
                 try:
                     content = self.get_text(path)
                     yield path, content
-                except Exception:
+                except Exception as e:
+                    # Log error but continue iteration - some files may be unreadable
+                    logger.debug(f"Failed to read file {path} during iteration: {e}")
                     continue
