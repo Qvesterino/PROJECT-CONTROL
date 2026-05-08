@@ -35,6 +35,7 @@ from project_control.analysis.patterns_analyzer import analyze_patterns
 from project_control.analysis.search_analyzer import smart_search
 from project_control.analysis.vfx_contract_audit import vfx_contract_result_to_dict
 from project_control.services.ui_verification_service import list_ui_verification_profiles, run_ui_verification_profile
+from project_control.services.nebula_export_service import run_nebula_export
 from project_control.services.vfx_contract_service import run_vfx_contract_audit
 import json
 from project_control.cli.menu import run_menu
@@ -42,21 +43,32 @@ from project_control.graph.ensure import ensure_graph
 
 logger = logging.getLogger(__name__)
 
-PROJECT_DIR = Path.cwd()
-CONTROL_DIR = PROJECT_DIR / ".project-control"
-EXPORTS_DIR = CONTROL_DIR / "exports"
+def _resolve_project_root(args: argparse.Namespace | None = None) -> Path:
+    project_root = getattr(args, "project_root", None) if args is not None else None
+    if project_root:
+        return Path(project_root).resolve()
+    return Path.cwd()
+
+
+def _control_dir(project_root: Path) -> Path:
+    return project_root / ".project-control"
+
+
+def _exports_dir(project_root: Path) -> Path:
+    return _control_dir(project_root) / "exports"
 
 
 def _load_existing_snapshot() -> Optional[dict]:
     try:
-        return load_snapshot(PROJECT_DIR)
+        return load_snapshot(_resolve_project_root())
     except ProjectControlFileNotFoundError:
         print("Run 'pc scan' first.")
         return None
 
 
 def cmd_init(args: argparse.Namespace) -> int:
-    initialization = ensure_project_initialized(PROJECT_DIR)
+    project_root = _resolve_project_root(args)
+    initialization = ensure_project_initialized(project_root)
     if initialization.updated_gitignore:
         print("  Added '.project-control/' to .gitignore")
     print("PROJECT CONTROL initialized.")
@@ -67,7 +79,7 @@ def cmd_scan(args: argparse.Namespace) -> int:
     """Scan project and create snapshot with error handling."""
     try:
         with ErrorContext("Scanning project"):
-            run_scan(PROJECT_DIR)
+            run_scan(_resolve_project_root(args))
         return EXIT_OK
     except SystemExit:
         raise
@@ -79,16 +91,18 @@ def cmd_checklist(args: argparse.Namespace) -> int:
     """Generate checklist from snapshot with error handling."""
     try:
         with ErrorContext("Generating checklist"):
-            require_healthy_snapshot(PROJECT_DIR, operation="checklist generation")
-            snapshot = load_snapshot(PROJECT_DIR)
+            project_root = _resolve_project_root(args)
+            require_healthy_snapshot(project_root, operation="checklist generation")
+            snapshot = load_snapshot(project_root)
 
-            ensure_project_initialized(PROJECT_DIR)
+            ensure_project_initialized(project_root)
 
             output = ["# PROJECT CHECKLIST\n"]
             for file in snapshot["files"]:
                 output.append(f"- [ ] {file['path']}")
 
-            checklist_path = EXPORTS_DIR / "checklist.md"
+            checklist_path = _exports_dir(project_root) / "checklist.md"
+            checklist_path.parent.mkdir(parents=True, exist_ok=True)
             checklist_path.write_text("\n".join(output), encoding="utf-8")
 
             print(f"Checklist generated: {checklist_path}")
@@ -103,7 +117,8 @@ def cmd_quick(args: argparse.Namespace) -> int:
     """Quick analysis - scan, find issues, and build dependencies."""
     try:
         with ErrorContext("Quick analysis"):
-            ensure_project_initialized(PROJECT_DIR)
+            project_root = _resolve_project_root(args)
+            ensure_project_initialized(project_root)
             
             # Get flags
             health_only = getattr(args, "health", False)
@@ -112,9 +127,9 @@ def cmd_quick(args: argparse.Namespace) -> int:
             
             # Step 1: Scan
             print("\n📂 Scanning project...")
-            run_scan(PROJECT_DIR)
+            run_scan(project_root)
             
-            snapshot = load_snapshot(PROJECT_DIR)
+            snapshot = load_snapshot(project_root)
             if snapshot is None:
                 print("Error: Failed to load snapshot")
                 return EXIT_VALIDATION_ERROR
@@ -135,15 +150,15 @@ def cmd_quick(args: argparse.Namespace) -> int:
                     tree=tree_export
                 )
                 
-                ghost_data = run_ghost(ghost_args, PROJECT_DIR)
+                ghost_data = run_ghost(ghost_args, project_root)
                 if ghost_data:
                     result = ghost_data["result"]
                     counts = ghost_data["counts"]
                     
                     # Write reports
-                    write_ghost_report(result, PROJECT_DIR)
+                    write_ghost_report(result, project_root)
                     if tree_export:
-                        write_ghost_tree_report(result, PROJECT_DIR)
+                        write_ghost_tree_report(result, project_root)
                     
                     print(f"   ✓ Orphans: {counts.get('orphans', 0)}")
                     print(f"   ✓ Legacy: {counts.get('legacy', 0)}")
@@ -158,7 +173,7 @@ def cmd_quick(args: argparse.Namespace) -> int:
             if not orphans_only:
                 print("\n🔗 Building dependency graph...")
                 try:
-                    graph_path, metrics_path, report_path = ensure_graph(PROJECT_DIR)
+                    graph_path, metrics_path, report_path = ensure_graph(project_root)
                     metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
                     totals = metrics.get("totals", {})
                     print(f"   ✓ Graph built with {totals.get('nodeCount', 0)} nodes")
@@ -201,10 +216,11 @@ def cmd_find(args: argparse.Namespace) -> int:
 
     try:
         with ErrorContext("Searching for symbol"):
-            ensure_project_initialized(PROJECT_DIR)
+            project_root = _resolve_project_root(args)
+            ensure_project_initialized(project_root)
 
             result = run_rg(args.symbol)
-            output_path = EXPORTS_DIR / f"find_{args.symbol}.md"
+            output_path = _exports_dir(project_root) / f"find_{args.symbol}.md"
 
             output_path.write_text(
                 f"# Usage of: {args.symbol}\n\n{result or 'No matches found.'}",
@@ -223,7 +239,8 @@ def cmd_ghost(args: argparse.Namespace) -> int:
     """Run shallow ghost analysis using canonical ghost core with error handling."""
     try:
         with ErrorContext("Running ghost analysis"):
-            ghost_data = run_ghost(args, PROJECT_DIR)
+            project_root = _resolve_project_root(args)
+            ghost_data = run_ghost(args, project_root)
             if ghost_data is None:
                 return EXIT_OK
 
@@ -231,11 +248,11 @@ def cmd_ghost(args: argparse.Namespace) -> int:
             counts = ghost_data["counts"]
 
             # Write markdown report
-            write_ghost_report(result, PROJECT_DIR)
+            write_ghost_report(result, project_root)
 
             # Write ASCII tree report if --tree flag is set
             if getattr(args, "tree", False):
-                write_ghost_tree_report(result, PROJECT_DIR)
+                write_ghost_tree_report(result, project_root)
 
             # Print summary
             print("\nGhost Results")
@@ -266,10 +283,11 @@ def cmd_ghost(args: argparse.Namespace) -> int:
 
 
 def cmd_writers(args: argparse.Namespace) -> int:
-    ensure_project_initialized(PROJECT_DIR)
+    project_root = _resolve_project_root(args)
+    ensure_project_initialized(project_root)
 
-    results = run_writers_analysis(PROJECT_DIR)
-    output_path = EXPORTS_DIR / "writers_report.md"
+    results = run_writers_analysis(project_root)
+    output_path = _exports_dir(project_root) / "writers_report.md"
     render_writer_report(results, str(output_path))
 
     print(f"Writers report saved: {output_path}")
@@ -280,7 +298,8 @@ def cmd_artifacts(args: argparse.Namespace) -> int:
     """Artifact Hygiene Engine - report suspicious visual artifacts without deleting anything."""
     try:
         with ErrorContext("Running artifact hygiene analysis"):
-            artifact_data = run_artifact_hygiene(args, PROJECT_DIR)
+            project_root = _resolve_project_root(args)
+            artifact_data = run_artifact_hygiene(args, project_root)
             result = artifact_data["result"]
             summary = result.get("summary", {})
             paths = artifact_data["paths"]
@@ -324,7 +343,8 @@ def cmd_audit_retention(args: argparse.Namespace) -> int:
     """Audit Retention Engine - report stale generated audits and exports without deleting anything."""
     try:
         with ErrorContext("Running audit retention analysis"):
-            retention_data = run_audit_retention(args, PROJECT_DIR)
+            project_root = _resolve_project_root(args)
+            retention_data = run_audit_retention(args, project_root)
             result = retention_data["result"]
             summary = result.get("summary", {})
             paths = retention_data["paths"]
@@ -369,10 +389,11 @@ def cmd_dead(args: argparse.Namespace) -> int:
     """Dead Code Radar - finds files with zero or minimal usage."""
     try:
         with ErrorContext("Running dead code analysis"):
+            project_root = _resolve_project_root(args)
             threshold = getattr(args, "threshold", 2)
             json_output = getattr(args, "json", False)
-            require_healthy_snapshot(PROJECT_DIR, operation="dead code analysis")
-            snapshot = load_snapshot(PROJECT_DIR)
+            require_healthy_snapshot(project_root, operation="dead code analysis")
+            snapshot = load_snapshot(project_root)
             files = [f.get("path") for f in snapshot.get("files", [])]
             result = analyze_dead_code(files, low_usage_threshold=threshold)
 
@@ -392,9 +413,10 @@ def cmd_unused(args: argparse.Namespace) -> int:
     """Unused System Scan - finds systems that exist but aren't used."""
     try:
         with ErrorContext("Running unused systems analysis"):
+            project_root = _resolve_project_root(args)
             json_output = getattr(args, "json", False)
             no_color = getattr(args, "no_color", False)
-            result = analyze_unused_systems(PROJECT_DIR)
+            result = analyze_unused_systems(project_root)
 
             if json_output:
                 print(json.dumps(result, indent=2))
@@ -412,10 +434,11 @@ def cmd_patterns(args: argparse.Namespace) -> int:
     """Suspicious Patterns - detects forbidden code patterns."""
     try:
         with ErrorContext("Running suspicious patterns analysis"):
+            project_root = _resolve_project_root(args)
             patterns_file = getattr(args, "file", None)
             json_output = getattr(args, "json", False)
             no_color = getattr(args, "no_color", False)
-            result = analyze_patterns(PROJECT_DIR, patterns_file=patterns_file)
+            result = analyze_patterns(project_root, patterns_file=patterns_file)
 
             if json_output:
                 print(json.dumps(result, indent=2))
@@ -429,10 +452,36 @@ def cmd_patterns(args: argparse.Namespace) -> int:
         return ErrorHandler.handle(e, "Suspicious patterns analysis")
 
 
+def cmd_nebula_export(args: argparse.Namespace) -> int:
+    """Export the locked Codebase Nebula bridge artifact."""
+    try:
+        with ErrorContext("Exporting Codebase Nebula bridge"):
+            project_root = _resolve_project_root(args)
+            payload, output_path = run_nebula_export(project_root)
+            summary = payload.get("summary", {})
+            by_kind = summary.get("byKind", {})
+
+            print("\nNebula Bridge Export")
+            print("--------------------")
+            print(f"Artifact: {output_path}")
+            print(f"Findings: {summary.get('findingCount', 0)}")
+            print(f"Ghost: {by_kind.get('ghost', 0)}")
+            print(f"Dead: {by_kind.get('dead', 0)}")
+            print(f"Unused systems: {by_kind.get('unused_system', 0)}")
+            print(f"Suspicious patterns: {by_kind.get('suspicious_pattern', 0)}")
+            print(f"Artifact hygiene: {by_kind.get('artifact_hygiene', 0)}")
+        return EXIT_OK
+    except SystemExit:
+        raise
+    except Exception as e:
+        return ErrorHandler.handle(e, "Nebula export")
+
+
 def cmd_search(args: argparse.Namespace) -> int:
     """Smart Search - power-user code search."""
     try:
         with ErrorContext("Running smart search"):
+            project_root = _resolve_project_root(args)
             patterns = getattr(args, "pattern", [])
             invert = getattr(args, "invert", False)
             files_only = getattr(args, "files_only", False)
@@ -443,7 +492,7 @@ def cmd_search(args: argparse.Namespace) -> int:
                 print("Error: At least one pattern is required")
                 return EXIT_VALIDATION_ERROR
 
-            result = smart_search(patterns, PROJECT_DIR, invert=invert, files_only=files_only)
+            result = smart_search(patterns, project_root, invert=invert, files_only=files_only)
 
             if json_output:
                 print(json.dumps(result, indent=2))
@@ -582,6 +631,11 @@ def dispatch(args: argparse.Namespace) -> int:
         return cmd_unused(args)
     if args.command == "patterns":
         return cmd_patterns(args)
+    if args.command == "nebula":
+        if getattr(args, "nebula_cmd", None) == "export":
+            return cmd_nebula_export(args)
+        print("Unknown nebula command.")
+        return EXIT_VALIDATION_ERROR
     if args.command == "search":
         return cmd_search(args)
     if args.command == "audit":
@@ -597,7 +651,7 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "tui":
         tui_cmd = getattr(args, "tui_cmd", None)
         if tui_cmd in (None, "menu"):
-            run_menu(PROJECT_DIR)
+            run_menu(_resolve_project_root(args))
             return EXIT_OK
         if tui_cmd == "verify":
             return cmd_ui_verify(args)

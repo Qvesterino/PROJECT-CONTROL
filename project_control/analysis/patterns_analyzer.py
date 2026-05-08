@@ -72,6 +72,7 @@ def analyze_patterns(
         matches = run_rg_json(
             pattern_terms,
             extra_args=["--type", "py", "--type", "js", "--type", "ts"],
+            cwd=root,
         )
 
         if matches:

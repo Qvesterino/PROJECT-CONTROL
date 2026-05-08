@@ -64,6 +64,7 @@ def _check_import_signal(system_name: str, project_root: Path) -> tuple[bool, st
     matches = run_rg_json(
         patterns,
         extra_args=["--type", "py", "--type", "js", "--type", "ts"],
+        cwd=project_root,
     )
 
     if matches:
@@ -92,6 +93,7 @@ def _check_instantiation_signal(system_name: str, project_root: Path) -> tuple[b
     matches = run_rg_json(
         patterns,
         extra_args=["--type", "py", "--type", "js", "--type", "ts"],
+        cwd=project_root,
     )
 
     if matches:
@@ -115,6 +117,7 @@ def _check_usage_signal(system_name: str, project_root: Path, exclude_file: Path
     matches = run_rg_json(
         [system_name],
         extra_args=["--type", "py", "--type", "js", "--type", "ts"],
+        cwd=project_root,
     )
 
     # Filter out self-references
@@ -150,6 +153,7 @@ def _check_entrypoint_signal(system_name: str, project_root: Path) -> tuple[bool
             file_matches = run_rg_json(
                 [system_name],
                 extra_args=["--type", "py", "--type", "js"],
+                cwd=project_root,
             )
             # Filter to only matches from the entrypoint file
             entrypoint_matches = [

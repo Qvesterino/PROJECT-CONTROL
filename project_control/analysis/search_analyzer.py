@@ -43,7 +43,7 @@ def smart_search(
     # For invert mode, always use files-only approach
     # because -L doesn't work with JSON output
     if invert:
-        matching_files = run_rg_files_only(patterns, extra_args + ["-L"])
+        matching_files = run_rg_files_only(patterns, extra_args + ["-L"], cwd=project_root)
         return {
             "matches": [{"file": f} for f in matching_files],
             "stats": {
@@ -54,7 +54,7 @@ def smart_search(
         }
 
     if files_only:
-        matching_files = run_rg_files_only(patterns, extra_args)
+        matching_files = run_rg_files_only(patterns, extra_args, cwd=project_root)
         return {
             "matches": [{"file": f} for f in matching_files],
             "stats": {
@@ -64,7 +64,7 @@ def smart_search(
             },
         }
     else:
-        matches = run_rg_json(patterns, extra_args)
+        matches = run_rg_json(patterns, extra_args, cwd=project_root)
         return {
             "matches": matches,
             "stats": {

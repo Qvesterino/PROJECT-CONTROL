@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import subprocess
+from pathlib import Path
 from typing import Sequence, TypedDict
 
 LOGGER = logging.getLogger(__name__)
@@ -20,9 +22,75 @@ class RgMatch(TypedDict, total=False):
     submatches: list[dict]
 
 
+def _parse_rg_type_filters(extra_args: Sequence[str] | None) -> list[str]:
+    if not extra_args:
+        return []
+
+    types: list[str] = []
+    iterator = iter(extra_args)
+    for arg in iterator:
+        if arg == "--type" and (next_arg := next(iterator, None)):
+            types.append(next_arg if next_arg.startswith(".") else f".{next_arg}")
+    return sorted(set(types))
+
+
+def _python_search(
+    patterns: Sequence[str],
+    extra_args: Sequence[str] | None = None,
+    cwd: str | Path | None = None,
+) -> list[dict]:
+    type_filters = _parse_rg_type_filters(extra_args)
+    root = Path(cwd).resolve() if cwd is not None else Path.cwd()
+    matches: list[dict] = []
+
+    regexes = [re.compile(pattern) for pattern in patterns]
+    file_paths = []
+
+    if type_filters:
+        for ext in type_filters:
+            file_paths.extend(root.rglob(f"*{ext}"))
+    else:
+        file_paths.extend([p for p in root.rglob("*") if p.is_file()])
+
+    for file_path in sorted(set(file_paths)):
+        try:
+            text = file_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            for regex in regexes:
+                if regex.search(line):
+                    matches.append({
+                        "file": file_path.relative_to(root).as_posix(),
+                        "line": line_number,
+                        "text": line.strip(),
+                        "raw": {},
+                    })
+                    break
+    return matches
+
+
+def _python_files_with_matches(
+    patterns: Sequence[str],
+    extra_args: Sequence[str] | None = None,
+    cwd: str | Path | None = None,
+) -> list[str]:
+    matches = _python_search(patterns, extra_args, cwd=cwd)
+    return sorted({match["file"] for match in matches})
+
+
+def _normalize_rg_patterns(patterns: Sequence[str]) -> list[str]:
+    normalized: list[str] = []
+    for pattern in patterns:
+        normalized.append(re.sub(r"\\\\", r"\\", pattern))
+    return normalized
+
+
 def run_rg_json(
     patterns: Sequence[str],
     extra_args: Sequence[str] | None = None,
+    cwd: str | Path | None = None,
 ) -> list[dict]:
     """
     Execute ripgrep with JSON output and return structured matches.
@@ -30,6 +98,7 @@ def run_rg_json(
     Args:
         patterns: List of regex patterns to search for (supports multi-pattern via -e).
         extra_args: Additional command-line arguments forwarded to rg.
+        cwd: Optional working directory for the search.
 
     Returns:
         List of parsed JSON match dictionaries. Each contains at least:
@@ -52,7 +121,16 @@ def run_rg_json(
             text=True,
             encoding="utf-8",
             errors="ignore",
+            cwd=str(cwd) if cwd is not None else None,
         )
+        if result.returncode != 0:
+            stderr_text = (result.stderr or "").strip()
+            LOGGER.warning("ripgrep failed: %s", stderr_text)
+            normalized_patterns = _normalize_rg_patterns(patterns)
+            if normalized_patterns != list(patterns):
+                return run_rg_json(normalized_patterns, extra_args, cwd=cwd)
+            return _python_search(patterns, extra_args, cwd=cwd)
+
         if not result.stdout:
             return []
 
@@ -88,13 +166,14 @@ def run_rg_json(
         return matches
 
     except FileNotFoundError:
-        LOGGER.warning("ripgrep (rg) not found in PATH.")
-        return []
+        LOGGER.warning("ripgrep (rg) not found in PATH. Falling back to Python search.")
+        return _python_search(patterns, extra_args, cwd=cwd)
 
 
 def run_rg_files_only(
     patterns: Sequence[str],
     extra_args: Sequence[str] | None = None,
+    cwd: str | Path | None = None,
 ) -> list[str]:
     """
     Execute ripgrep and return only file paths (no line details).
@@ -102,6 +181,7 @@ def run_rg_files_only(
     Args:
         patterns: List of regex patterns to search for.
         extra_args: Additional command-line arguments forwarded to rg.
+        cwd: Optional working directory for the search.
 
     Returns:
         List of unique file paths containing matches.
@@ -121,7 +201,16 @@ def run_rg_files_only(
             text=True,
             encoding="utf-8",
             errors="ignore",
+            cwd=str(cwd) if cwd is not None else None,
         )
+        if result.returncode != 0:
+            stderr_text = (result.stderr or "").strip()
+            LOGGER.warning("ripgrep failed: %s", stderr_text)
+            normalized_patterns = _normalize_rg_patterns(patterns)
+            if normalized_patterns != list(patterns):
+                return run_rg_files_only(normalized_patterns, extra_args, cwd=cwd)
+            return _python_files_with_matches(patterns, extra_args, cwd=cwd)
+
         if not result.stdout:
             return []
 
@@ -130,5 +219,5 @@ def run_rg_files_only(
         return sorted(set(files))
 
     except FileNotFoundError:
-        LOGGER.warning("ripgrep (rg) not found in PATH.")
-        return []
+        LOGGER.warning("ripgrep (rg) not found in PATH. Falling back to Python search.")
+        return _python_files_with_matches(patterns, extra_args, cwd=cwd)

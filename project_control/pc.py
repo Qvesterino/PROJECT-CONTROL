@@ -71,6 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
     patterns_parser.add_argument("--json", action="store_true", help="Output in JSON format")
     patterns_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
 
+    nebula_parser = subparsers.add_parser("nebula", help="Codebase Nebula bridge commands")
+    nebula_parser.add_argument("--project-root", help="Project root path")
+    nebula_subparsers = nebula_parser.add_subparsers(dest="nebula_cmd")
+    nebula_subparsers.add_parser("export", help="Export the locked nebula_bridge.json artifact")
+
     search_parser = subparsers.add_parser("search", help="Smart Search - power-user code search")
     search_parser.add_argument("pattern", nargs="+", help="Pattern(s) to search for")
     search_parser.add_argument("--not", action="store_true", dest="invert", help="Find files that DO NOT match")
