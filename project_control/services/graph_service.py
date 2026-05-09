@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from json import JSONDecodeError
+from typing import Any, Dict
 
 from project_control.graph.ensure import ensure_graph
 from project_control.services._config import config_with_state
@@ -20,11 +22,14 @@ def build_graph(project_root: Path, state: AppState) -> None:
 def show_report(project_root: Path, state: AppState) -> None:
     cfg = config_with_state(project_root, state)
     _, metrics_path, report_path = ensure_graph(project_root, cfg, force=False)
+    metrics: Dict[str, Any] = {}
     try:
-        metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        logger.debug(f"Failed to load graph metrics from {metrics_path}: {e}")
-        metrics = {}
+        text = metrics_path.read_text(encoding="utf-8")
+        metrics = json.loads(text)
+    except (OSError, IOError) as e:
+        logger.debug(f"Failed to read graph metrics from {metrics_path}: {e}")
+    except JSONDecodeError as e:
+        logger.debug(f"Failed to parse JSON from {metrics_path}: {e}")
     totals = metrics.get("totals", {})
     print(f"Graph report (reuse if fresh)")
     print(f"- Nodes: {totals.get('nodeCount', '?')}")

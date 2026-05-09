@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import yaml
+from yaml import YAMLError
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +98,12 @@ def load_graph_config(project_root: Path, config_path: Optional[Path] = None) ->
             try:
                 merged = _load_yaml(path)
                 break
-            except Exception as e:
-                logger.debug(f"Failed to load graph config from {path}: {e}")
+            except (OSError, IOError) as e:
+                logger.debug(f"Failed to read graph config from {path}: {e}")
+                merged = {}
+                break
+            except YAMLError as e:
+                logger.debug(f"Failed to parse YAML in graph config from {path}: {e}")
                 merged = {}
                 break
 

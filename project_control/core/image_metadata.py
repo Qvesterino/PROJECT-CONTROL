@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import importlib
 import io
+import logging
 import re
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 _SVG_DIMENSION_RE = re.compile(r'(?P<value>\d+(?:\.\d+)?)')
@@ -50,7 +53,8 @@ def _read_raster_metadata(image_bytes: bytes) -> Optional[dict[str, int | str]]:
     try:
         with pil_image_module.open(io.BytesIO(image_bytes)) as image:
             width, height = image.size
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Failed to read raster image metadata: {e}")
         return None
 
     return _build_metadata(width, height)
@@ -59,7 +63,8 @@ def _read_raster_metadata(image_bytes: bytes) -> Optional[dict[str, int | str]]:
 def _read_svg_metadata(image_bytes: bytes) -> Optional[dict[str, int | str]]:
     try:
         text = image_bytes.decode("utf-8", errors="ignore")
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Failed to decode SVG image: {e}")
         return None
 
     width_match = re.search(_SVG_ATTR_RE_TEMPLATE.format(name="width"), text, re.IGNORECASE)

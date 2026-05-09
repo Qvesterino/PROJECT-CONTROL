@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
+from yaml import YAMLError
 
 from project_control.config.patterns_loader import ARTIFACT_DEFAULTS, AUDIT_RETENTION_DEFAULTS
 
@@ -380,15 +381,21 @@ class PresetManager:
         if patterns is None and self.patterns_file.exists():
             try:
                 patterns = yaml.safe_load(self.patterns_file.read_text(encoding="utf-8"))
-            except Exception as e:
-                logger.debug(f"Failed to load patterns.yaml: {e}")
+            except (OSError, IOError) as e:
+                logger.debug(f"Failed to read patterns.yaml: {e}")
+                patterns = {}
+            except YAMLError as e:
+                logger.debug(f"Failed to parse patterns.yaml: {e}")
                 patterns = {}
 
         if graph_config is None and self.graph_config_file.exists():
             try:
                 graph_config = yaml.safe_load(self.graph_config_file.read_text(encoding="utf-8"))
-            except Exception as e:
-                logger.debug(f"Failed to load graph.config.yaml: {e}")
+            except (OSError, IOError) as e:
+                logger.debug(f"Failed to read graph.config.yaml: {e}")
+                graph_config = {}
+            except YAMLError as e:
+                logger.debug(f"Failed to parse graph.config.yaml: {e}")
                 graph_config = {}
 
         preset_data = {
@@ -453,13 +460,13 @@ class PresetManager:
         if self.patterns_file.exists():
             try:
                 current_patterns = yaml.safe_load(self.patterns_file.read_text(encoding="utf-8")) or {}
-            except Exception:
+            except (OSError, IOError, YAMLError):
                 pass
 
         if self.graph_config_file.exists():
             try:
                 current_graph_config = yaml.safe_load(self.graph_config_file.read_text(encoding="utf-8")) or {}
-            except Exception:
+            except (OSError, IOError, YAMLError):
                 pass
 
         # Compare with built-in presets

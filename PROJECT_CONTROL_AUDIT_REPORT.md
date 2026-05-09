@@ -20,13 +20,14 @@ PROJECT_CONTROL je **dobré navrhnutý a stabilný projekt** so silnou architekt
 - Dobré ošetrenie chýb (väčšinou)
 
 ⚠️ **Nájdené problémy:**
-- 2 prípady "bare except" bez logovania (v image_metadata.py)
+- 4 prípady "bare except" bez logovania
 - Niektoré výnimky by mali byť špecifickéjšie
 
 ✅ **Opravené počas auditu:**
-- Pridané logovanie do gui/app.py
-- Pridané logovanie do services/graph_service.py
-- Pridané logovanie do config/graph_config.py
+- ✅ Pridané logovanie do gui/app.py (3 inštancie)
+- ✅ Pridané logovanie do services/graph_service.py (1 inštancia)
+- ✅ Pridané logovanie do config/graph_config.py (1 inštancia)
+- ✅ Pridané logovanie do core/image_metadata.py (2 inštancie)
 
 ---
 
@@ -34,9 +35,9 @@ PROJECT_CONTROL je **dobré navrhnutý a stabilný projekt** so silnou architekt
 
 ### 1.1 Exception Handling (Ošetrenie výnimiek)
 
-**Hodnotenie:** ⚠️ **Dobré s miernymi zlepšeniami**
+**Hodnotenie:** ✅ **Výborné** (zlepšené 9. mája 2026)
 
-#### Nájdené problémy:
+#### Nájdené a opravené problémy:
 
 1. **gui/app.py** (OPRIVENÉ ✅)
    - **Problém:** 3 inštancie "bare except" bez logovania
@@ -55,28 +56,75 @@ PROJECT_CONTROL je **dobré navrhnutý a stabilný projekt** so silnou architekt
 2. **services/graph_service.py** (OPRIVENÉ ✅)
    - **Problém:** 1 inštancia "bare except" pri načítaní JSON
    - **Riziko:** Nevidno prečo zlyhalo načítanie metrík
-   - **Oprava:** Pridané logovanie s cestou k súboru
+   - **Oprava (9. máj 2026):** Refaktorované na špecifickejšie výnimky:
+   ```python
+   # Pred:
+   except Exception as e:
+       logger.debug(f"Failed to load graph metrics from {metrics_path}: {e}")
+       metrics = {}
+   
+   # Po:
+   except (OSError, IOError) as e:
+       logger.debug(f"Failed to read graph metrics from {metrics_path}: {e}")
+   except JSONDecodeError as e:
+       logger.debug(f"Failed to parse JSON from {metrics_path}: {e}")
+   ```
 
 3. **config/graph_config.py** (OPRIVENÉ ✅)
    - **Problém:** 1 inštancia "bare except" pri načítaní YAML konfigurácie
-   - **Oprava:** Pridané debug logovanie
+   - **Oprava (9. máj 2026):** Refaktorované na špecifickejšie výnimky:
+   ```python
+   # Pred:
+   except Exception as e:
+       logger.debug(f"Failed to load graph config from {path}: {e}")
+   
+   # Po:
+   except (OSError, IOError) as e:
+       logger.debug(f"Failed to read graph config from {path}: {e}")
+   except YAMLError as e:
+       logger.debug(f"Failed to parse YAML in graph config from {path}: {e}")
+   ```
 
-4. **core/image_metadata.py** (STAV: 🟡 Prijateľné)
+4. **config/presets.py** (OPRIVENÉ ✅)
+   - **Problém:** 4 inštancie "bare except" pri načítaní YAML/JSON
+   - **Oprava (9. máj 2026):** Refaktorované na špecifickejšie výnimky:
+   ```python
+   # Pred:
+   except Exception as e:
+       logger.debug(f"Failed to load patterns.yaml: {e}")
+   
+   # Po:
+   except (OSError, IOError) as e:
+       logger.debug(f"Failed to read patterns.yaml: {e}")
+   except YAMLError as e:
+       logger.debug(f"Failed to parse patterns.yaml: {e}")
+   ```
+
+5. **core/image_metadata.py** (OPRIVENÉ ✅)
    - **Problém:** 2 inštancie "bare except" v utility funkciách
    - **Analýza:** Tieto funkcie sú navrhnuté na bezpečné spracovanie obrazových dát
-   - **Odporúčanie:** Pridať logovanie pre lepší debugging, ale nie kritické
+   - **Oprava:** Pridané logger.debug() s chybovou správou
    ```python
    # Riadok 53 a 62
-   except Exception:
-       return None  # Prijateľné pre utility funkciu
+   except Exception as e:
+       logger.debug(f"Failed to read raster image metadata: {e}")
+       return None
    ```
+
+6. **services/base.py** (INTENCIÓNE ZACHOVANÉ ✅)
+   - **Analýza:** Generický `except Exception` je tu úmyselný - slúži ako catch-all handler pre dekorátor
+   - **Záver:** Zmena nie je potrebná, dizajn je správny
+
+#### Testovanie:
+- ✅ `tests/test_graph_core.py`: 5 passed (po refactoringu)
+- ✅ `tests/test_presets.py`: 22 passed (po refactoringu)
 
 #### Doporučenia:
 
 1. ✅ **Priorita 1 (Hotovo):** Pridať logovanie do všetkých except blokov
-2. 🟡 **Priorita 2:** Používať špecifickejšie výnimky kde je to možné
-   - Napríklad: `except (OSError, IOError, json.JSONDecodeError)` namiesto `except Exception`
-3. 🟡 **Priorita 3:** Zvážiť vlastné výnimky pre doménové chyby
+2. ✅ **Priorita 2 (Hotovo 9. máj 2026):** Používať špecifickejšie výnimky kde je to možné
+   - Hotovo: JSONDecodeError, YAMLError, OSError, IOError
+3. 🟡 **Priorita 3:** Zvážiť vlastné výnimky pre doménové chyby (nízka priorita)
 
 ---
 
