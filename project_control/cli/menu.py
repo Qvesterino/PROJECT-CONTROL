@@ -529,6 +529,7 @@ def _change_mode_simple(project_root: Path, state: AppState) -> AppState:
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
             ui_verification_headless=state.ui_verification_headless,
+            ui_theme_preset=state.ui_theme_preset,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -571,6 +572,7 @@ def _change_profile_simple(project_root: Path, state: AppState) -> AppState:
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
             ui_verification_headless=state.ui_verification_headless,
+            ui_theme_preset=state.ui_theme_preset,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -777,6 +779,7 @@ def _change_mode(project_root: Path, state: AppState) -> AppState:
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
             ui_verification_headless=state.ui_verification_headless,
+            ui_theme_preset=state.ui_theme_preset,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -799,6 +802,7 @@ def _change_profile(project_root: Path, state: AppState) -> AppState:
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
             ui_verification_headless=state.ui_verification_headless,
+            ui_theme_preset=state.ui_theme_preset,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -822,6 +826,7 @@ def _change_direction(project_root: Path, state: AppState) -> AppState:
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
             ui_verification_headless=state.ui_verification_headless,
+            ui_theme_preset=state.ui_theme_preset,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -845,6 +850,7 @@ def _change_depth(project_root: Path, state: AppState) -> AppState:
             trace_depth=new_depth,
             trace_all_paths=state.trace_all_paths,
             ui_verification_headless=state.ui_verification_headless,
+            ui_theme_preset=state.ui_theme_preset,
             last_ui_verification_profile=state.last_ui_verification_profile,
         )
         save_state(project_root, state)
@@ -863,6 +869,7 @@ def _toggle_all_paths(project_root: Path, state: AppState) -> AppState:
         trace_depth=state.trace_depth,
         trace_all_paths=new_val,
         ui_verification_headless=state.ui_verification_headless,
+        ui_theme_preset=state.ui_theme_preset,
         last_ui_verification_profile=state.last_ui_verification_profile,
     )
     save_state(project_root, state)

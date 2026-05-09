@@ -11,6 +11,7 @@ from pathlib import Path
 class AppState:
     project_mode: str = "js_ts"  # js_ts | python | mixed
     graph_profile: str = "pragmatic"  # pragmatic | strict
+    ui_theme_preset: str = "nebula"  # nebula | aurora | slate
     trace_direction: str = "both"  # inbound | outbound | both
     trace_depth: int = 50
     trace_all_paths: bool = False
@@ -45,6 +46,7 @@ def load_state(project_root: Path) -> AppState:
     return AppState(
         project_mode=data.get("project_mode", "js_ts"),
         graph_profile=data.get("graph_profile", "pragmatic"),
+        ui_theme_preset=data.get("ui_theme_preset", "nebula"),
         trace_direction=data.get("trace_direction", "both"),
         trace_depth=int(data.get("trace_depth", 50)),
         trace_all_paths=bool(data.get("trace_all_paths", False)),
@@ -63,6 +65,7 @@ def save_state(project_root: Path, state: AppState) -> None:
     payload = {
         "project_mode": state.project_mode,
         "graph_profile": state.graph_profile,
+        "ui_theme_preset": state.ui_theme_preset,
         "trace_direction": state.trace_direction,
         "trace_depth": state.trace_depth,
         "trace_all_paths": state.trace_all_paths,
@@ -81,6 +84,7 @@ def add_to_history(state: AppState, action: str) -> AppState:
     return AppState(
         project_mode=state.project_mode,
         graph_profile=state.graph_profile,
+        ui_theme_preset=state.ui_theme_preset,
         trace_direction=state.trace_direction,
         trace_depth=state.trace_depth,
         trace_all_paths=state.trace_all_paths,
@@ -100,6 +104,7 @@ def add_to_favorites(state: AppState, target: str) -> AppState:
     return AppState(
         project_mode=state.project_mode,
         graph_profile=state.graph_profile,
+        ui_theme_preset=state.ui_theme_preset,
         trace_direction=state.trace_direction,
         trace_depth=state.trace_depth,
         trace_all_paths=state.trace_all_paths,
@@ -117,6 +122,7 @@ def remove_from_favorites(state: AppState, target: str) -> AppState:
     return AppState(
         project_mode=state.project_mode,
         graph_profile=state.graph_profile,
+        ui_theme_preset=state.ui_theme_preset,
         trace_direction=state.trace_direction,
         trace_depth=state.trace_depth,
         trace_all_paths=state.trace_all_paths,

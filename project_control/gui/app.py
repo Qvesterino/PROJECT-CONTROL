@@ -46,55 +46,148 @@ if sys.platform == "win32":
             # DPI awareness is optional - GUI will still work, just not as sharp
             pass
 
-THEME = {
-    "bg": "#12071E",
-    "bg_alt": "#170A26",
-    "bg_soft": "#1E1030",
-    "glass": "#24143B",
-    "glass_alt": "#2B1944",
-    "glass_high": "#331F52",
-    "glass_card": "#2A1844",
-    "glass_deep": "#1B0F2C",
-    "text": "#F7F1FF",
-    "text_soft": "#D9C9F4",
-    "text_muted": "#AE9CCA",
-    "text_faint": "#8C79AA",
-    "border": "#4E2F78",
-    "border_soft": "#3B235C",
-    "border_glow": "#6E46A3",
-    "accent": "#A855F7",
-    "accent_dark": "#7C3AED",
-    "accent_glow": "#C084FC",
-    "success": "#31D686",
-    "warning": "#FFCB6B",
-    "danger": "#FF6B8A",
-    "info": "#A78BFA",
-    "shadow": "#0B0413",
-    "scroll_track": "#1A0E2A",
-    "scroll_thumb": "#4B3370",
-    "scroll_thumb_hover": "#6E52A0",
+THEME_PRESETS = {
+    "nebula": {
+        "label": "Nebula",
+        "colors": {
+            "bg": "#0B1020",
+            "bg_alt": "#10172A",
+            "bg_soft": "#151D31",
+            "glass": "#182138",
+            "glass_alt": "#1D2842",
+            "glass_high": "#253052",
+            "glass_card": "#1B243D",
+            "glass_deep": "#101829",
+            "text": "#F6F8FF",
+            "text_soft": "#D8DFF3",
+            "text_muted": "#A9B4CF",
+            "text_faint": "#7E88A7",
+            "border": "#334065",
+            "border_soft": "#22304D",
+            "border_glow": "#7F6BFF",
+            "accent": "#8B5CF6",
+            "accent_dark": "#6D28D9",
+            "accent_glow": "#B5A3FF",
+            "success": "#31D686",
+            "warning": "#F5C04A",
+            "danger": "#FF718D",
+            "info": "#67D1FF",
+            "shadow": "#060B14",
+            "scroll_track": "#11192B",
+            "scroll_thumb": "#3D4B74",
+            "scroll_thumb_hover": "#5668A2",
+        },
+    },
+    "aurora": {
+        "label": "Aurora",
+        "colors": {
+            "bg": "#07131C",
+            "bg_alt": "#0C1826",
+            "bg_soft": "#102033",
+            "glass": "#12263A",
+            "glass_alt": "#17314B",
+            "glass_high": "#214260",
+            "glass_card": "#13283D",
+            "glass_deep": "#0B1724",
+            "text": "#F4FBFF",
+            "text_soft": "#D7ECF7",
+            "text_muted": "#A2C0D0",
+            "text_faint": "#6F8EA2",
+            "border": "#26445A",
+            "border_soft": "#183344",
+            "border_glow": "#32D4C6",
+            "accent": "#23C7B5",
+            "accent_dark": "#0EA5A5",
+            "accent_glow": "#8EF5E9",
+            "success": "#38D39F",
+            "warning": "#F4C35A",
+            "danger": "#FF7A90",
+            "info": "#7DD3FC",
+            "shadow": "#040B12",
+            "scroll_track": "#0D1A28",
+            "scroll_thumb": "#2E6F79",
+            "scroll_thumb_hover": "#36A3A4",
+        },
+    },
+    "slate": {
+        "label": "Slate",
+        "colors": {
+            "bg": "#0C111B",
+            "bg_alt": "#111827",
+            "bg_soft": "#161F30",
+            "glass": "#1A2334",
+            "glass_alt": "#202B3F",
+            "glass_high": "#293451",
+            "glass_card": "#1C2639",
+            "glass_deep": "#111824",
+            "text": "#F8FAFC",
+            "text_soft": "#DCE3F0",
+            "text_muted": "#A8B3C7",
+            "text_faint": "#78859B",
+            "border": "#334155",
+            "border_soft": "#243044",
+            "border_glow": "#7C91FF",
+            "accent": "#5B7CFA",
+            "accent_dark": "#3557D6",
+            "accent_glow": "#A9B8FF",
+            "success": "#34D399",
+            "warning": "#F5B84E",
+            "danger": "#FB7185",
+            "info": "#7DD3FC",
+            "shadow": "#050814",
+            "scroll_track": "#111827",
+            "scroll_thumb": "#4B6387",
+            "scroll_thumb_hover": "#6B88B5",
+        },
+    },
 }
 
+THEME_PRESET_ORDER = ("nebula", "aurora", "slate")
+THEME_PRESET_LABELS = {preset_id: THEME_PRESETS[preset_id]["label"] for preset_id in THEME_PRESET_ORDER}
+THEME_PRESET_IDS_BY_LABEL = {label: preset_id for preset_id, label in THEME_PRESET_LABELS.items()}
+
+THEME: dict[str, str] = {}
+STATE_TONES: dict[str, dict[str, str]] = {}
+ACTIVE_THEME_PRESET = "nebula"
+
+
+def _build_state_tones(theme: dict[str, str]) -> dict[str, dict[str, str]]:
+    return {
+        "ready": {"bg": theme["glass"], "border": theme["border"], "accent": theme["info"], "text": theme["text"]},
+        "empty": {"bg": theme["glass"], "border": theme["border_soft"], "accent": theme["warning"], "text": theme["text"]},
+        "running": {"bg": theme["glass_high"], "border": theme["accent"], "accent": theme["accent_glow"], "text": theme["text"]},
+        "complete": {"bg": theme["glass"], "border": theme["success"], "accent": theme["success"], "text": theme["text"]},
+        "error": {"bg": theme["glass"], "border": theme["danger"], "accent": theme["danger"], "text": theme["text"]},
+    }
+
+
+def set_theme_preset(preset_id: str) -> str:
+    """Apply a named theme preset to the module-level palette."""
+    global ACTIVE_THEME_PRESET
+    resolved = preset_id if preset_id in THEME_PRESETS else "nebula"
+    colors = THEME_PRESETS[resolved]["colors"]
+    THEME.clear()
+    THEME.update(colors)
+    STATE_TONES.clear()
+    STATE_TONES.update(_build_state_tones(THEME))
+    ACTIVE_THEME_PRESET = resolved
+    return resolved
+
+
+set_theme_preset(ACTIVE_THEME_PRESET)
+
 FONTS = {
-    "display": ("Segoe UI Semibold", 22),
-    "header": ("Segoe UI Semibold", 14),
-    "section": ("Segoe UI Semibold", 13),
+    "display": ("Segoe UI Semibold", 24),
+    "header": ("Segoe UI Semibold", 15),
+    "section": ("Segoe UI Semibold", 14),
     "label": ("Segoe UI Semibold", 10),
-    "body": ("Segoe UI", 10),
+    "body": ("Segoe UI", 11),
     "caption": ("Segoe UI", 9),
-    "badge": ("Segoe UI Semibold", 8),
+    "badge": ("Segoe UI Semibold", 9),
     "mono": ("Cascadia Mono", 10),
     "mono_small": ("Cascadia Mono", 9),
     "button": ("Segoe UI Semibold", 10),
-    "tab": ("Segoe UI Semibold", 9),
-}
-
-STATE_TONES = {
-    "ready": {"bg": THEME["glass"], "border": THEME["border"], "accent": THEME["info"], "text": THEME["text"]},
-    "empty": {"bg": THEME["glass"], "border": THEME["border_soft"], "accent": THEME["warning"], "text": THEME["text"]},
-    "running": {"bg": THEME["glass_high"], "border": THEME["accent"], "accent": THEME["accent_glow"], "text": THEME["text"]},
-    "complete": {"bg": THEME["glass"], "border": THEME["success"], "accent": THEME["success"], "text": THEME["text"]},
-    "error": {"bg": THEME["glass"], "border": THEME["danger"], "accent": THEME["danger"], "text": THEME["text"]},
+    "tab": ("Segoe UI Semibold", 10),
 }
 
 SUMMARY_ICONS = {
@@ -199,6 +292,120 @@ class BackgroundRunner:
                 return items
 
 
+class ThemedScrollbar(tk.Canvas):
+    """Canvas-drawn vertical scrollbar that stays inside the app palette."""
+
+    def __init__(self, master: tk.Misc, *, command=None, width: int = 12) -> None:
+        super().__init__(
+            master,
+            bg=master.cget("bg"),
+            width=width,
+            highlightthickness=0,
+            bd=0,
+            relief=tk.FLAT,
+            cursor="sb_v_double_arrow",
+        )
+        self.command = command
+        self._first = 0.0
+        self._last = 1.0
+        self._hovered = False
+        self._pressed = False
+        self._drag_start_y: int | None = None
+        self._drag_start_first = 0.0
+        self.bind("<Configure>", lambda _event: self._draw())
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
+        self.bind("<Button-1>", self._on_press)
+        self.bind("<B1-Motion>", self._on_drag)
+        self.bind("<ButtonRelease-1>", self._on_release)
+
+    def set(self, first: str, last: str) -> None:
+        self._first = max(0.0, min(1.0, float(first)))
+        self._last = max(self._first, min(1.0, float(last)))
+        self._draw()
+
+    def _draw(self) -> None:
+        self.delete("all")
+        width = max(10, self.winfo_width() or int(self.cget("width")))
+        height = max(24, self.winfo_height() or 24)
+        track_fill = _mix(THEME["scroll_track"], THEME["bg"], 0.26)
+        track_outline = _mix(THEME["border_soft"], THEME["scroll_track"], 0.35)
+        thumb_top, thumb_bottom = self._thumb_bounds(height)
+        thumb_fill = THEME["scroll_thumb_hover"] if self._hovered or self._pressed else THEME["scroll_thumb"]
+        thumb_outline = _mix(thumb_fill, THEME["accent_glow"], 0.35)
+        self.create_polygon(
+            _rounded_points(1, 1, width - 1, height - 1, 6),
+            smooth=True,
+            fill=track_fill,
+            outline=track_outline,
+            width=1,
+        )
+        if thumb_bottom - thumb_top >= 6:
+            self.create_polygon(
+                _rounded_points(2, thumb_top, width - 2, thumb_bottom, 6),
+                smooth=True,
+                fill=thumb_fill,
+                outline=thumb_outline,
+                width=1,
+            )
+
+    def _thumb_bounds(self, height: int) -> tuple[int, int]:
+        track_top = 3
+        track_bottom = max(track_top + 12, height - 3)
+        track_height = max(1, track_bottom - track_top)
+        visible = max(0.02, self._last - self._first)
+        thumb_height = max(28, int(track_height * visible))
+        thumb_height = min(thumb_height, track_height)
+        travel = max(1, track_height - thumb_height)
+        thumb_top = track_top + int(travel * self._first)
+        return thumb_top, thumb_top + thumb_height
+
+    def _scroll_to_fraction(self, fraction: float) -> None:
+        if self.command is None:
+            return
+        self.command("moveto", max(0.0, min(1.0, fraction)))
+
+    def _on_enter(self, _event: tk.Event) -> None:
+        self._hovered = True
+        self._draw()
+
+    def _on_leave(self, _event: tk.Event) -> None:
+        self._hovered = False
+        self._pressed = False
+        self._drag_start_y = None
+        self._draw()
+
+    def _on_press(self, event: tk.Event) -> None:
+        top, bottom = self._thumb_bounds(self.winfo_height() or 24)
+        if top <= event.y <= bottom:
+            self._pressed = True
+            self._drag_start_y = event.y
+            self._drag_start_first = self._first
+        elif self.command is not None:
+            if event.y < top:
+                self.command("scroll", -1, "pages")
+            else:
+                self.command("scroll", 1, "pages")
+        self._draw()
+
+    def _on_drag(self, event: tk.Event) -> None:
+        if not self._pressed or self.command is None or self._drag_start_y is None:
+            return
+        height = max(24, self.winfo_height() or 24)
+        top, bottom = self._thumb_bounds(height)
+        thumb_height = bottom - top
+        track_top = 3
+        track_bottom = max(track_top + 12, height - 3)
+        travel = max(1, (track_bottom - track_top) - thumb_height)
+        offset = event.y - self._drag_start_y
+        self._scroll_to_fraction(self._drag_start_first + (offset / travel))
+
+    def _on_release(self, _event: tk.Event) -> None:
+        self._pressed = False
+        self._drag_start_y = None
+        self._draw()
+
+
 class GlassButton(tk.Canvas):
     """Rounded faux-glass button with hover glow and pulse feedback."""
 
@@ -210,7 +417,7 @@ class GlassButton(tk.Canvas):
         command,
         tone: str = "primary",
         width: int = 168,
-        height: int = 42,
+        height: int = 44,
         anchor: str = "center",
     ) -> None:
         super().__init__(
@@ -282,45 +489,45 @@ class GlassButton(tk.Canvas):
     def _palette(self) -> tuple[str, str, str]:
         if self.tone == "secondary":
             base_fill = THEME["glass_alt"]
-            base_border = THEME["border"]
+            base_border = THEME["border_soft"]
             text = THEME["text"]
         elif self.tone == "tab":
-            base_fill = THEME["glass_card"]
+            base_fill = THEME["glass_deep"]
             base_border = THEME["border_soft"]
             text = THEME["text_soft"]
         else:
-            base_fill = _mix(THEME["accent"], THEME["glass_high"], 0.75)
-            base_border = _mix(THEME["accent_glow"], THEME["accent"], 0.35)
+            base_fill = _mix(THEME["accent_dark"], THEME["glass_high"], 0.70)
+            base_border = _mix(THEME["accent_glow"], THEME["accent"], 0.25)
             text = THEME["text"]
 
         if not self.enabled:
             return _mix(base_fill, THEME["bg"], 0.35), _mix(base_border, THEME["bg"], 0.45), THEME["text_muted"]
         if self.tone == "tab" and self.selected:
-            return _mix(base_fill, THEME["accent"], 0.12), _mix(THEME["accent_glow"], THEME["border_glow"], 0.35), THEME["text"]
+            return _mix(base_fill, THEME["accent"], 0.08), _mix(THEME["accent_glow"], THEME["border_glow"], 0.25), THEME["text"]
         if self.running:
-            return _mix(base_fill, THEME["accent"], 0.2), THEME["accent_glow"], text
+            return _mix(base_fill, THEME["accent"], 0.14), THEME["accent_glow"], text
         if self.pressed:
-            return _mix(base_fill, THEME["accent"], 0.28), THEME["accent_glow"], text
+            return _mix(base_fill, THEME["accent"], 0.18), THEME["accent_glow"], text
         if self.hovered or self.selected:
-            return _mix(base_fill, THEME["accent_glow"], 0.12), _mix(base_border, THEME["accent_glow"], 0.35), text
+            return _mix(base_fill, THEME["accent_glow"], 0.08), _mix(base_border, THEME["accent_glow"], 0.25), text
         return base_fill, base_border, text
 
     def _draw(self, *, force_accent: str | None = None) -> None:
         self.delete("all")
         width = max(60, self.winfo_width() or int(self.cget("width")))
         height = max(30, self.winfo_height() or int(self.cget("height")))
-        points = _rounded_points(4, 4, width - 4, height - 4, 14)
+        points = _rounded_points(3, 3, width - 3, height - 3, 16)
         fill, border, text_color = self._palette()
         glow = force_accent or (THEME["accent_glow"] if (self.hovered or self.selected or self.running) and self.enabled else THEME["shadow"])
-        glow_border = _mix(glow, fill, 0.55)
+        glow_border = _mix(glow, fill, 0.68)
         self._glow_shape = self.create_polygon(
-            _rounded_points(2, 2, width - 2, height - 2, 16),
+            _rounded_points(1, 1, width - 1, height - 1, 18),
             smooth=True,
             fill="",
             outline=glow_border,
-            width=2,
+            width=1,
         )
-        self._button_shape = self.create_polygon(points, smooth=True, fill=fill, outline=border, width=1.5)
+        self._button_shape = self.create_polygon(points, smooth=True, fill=fill, outline=border, width=1)
         text_x = width / 2 if self.anchor == "center" else 16
         self._text_item = self.create_text(
             text_x,
@@ -368,7 +575,7 @@ class RoundedPanel(tk.Frame):
         *,
         bg: str,
         border: str,
-        radius: int = 18,
+        radius: int = 20,
         border_width: int = 1,
     ) -> None:
         super().__init__(master, bg=master.cget("bg"), bd=0, highlightthickness=0, relief=tk.FLAT)
@@ -376,7 +583,7 @@ class RoundedPanel(tk.Frame):
         self.surface_border = border
         self.radius = radius
         self.border_width = border_width
-        self._canvas = tk.Canvas(self, bg=master.cget("bg"), bd=0, highlightthickness=0, relief=tk.FLAT)
+        self._canvas = tk.Canvas(self, bg=bg, bd=0, highlightthickness=0, relief=tk.FLAT)
         self._canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
         self.bind("<Configure>", lambda _event: self._draw())
         self._draw()
@@ -399,6 +606,7 @@ class RoundedPanel(tk.Frame):
             self.surface_bg = bg
         if border is not None:
             self.surface_border = border
+        self._canvas.configure(bg=self.surface_bg)
         self._draw()
 
     def configure(self, cnf=None, **kw):
@@ -433,7 +641,7 @@ class ThemedScrollbar(tk.Scrollbar):
             troughcolor=THEME["scroll_track"],
             relief=tk.FLAT,
             bd=0,
-            width=12,
+            width=10,
             highlightthickness=0,
             elementborderwidth=0,
             borderwidth=0,
@@ -467,6 +675,8 @@ class ScrollableTextPanel(tk.Frame):
             padx=padx,
             pady=pady,
             font=font,
+            borderwidth=0,
+            insertwidth=2,
         )
         if height is not None:
             self.text.configure(height=height)
@@ -500,6 +710,9 @@ class ScrollableListPanel(tk.Frame):
             highlightthickness=0,
             activestyle="none",
             font=font,
+            exportselection=False,
+            borderwidth=0,
+            selectborderwidth=0,
         )
         self.scrollbar = ThemedScrollbar(self, command=self.listbox.yview)
         self.listbox.configure(yscrollcommand=self.scrollbar.set)
@@ -542,6 +755,7 @@ class GUIController:
         *,
         project_mode: str,
         graph_profile: str,
+        ui_theme_preset: str,
         trace_depth: int,
         trace_all_paths: bool,
         ui_verification_headless: bool,
@@ -549,6 +763,7 @@ class GUIController:
         self.state = AppState(
             project_mode=project_mode,
             graph_profile=graph_profile,
+            ui_theme_preset=ui_theme_preset,
             trace_direction=self.state.trace_direction,
             trace_depth=trace_depth,
             trace_all_paths=trace_all_paths,
@@ -647,14 +862,19 @@ class ProjectControlGUI:
         self.controller = controller or GUIController(self.project_root)
         self.runner = BackgroundRunner()
         self.root = root or self.create_root()
-        self.root.title(f"PROJECT CONTROL GUI - {self.project_root.name}")
-        self.root.geometry("1380x920")
-        self.root.minsize(1200, 780)
+        self.root.title(f"PROJECT CONTROL — {self.project_root.name}")
+        self.root.geometry("1440x940")
+        self.root.minsize(1280, 820)
+
+        self.current_theme_preset = self._apply_theme_preset(self.controller.state.ui_theme_preset, refresh_ui=False)
         self.root.configure(bg=THEME["bg"])
 
         self.status_var = tk.StringVar(value="Ready")
         self.status_detail_var = tk.StringVar(value="Choose a workflow to start.")
         self.header_var = tk.StringVar(value=f"Project: {self.project_root.name}")
+        self.header_system_var = tk.StringVar(value="System Ready")
+        self.header_mode_var = tk.StringVar(value=f"Mode: {self.controller.state.project_mode.upper()}")
+        self.header_scope_var = tk.StringVar(value="Snapshot: pending · Graph: pending")
         self.sidebar_actions: dict[str, GlassButton] = {}
         self.tab_frames: dict[str, tk.Frame] = {}
         self.tab_order: list[str] = []
@@ -677,6 +897,7 @@ class ProjectControlGUI:
         self.quick_start_title_var = tk.StringVar(value="Quick Start")
         self.quick_start_body_var = tk.StringVar(value="")
         self.header_frame: tk.Frame | None = None
+        self.header_status_labels: dict[str, tk.Label] = {}
         self.footer_frame: tk.Frame | None = None
         self.footer_pill: tk.Frame | None = None
         self.footer_status_label: tk.Label | None = None
@@ -687,6 +908,9 @@ class ProjectControlGUI:
         self.active_workflow: str | None = None
         self.selected_tab: str = "overview"
         self.busy = False
+        self.current_footer_state = "ready"
+        self.current_footer_title = "Ready"
+        self.current_footer_detail = "Choose a workflow to start."
 
         self.ghost_mode_var = tk.StringVar(value="pragmatic")
         self.ghost_tree_var = tk.BooleanVar(value=True)
@@ -696,6 +920,7 @@ class ProjectControlGUI:
         self.ui_profile_var = tk.StringVar(value=self.controller.state.last_ui_verification_profile or "")
         self.settings_mode_var = tk.StringVar(value=self.controller.state.project_mode)
         self.settings_profile_var = tk.StringVar(value=self.controller.state.graph_profile)
+        self.settings_template_var = tk.StringVar(value=THEME_PRESET_LABELS[self.current_theme_preset])
         self.settings_trace_depth_var = tk.IntVar(value=self.controller.state.trace_depth)
         self.settings_all_paths_var = tk.BooleanVar(value=self.controller.state.trace_all_paths)
         self.settings_headless_var = tk.BooleanVar(value=self.controller.state.ui_verification_headless)
@@ -726,52 +951,145 @@ class ProjectControlGUI:
         style.configure("PC.TFrame", background=THEME["bg"])
         style.configure(
             "PC.TCombobox",
-            fieldbackground=THEME["glass_alt"],
-            background=THEME["glass_alt"],
+            fieldbackground=THEME["glass_deep"],
+            background=THEME["glass_deep"],
             foreground=THEME["text"],
-            bordercolor=THEME["border"],
-            lightcolor=THEME["border"],
-            darkcolor=THEME["border"],
+            bordercolor=THEME["border_soft"],
+            lightcolor=THEME["border_soft"],
+            darkcolor=THEME["border_soft"],
             arrowcolor=THEME["accent_glow"],
+            padding=(10, 7),
         )
+        style.map(
+            "PC.TCombobox",
+            fieldbackground=[("readonly", THEME["glass_deep"]), ("disabled", THEME["glass"])],
+            foreground=[("readonly", THEME["text"]), ("disabled", THEME["text_muted"])],
+            arrowcolor=[("readonly", THEME["accent_glow"]), ("disabled", THEME["text_muted"])],
+        )
+
+    def _theme_color_map(self, old_theme: dict[str, str], new_theme: dict[str, str]) -> dict[str, str]:
+        color_map: dict[str, str] = {}
+        for key, old_value in old_theme.items():
+            new_value = new_theme.get(key)
+            if new_value is not None and old_value != new_value:
+                color_map[old_value] = new_value
+        return color_map
+
+    def _refresh_widget_theme(self, widget: tk.Misc, color_map: dict[str, str]) -> None:
+        for option in (
+            "bg",
+            "background",
+            "fg",
+            "foreground",
+            "insertbackground",
+            "selectbackground",
+            "selectforeground",
+            "highlightbackground",
+            "highlightcolor",
+            "activebackground",
+            "activeforeground",
+            "troughcolor",
+            "disabledforeground",
+        ):
+            try:
+                current = widget.cget(option)
+            except Exception:
+                continue
+            new_value = color_map.get(str(current))
+            if new_value is not None and new_value != current:
+                try:
+                    widget.configure(**{option: new_value})
+                except tk.TclError:
+                    pass
+
+        if isinstance(widget, RoundedPanel):
+            widget._draw()
+        elif isinstance(widget, GlassButton):
+            widget._draw()
+        elif isinstance(widget, ThemedScrollbar):
+            widget._draw()
+
+        for child in widget.winfo_children():
+            self._refresh_widget_theme(child, color_map)
+
+    def _apply_theme_preset(self, preset_value: str, *, refresh_ui: bool = True) -> str:
+        preset_id = THEME_PRESET_IDS_BY_LABEL.get(preset_value, preset_value)
+        old_theme = dict(THEME)
+        resolved = set_theme_preset(preset_id)
+        self.current_theme_preset = resolved
+        if hasattr(self, "settings_template_var"):
+            self.settings_template_var.set(THEME_PRESET_LABELS[resolved])
+        self._configure_styles()
+        if refresh_ui and hasattr(self, "root"):
+            color_map = self._theme_color_map(old_theme, THEME)
+            self.root.configure(bg=THEME["bg"])
+            self._refresh_widget_theme(self.root, color_map)
+            self._set_footer_state(self.current_footer_state, self.current_footer_title, self.current_footer_detail)
+            self._refresh_header_status()
+        return resolved
 
     def _build_layout(self) -> None:
         outer = tk.Frame(self.root, bg=THEME["bg"])
         outer.pack(fill=tk.BOTH, expand=True)
 
         sidebar = self._glass_frame(outer, bg=THEME["bg_soft"], border=THEME["border_soft"])
-        sidebar.configure(width=256)
-        sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 8), pady=10)
+        sidebar.configure(width=276)
+        sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=(12, 10), pady=12)
         sidebar.pack_propagate(False)
 
         content = tk.Frame(outer, bg=THEME["bg"])
-        content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10), pady=10)
+        content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 12), pady=12)
 
         self.header_frame = self._glass_frame(content, bg=THEME["glass"], border=THEME["border"])
-        self.header_frame.pack(fill=tk.X, pady=(0, 10))
+        self.header_frame.pack(fill=tk.X, pady=(0, 12))
+        header_row = tk.Frame(self.header_frame, bg=THEME["glass"])
+        header_row.pack(fill=tk.X, padx=20, pady=(18, 16))
+        title_block = tk.Frame(header_row, bg=THEME["glass"])
+        title_block.pack(side=tk.LEFT, fill=tk.X, expand=True)
         tk.Label(
-            self.header_frame,
+            title_block,
             text="PROJECT CONTROL",
             bg=THEME["glass"],
             fg=THEME["text"],
             font=FONTS["display"],
-        ).pack(anchor="w", padx=20, pady=(16, 2))
+        ).pack(anchor="w")
         tk.Label(
-            self.header_frame,
+            title_block,
             textvariable=self.header_var,
             bg=THEME["glass"],
             fg=THEME["text_soft"],
             font=FONTS["body"],
-        ).pack(anchor="w", padx=20, pady=(0, 16))
+        ).pack(anchor="w", pady=(3, 0))
+        chip_block = tk.Frame(header_row, bg=THEME["glass"])
+        chip_block.pack(side=tk.RIGHT, anchor="e")
+        for key, var, fg in (
+            ("system", self.header_system_var, THEME["success"]),
+            ("mode", self.header_mode_var, THEME["accent_glow"]),
+            ("scope", self.header_scope_var, THEME["info"]),
+        ):
+            chip = tk.Label(
+                chip_block,
+                textvariable=var,
+                bg=THEME["glass_card"],
+                fg=fg,
+                font=FONTS["badge"],
+                padx=12,
+                pady=5,
+                bd=1,
+                relief=tk.SOLID,
+                highlightthickness=0,
+            )
+            chip.pack(side=tk.LEFT, padx=(0, 8))
+            self.header_status_labels[key] = chip
 
         workspace = tk.Frame(content, bg=THEME["bg"])
         workspace.pack(fill=tk.BOTH, expand=True)
 
         self.tab_bar_card = self._glass_frame(workspace, bg=THEME["glass"], border=THEME["border_soft"])
-        self.tab_bar_card.pack(fill=tk.X, pady=(0, 10))
+        self.tab_bar_card.pack(fill=tk.X, pady=(0, 12))
 
         tab_row = tk.Frame(self.tab_bar_card, bg=THEME["glass"])
-        tab_row.pack(fill=tk.X, padx=14, pady=12)
+        tab_row.pack(fill=tk.X, padx=16, pady=14)
         self._build_top_tabs(tab_row)
 
         self.tab_content_stack = tk.Frame(workspace, bg=THEME["bg"])
@@ -780,7 +1098,7 @@ class ProjectControlGUI:
         self.footer_frame = self._glass_frame(content, bg=THEME["glass"], border=THEME["border_soft"])
         self.footer_frame.pack(fill=tk.X, pady=(10, 0))
         footer_top = tk.Frame(self.footer_frame, bg=THEME["glass"])
-        footer_top.pack(fill=tk.X, padx=14, pady=(12, 8))
+        footer_top.pack(fill=tk.X, padx=16, pady=(14, 8))
         self.footer_pill = tk.Frame(footer_top, bg=STATE_TONES["ready"]["accent"], height=10, width=10)
         self.footer_pill.pack(side=tk.LEFT, padx=(0, 10))
         self.footer_status_label = tk.Label(
@@ -802,9 +1120,9 @@ class ProjectControlGUI:
             wraplength=1000,
             font=FONTS["body"],
         )
-        self.footer_detail_label.pack(fill=tk.X, padx=14)
+        self.footer_detail_label.pack(fill=tk.X, padx=16)
         log_shell = self._glass_frame(self.footer_frame, bg=THEME["glass_card"], border=THEME["border_soft"])
-        log_shell.pack(fill=tk.X, padx=14, pady=(8, 14))
+        log_shell.pack(fill=tk.X, padx=16, pady=(10, 16))
         log_panel = ScrollableTextPanel(
             log_shell,
             bg=THEME["glass_deep"],
@@ -823,13 +1141,48 @@ class ProjectControlGUI:
         self._set_footer_state("ready", "Ready", "Choose a workflow to start.")
 
     def _build_sidebar(self, parent: tk.Frame) -> None:
+        brand_card = self._glass_frame(parent, bg=THEME["glass"], border=THEME["border_soft"])
+        brand_card.pack(fill=tk.X, padx=14, pady=(14, 12))
+        brand_row = tk.Frame(brand_card, bg=THEME["glass"])
+        brand_row.pack(fill=tk.X, padx=14, pady=(14, 8))
+        tk.Label(
+            brand_row,
+            text="◈",
+            bg=THEME["glass"],
+            fg=THEME["accent_glow"],
+            font=("Segoe UI Semibold", 18),
+        ).pack(side=tk.LEFT, padx=(0, 10))
+        brand_text = tk.Frame(brand_row, bg=THEME["glass"])
+        brand_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Label(
+            brand_text,
+            text="PROJECT CONTROL",
+            bg=THEME["glass"],
+            fg=THEME["text"],
+            font=FONTS["section"],
+        ).pack(anchor="w")
+        tk.Label(
+            brand_text,
+            text="Deterministic analysis cockpit",
+            bg=THEME["glass"],
+            fg=THEME["text_muted"],
+            font=FONTS["caption"],
+        ).pack(anchor="w", pady=(2, 0))
+        tk.Label(
+            brand_card,
+            textvariable=self.header_var,
+            bg=THEME["glass"],
+            fg=THEME["accent_glow"],
+            font=FONTS["caption"],
+        ).pack(anchor="w", padx=14, pady=(0, 14))
+
         tk.Label(
             parent,
             text="Workflows",
             bg=THEME["bg_soft"],
             fg=THEME["text"],
             font=FONTS["header"],
-        ).pack(anchor="w", padx=18, pady=(18, 10))
+        ).pack(anchor="w", padx=18, pady=(0, 10))
 
         button_specs = [
             ("overview", "Overview", lambda: self._select_tab("overview")),
@@ -846,26 +1199,26 @@ class ProjectControlGUI:
             ("settings", "Settings", lambda: self._select_tab("settings")),
         ]
         for key, label, callback in button_specs:
-            button = GlassButton(parent, text=label, command=callback, tone="secondary", width=216, anchor="w")
-            button.pack(fill=tk.X, padx=14, pady=5)
+            button = GlassButton(parent, text=label, command=callback, tone="secondary", width=228, anchor="w")
+            button.pack(fill=tk.X, padx=14, pady=4)
             self.sidebar_actions[key] = button
 
-        self.quick_start_card = self._glass_frame(parent, bg=THEME["glass_alt"], border=THEME["border_soft"])
+        self.quick_start_card = self._glass_frame(parent, bg=THEME["glass_card"], border=THEME["border_soft"])
         self.quick_start_card.pack(fill=tk.X, padx=14, pady=(16, 12))
         tk.Label(
             self.quick_start_card,
             textvariable=self.quick_start_title_var,
-            bg=THEME["glass_alt"],
+            bg=THEME["glass_card"],
             fg=THEME["text"],
             font=FONTS["label"],
         ).pack(anchor="w", padx=14, pady=(12, 6))
         tk.Label(
             self.quick_start_card,
             textvariable=self.quick_start_body_var,
-            bg=THEME["glass_alt"],
+            bg=THEME["glass_card"],
             fg=THEME["text_muted"],
             justify=tk.LEFT,
-            wraplength=192,
+            wraplength=212,
             font=FONTS["caption"],
         ).pack(anchor="w", padx=14, pady=(0, 12))
         self._refresh_quick_start()
@@ -881,8 +1234,8 @@ class ProjectControlGUI:
         ]
         self.tab_order = [key for key, _label in tab_specs]
         for key, label in tab_specs:
-            button = GlassButton(parent, text=label, command=lambda current=key: self._select_tab(current), tone="tab", width=118, height=40)
-            button.pack(side=tk.LEFT, padx=(0, 8))
+            button = GlassButton(parent, text=label, command=lambda current=key: self._select_tab(current), tone="tab", width=128, height=42)
+            button.pack(side=tk.LEFT, padx=(0, 10))
             self.tab_buttons[key] = button
 
     def _build_tabs(self) -> None:
@@ -899,9 +1252,9 @@ class ProjectControlGUI:
         self.tab_frames[key] = frame
 
         banner_card = self._glass_frame(frame, bg=THEME["glass"], border=THEME["border_soft"])
-        banner_card.pack(fill=tk.X, padx=10, pady=(0, 10))
+        banner_card.pack(fill=tk.X, padx=10, pady=(0, 12))
         banner_head = tk.Frame(banner_card, bg=THEME["glass"])
-        banner_head.pack(fill=tk.X, padx=16, pady=(14, 6))
+        banner_head.pack(fill=tk.X, padx=16, pady=(16, 6))
         badge_var = tk.StringVar(value="READY")
         title_var = tk.StringVar(value=title)
         body_var = tk.StringVar(value="")
@@ -930,12 +1283,12 @@ class ProjectControlGUI:
             justify=tk.LEFT,
             wraplength=920,
             font=FONTS["body"],
-        ).pack(fill=tk.X, padx=16, pady=(0, 14))
+        ).pack(fill=tk.X, padx=16, pady=(0, 16))
         self.tab_banner_frames[key] = banner_card
         self.tab_banner_vars[key] = {"badge": badge_var, "title": title_var, "body": body_var}
 
         summary_frame = tk.Frame(frame, bg=THEME["bg"])
-        summary_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
+        summary_frame.pack(fill=tk.X, padx=10, pady=(0, 12))
         summary_pairs: list[tuple[tk.StringVar, tk.StringVar]] = []
         summary_frames: list[tk.Frame] = []
         summary_badges: list[tk.Label] = []
@@ -954,7 +1307,7 @@ class ProjectControlGUI:
                 bg=THEME["info"],
                 fg=THEME["bg"],
                 font=FONTS["badge"],
-                padx=7,
+                padx=8,
                 pady=2,
             )
             badge.pack(side=tk.LEFT)
@@ -967,8 +1320,8 @@ class ProjectControlGUI:
             ).pack(side=tk.RIGHT)
             title_var = tk.StringVar(value="—")
             value_var = tk.StringVar(value="—")
-            tk.Label(card, textvariable=title_var, bg=THEME["glass_card"], fg=THEME["text_faint"], font=FONTS["badge"]).pack(anchor="w", padx=12, pady=(2, 3))
-            tk.Label(card, textvariable=value_var, bg=THEME["glass_card"], fg=THEME["text"], font=("Segoe UI Semibold", 16)).pack(anchor="w", padx=12, pady=(0, 12))
+            tk.Label(card, textvariable=title_var, bg=THEME["glass_card"], fg=THEME["text_faint"], font=FONTS["caption"]).pack(anchor="w", padx=12, pady=(2, 4))
+            tk.Label(card, textvariable=value_var, bg=THEME["glass_card"], fg=THEME["text"], font=("Segoe UI Semibold", 17)).pack(anchor="w", padx=12, pady=(0, 12))
             summary_pairs.append((title_var, value_var))
             summary_frames.append(card)
             summary_badges.append(badge)
@@ -986,7 +1339,7 @@ class ProjectControlGUI:
         self.tab_paths_var[key] = paths_var
         tk.Label(paths_card, textvariable=paths_var, bg=THEME["glass_alt"], fg=THEME["text_muted"], justify=tk.LEFT, anchor="w", wraplength=920, font=FONTS["caption"]).pack(fill=tk.X, padx=16, pady=12)
 
-        text_card = self._glass_frame(frame, bg=THEME["glass"], border=THEME["border"])
+        text_card = self._glass_frame(frame, bg=THEME["glass"], border=THEME["border_soft"])
         text_card.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
         text_panel = ScrollableTextPanel(
             text_card,
@@ -1011,7 +1364,7 @@ class ProjectControlGUI:
         grid.pack(fill=tk.X, padx=14, pady=14)
 
         tk.Label(grid, text="Ghost mode", bg=THEME["glass_alt"], fg=THEME["text_soft"], font=FONTS["label"]).grid(row=0, column=0, sticky="w")
-        ttk.Combobox(grid, textvariable=self.ghost_mode_var, values=("pragmatic", "strict"), width=16, state="readonly").grid(row=0, column=1, padx=(12, 14), sticky="w")
+        ttk.Combobox(grid, textvariable=self.ghost_mode_var, values=("pragmatic", "strict"), width=16, state="readonly", style="PC.TCombobox").grid(row=0, column=1, padx=(12, 14), sticky="w")
         tk.Checkbutton(
             grid,
             text="ASCII tree export",
@@ -1059,7 +1412,7 @@ class ProjectControlGUI:
             highlightthickness=1,
             highlightbackground=THEME["border"],
         ).grid(row=1, column=1, padx=10, pady=(12, 0), sticky="w")
-        ttk.Combobox(grid, textvariable=self.trace_direction_var, values=("inbound", "outbound", "both"), width=12, state="readonly").grid(row=1, column=2, padx=10, pady=(14, 0), sticky="w")
+        ttk.Combobox(grid, textvariable=self.trace_direction_var, values=("inbound", "outbound", "both"), width=12, state="readonly", style="PC.TCombobox").grid(row=1, column=2, padx=10, pady=(14, 0), sticky="w")
         self._add_action_button(grid, "Run Trace", self._submit_graph_trace, row=1, column=3, pady=(12, 0))
 
     def _build_reports_tab(self) -> None:
@@ -1075,12 +1428,12 @@ class ProjectControlGUI:
         body = tk.Frame(frame, bg=THEME["bg"])
         body.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
-        left = self._glass_frame(body, bg=THEME["glass"], border=THEME["border"])
+        left = self._glass_frame(body, bg=THEME["glass"], border=THEME["border_soft"])
         left.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 8))
-        left.configure(width=340)
+        left.configure(width=356)
         left.pack_propagate(False)
 
-        right = self._glass_frame(body, bg=THEME["glass"], border=THEME["border"])
+        right = self._glass_frame(body, bg=THEME["glass"], border=THEME["border_soft"])
         right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         tk.Label(left, text="Generated Reports", bg=THEME["glass"], fg=THEME["text"], font=FONTS["section"]).pack(anchor="w", padx=16, pady=(14, 6))
@@ -1155,11 +1508,24 @@ class ProjectControlGUI:
         settings_card = self._glass_frame(shell, bg=THEME["glass"], border=THEME["border"])
         settings_card.pack(fill=tk.X)
         tk.Label(settings_card, text="Settings", bg=THEME["glass"], fg=THEME["text"], font=FONTS["section"]).grid(row=0, column=0, columnspan=2, sticky="w", padx=16, pady=(16, 8))
-        self._settings_row(settings_card, 1, "Project mode", ttk.Combobox(settings_card, textvariable=self.settings_mode_var, values=("js_ts", "python", "mixed"), width=18, state="readonly"))
-        self._settings_row(settings_card, 2, "Graph profile", ttk.Combobox(settings_card, textvariable=self.settings_profile_var, values=("pragmatic", "strict"), width=18, state="readonly"))
+        self._settings_row(settings_card, 1, "Project mode", ttk.Combobox(settings_card, textvariable=self.settings_mode_var, values=("js_ts", "python", "mixed"), width=18, state="readonly", style="PC.TCombobox"))
         self._settings_row(
             settings_card,
-            3,
+            2,
+            "Visual template",
+            ttk.Combobox(
+                settings_card,
+                textvariable=self.settings_template_var,
+                values=tuple(THEME_PRESET_LABELS[preset_id] for preset_id in THEME_PRESET_ORDER),
+                width=18,
+                state="readonly",
+                style="PC.TCombobox",
+            ),
+        )
+        self._settings_row(settings_card, 3, "Graph profile", ttk.Combobox(settings_card, textvariable=self.settings_profile_var, values=("pragmatic", "strict"), width=18, state="readonly", style="PC.TCombobox"))
+        self._settings_row(
+            settings_card,
+            4,
             "Trace depth",
             tk.Spinbox(
                 settings_card,
@@ -1184,7 +1550,7 @@ class ProjectControlGUI:
             selectcolor=THEME["glass_high"],
             activebackground=THEME["glass"],
             activeforeground=THEME["text"],
-        ).grid(row=4, column=0, sticky="w", padx=14, pady=6)
+        ).grid(row=5, column=0, sticky="w", padx=14, pady=6)
         tk.Checkbutton(
             settings_card,
             text="UI verification headless",
@@ -1194,9 +1560,9 @@ class ProjectControlGUI:
             selectcolor=THEME["glass_high"],
             activebackground=THEME["glass"],
             activeforeground=THEME["text"],
-        ).grid(row=4, column=1, sticky="w", padx=14, pady=6)
+        ).grid(row=5, column=1, sticky="w", padx=14, pady=6)
         save_button = GlassButton(settings_card, text="Save Settings", command=self._save_settings, width=150)
-        save_button.grid(row=5, column=0, padx=14, pady=(10, 14), sticky="w")
+        save_button.grid(row=6, column=0, padx=14, pady=(10, 14), sticky="w")
         self.action_buttons.append(save_button)
 
         helper = self._glass_frame(shell, bg=THEME["glass_alt"], border=THEME["border_soft"])
@@ -1204,7 +1570,7 @@ class ProjectControlGUI:
         tk.Label(helper, text="State", bg=THEME["glass_alt"], fg=THEME["text"], font=FONTS["label"]).pack(anchor="w", padx=16, pady=(12, 4))
         tk.Label(
             helper,
-            text="Settings affect graph defaults, trace depth, and the remembered UI verification behavior for this project.",
+            text="Settings affect graph defaults, the visual template, trace depth, and the remembered UI verification behavior for this project.",
             bg=THEME["glass_alt"],
             fg=THEME["text_muted"],
             justify=tk.LEFT,
@@ -1235,14 +1601,17 @@ class ProjectControlGUI:
         return button
 
     def _save_settings(self) -> None:
+        preset_id = THEME_PRESET_IDS_BY_LABEL.get(self.settings_template_var.get(), self.current_theme_preset)
         self.controller.save_settings(
             project_mode=self.settings_mode_var.get(),
             graph_profile=self.settings_profile_var.get(),
+            ui_theme_preset=preset_id,
             trace_depth=int(self.settings_trace_depth_var.get()),
             trace_all_paths=bool(self.settings_all_paths_var.get()),
             ui_verification_headless=bool(self.settings_headless_var.get()),
         )
         self.trace_direction_var.set(self.controller.state.trace_direction)
+        self._apply_theme_preset(preset_id)
         self._set_footer_state("complete", "Settings saved", "Project settings were updated.")
         self._log("Settings updated.")
         self._refresh_overview()
@@ -1290,6 +1659,7 @@ class ProjectControlGUI:
         self._set_visual_state("complete", result.workflow, f"{result.title} complete.")
         self._pulse_summary(tab_key)
         self._pulse_header()
+        self._refresh_header_status()
         if result.workflow != "overview":
             self._refresh_overview()
             self._refresh_reports(select_tab=False)
@@ -1397,6 +1767,7 @@ class ProjectControlGUI:
         result = self.controller.get_overview()
         self._display_result("overview", result)
         self._refresh_quick_start()
+        self._refresh_header_status()
 
     def _seed_workflow_onboarding(self) -> None:
         self._display_result("ghost_dead", present_workflow_status(self.project_root, workflow="ghost", title="Ghost / Dead"))
@@ -1475,6 +1846,21 @@ class ProjectControlGUI:
         self.quick_start_title_var.set("Quick Start")
         self.quick_start_body_var.set("\n".join(lines))
 
+    def _refresh_header_status(self) -> None:
+        initialized, snapshot_ready, graph_ready = self._project_flags()
+        if self.header_system_var is not None:
+            if self.busy and self.active_workflow is not None:
+                label = self.active_workflow.replace("_", " ").title()
+                self.header_system_var.set(f"Running {label}")
+            else:
+                self.header_system_var.set("System Ready" if initialized else "Setup Needed")
+        if self.header_mode_var is not None:
+            self.header_mode_var.set(f"Mode: {self.controller.state.project_mode.upper()}")
+        if self.header_scope_var is not None:
+            snapshot_text = "Snapshot ready" if snapshot_ready else "Snapshot pending"
+            graph_text = "Graph ready" if graph_ready else "Graph pending"
+            self.header_scope_var.set(f"{snapshot_text} · {graph_text}")
+
     def _summary_badge_for(self, state: str, key: object) -> str:
         if state == "error":
             return "BLOCKED"
@@ -1543,6 +1929,7 @@ class ProjectControlGUI:
             button.set_disabled(self.busy)
             button.set_running(False)
         self._highlight_top_tabs(selected_tab)
+        self._refresh_header_status()
         self._set_footer_state(state, self._status_title_for(workflow, state), detail)
 
     def _status_title_for(self, workflow: str | None, state: str) -> str:
@@ -1559,6 +1946,9 @@ class ProjectControlGUI:
 
     def _set_footer_state(self, state: str, title: str, detail: str) -> None:
         tone = STATE_TONES[state]
+        self.current_footer_state = state
+        self.current_footer_title = title
+        self.current_footer_detail = detail
         self.status_var.set(title)
         self.status_detail_var.set(detail)
         if self.footer_frame is not None:

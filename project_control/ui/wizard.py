@@ -305,6 +305,7 @@ class Wizard:
             trace_depth=state.trace_depth,
             trace_all_paths=state.trace_all_paths,
             ui_verification_headless=state.ui_verification_headless,
+            ui_theme_preset=state.ui_theme_preset,
             favorites=state.favorites,
             history=state.history,
             onboarding_seen=True,  # Mark onboarding as complete
