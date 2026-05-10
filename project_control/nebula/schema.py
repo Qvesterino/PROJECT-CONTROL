@@ -14,6 +14,8 @@ SUPPORTED_FINDING_KINDS = (
     "unused_system",
     "suspicious_pattern",
     "artifact_hygiene",
+    "vfx_contract",
+    "ui_audit",
 )
 SUPPORTED_SEVERITIES = (
     "high",

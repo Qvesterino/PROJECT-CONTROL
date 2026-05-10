@@ -13,6 +13,25 @@ from project_control.cli.router import dispatch
 from project_control import __version__
 
 
+def _add_ui_verify_subcommand(parser: argparse.ArgumentParser, dest: str) -> None:
+    """Attach UI verify subcommand (browser-based UI verification)."""
+    subparsers = parser.add_subparsers(dest=dest)
+
+    verify_parser = subparsers.add_parser("verify", help="Run configurable browser-based UI verification")
+    verify_parser.add_argument("--project-root", nargs="?", default=".", help="Project root path")
+    verify_parser.add_argument("--config", help="Path to the UI verification YAML profile")
+    verify_parser.add_argument("--profile", help="Discovered UI verification profile name")
+    verify_parser.add_argument("--list-profiles", action="store_true", help="List discovered UI verification profiles")
+    verify_parser.add_argument("--url", help="Override the profile base URL")
+    verify_parser.add_argument("--image", help="Override the configured test image path")
+    verify_parser.add_argument("--screenshots", help="Directory for screenshots")
+    verify_parser.add_argument("--output", help="Output directory for reports")
+    verify_parser.add_argument("--html", action="store_true", help="Generate HTML dashboard output")
+    verify_parser.add_argument("--json", action="store_true", help="Print structured JSON to stdout")
+    verify_parser.add_argument("--headless", action="store_true", default=True, help="Run browser headless")
+    verify_parser.add_argument("--no-headless", action="store_false", dest="headless", help="Show browser window")
+
+
 def _add_tui_subcommands(parser: argparse.ArgumentParser, dest: str) -> None:
     """Attach shared TUI subcommands to a parser."""
     subparsers = parser.add_subparsers(dest=dest)
@@ -166,6 +185,9 @@ def build_parser() -> argparse.ArgumentParser:
     tui_parser = subparsers.add_parser("tui", help="TUI and UI verification tools")
     _add_tui_subcommands(tui_parser, "tui_cmd")
 
+    ui_parser = subparsers.add_parser("ui", help="UI verification tools")
+    _add_ui_verify_subcommand(ui_parser, "ui_cmd")
+
     gui_parser = subparsers.add_parser("gui", help="Launch the desktop Tkinter GUI")
     gui_parser.add_argument("project_root", nargs="?", default=".", help="Project root path")
 
@@ -230,26 +252,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _removed_ui_message(raw_args: list[str]) -> str | None:
-    """Return a migration message when a removed `pc ui*` command is used."""
-    if not raw_args or raw_args[0] != "ui":
-        return None
-
-    replacement = "pc tui"
-    if len(raw_args) >= 2 and raw_args[1] == "verify":
-        replacement = "pc tui verify"
-    elif len(raw_args) >= 2 and raw_args[1] == "menu":
-        replacement = "pc tui menu"
-
-    return f"pc ui was removed in this release. Use '{replacement}' instead."
-
-
 def main() -> None:
-    migration_message = _removed_ui_message(sys.argv[1:])
-    if migration_message is not None:
-        print(migration_message, file=sys.stderr)
-        raise SystemExit(2)
-
     parser = build_parser()
     args = parser.parse_args()
     if not args.command:

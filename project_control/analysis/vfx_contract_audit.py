@@ -549,7 +549,7 @@ def _build_report(
     owner = owner_xref.get_owner(class_name, filename)
     trigger_check = next((check for check in checks if check.name == "TRIGGER"), None)
     trigger = trigger_check.detail if trigger_check else "UNKNOWN"
-    console_count = sum(1 for check in checks if check.name == "DEBUG" and not check.passed)
+    console_count = len(re.findall(r"console\.(?:log|warn|error|info)", content))
     has_debug_guard = any(check.name == "DEBUG" and check.passed for check in checks)
 
     return FXFileReport(

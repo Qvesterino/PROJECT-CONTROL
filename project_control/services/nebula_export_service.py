@@ -97,7 +97,10 @@ def _make_finding(
 
 
 def _ghost_findings(snapshot: dict[str, Any], patterns: dict[str, Any], content_store: ContentStore) -> list[NebulaBridgeFinding]:
-    result = ghost(snapshot, patterns, content_store)
+    try:
+        result = ghost(snapshot, patterns, content_store)
+    except Exception:
+        return []
     findings: list[NebulaBridgeFinding] = []
 
     for path in sorted(result.get("orphans", [])):
@@ -257,7 +260,10 @@ def _ghost_findings(snapshot: dict[str, Any], patterns: dict[str, Any], content_
 
 def _dead_findings(snapshot: dict[str, Any], threshold: int = 2) -> list[NebulaBridgeFinding]:
     files = [entry.get("path") for entry in snapshot.get("files", []) if entry.get("path")]
-    result = analyze_dead_code(files, low_usage_threshold=threshold)
+    try:
+        result = analyze_dead_code(files, low_usage_threshold=threshold)
+    except Exception:
+        return []
     findings: list[NebulaBridgeFinding] = []
 
     for path in result.get("high", []):
@@ -296,7 +302,10 @@ def _dead_findings(snapshot: dict[str, Any], threshold: int = 2) -> list[NebulaB
 
 
 def _unused_system_findings(project_root: Path) -> list[NebulaBridgeFinding]:
-    result = analyze_unused_systems(project_root)
+    try:
+        result = analyze_unused_systems(project_root)
+    except Exception:
+        return []
     findings: list[NebulaBridgeFinding] = []
 
     for severity in ("high", "medium", "low"):
@@ -334,7 +343,10 @@ def _unused_system_findings(project_root: Path) -> list[NebulaBridgeFinding]:
 
 
 def _pattern_findings(project_root: Path) -> list[NebulaBridgeFinding]:
-    result = analyze_patterns(project_root)
+    try:
+        result = analyze_patterns(project_root)
+    except Exception:
+        return []
     findings: list[NebulaBridgeFinding] = []
 
     for pattern_name, pattern_data in sorted(result.get("patterns", {}).items()):
@@ -382,8 +394,69 @@ def _artifact_severity(candidate: dict[str, Any]) -> str:
     return "info"
 
 
+def _vfx_contract_severity(verdict: str) -> str:
+    if verdict == "KILL":
+        return "high"
+    if verdict == "ISOLATE":
+        return "medium"
+    if verdict == "FIX":
+        return "low"
+    return "info"
+
+
+def _vfx_contract_findings(project_root: Path) -> list[NebulaBridgeFinding]:
+    from project_control.analysis.vfx_contract_audit import analyze_vfx_contract
+
+    try:
+        result = analyze_vfx_contract(project_root)
+    except Exception:
+        return []
+
+    findings: list[NebulaBridgeFinding] = []
+    for report in result.reports:
+        normalized_path = normalize_relative_path(report.filepath)
+        verdict = report.verdict
+        severity = _vfx_contract_severity(verdict)
+        details_parts = [
+            f"Category: {report.category}",
+            f"Risk score: {report.risk_score}/10 ({report.risk_level})",
+            f"Verdict: {verdict}",
+        ]
+        if report.owner and report.owner != "UNKNOWN":
+            details_parts.append(f"Owner: {report.owner}")
+        failed_checks = [check for check in report.checks if not check.passed]
+        if failed_checks:
+            details_parts.append(f"Failed checks: {', '.join(check.name for check in failed_checks)}")
+
+        findings.append(
+            _make_finding(
+                finding_id=f"vfx_contract:{normalized_path}:{verdict.lower()}",
+                path=normalized_path,
+                kind="vfx_contract",
+                severity=severity,
+                title=f"VFX contract audit: {verdict}",
+                details=". ".join(details_parts) + ".",
+                source="pc audit vfx",
+                evidence={
+                    "category": report.category,
+                    "verdict": verdict,
+                    "riskScore": report.risk_score,
+                    "riskLevel": report.risk_level,
+                    "failedChecks": [check.name for check in failed_checks],
+                    "passedChecks": [check.name for check in report.checks if check.passed],
+                },
+                tags=["vfx-contract", verdict.lower()],
+            )
+        )
+
+    return findings
+
+
 def _artifact_findings(project_root: Path) -> list[NebulaBridgeFinding]:
-    artifact_data = run_artifact_hygiene(Namespace(older_than=None, min_score=None), project_root)
+    try:
+        artifact_data = run_artifact_hygiene(Namespace(older_than=None, min_score=None), project_root)
+    except Exception:
+        return []
     result = artifact_data["result"]
     findings: list[NebulaBridgeFinding] = []
 
@@ -438,6 +511,7 @@ def build_nebula_bridge(project_root: Path) -> dict[str, Any]:
         findings.extend(_unused_system_findings(project_root))
         findings.extend(_pattern_findings(project_root))
         findings.extend(_artifact_findings(project_root))
+        findings.extend(_vfx_contract_findings(project_root))
 
     sorted_findings = sort_findings(findings)
     bundle = NebulaBridgeBundle(

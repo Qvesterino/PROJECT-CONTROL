@@ -487,6 +487,8 @@ def cmd_nebula_export(args: argparse.Namespace) -> int:
             print(f"Unused systems: {by_kind.get('unused_system', 0)}")
             print(f"Suspicious patterns: {by_kind.get('suspicious_pattern', 0)}")
             print(f"Artifact hygiene: {by_kind.get('artifact_hygiene', 0)}")
+            print(f"VFX contract: {by_kind.get('vfx_contract', 0)}")
+            print(f"UI audit: {by_kind.get('ui_audit', 0)}")
         return EXIT_OK
     except SystemExit:
         raise
@@ -743,6 +745,13 @@ def dispatch(args: argparse.Namespace) -> int:
         if tui_cmd == "verify":
             return cmd_ui_verify(args)
         print("Unknown tui command.")
+        return EXIT_VALIDATION_ERROR
+    if args.command == "ui":
+        ui_cmd = getattr(args, "ui_cmd", None)
+        if ui_cmd == "verify":
+            return cmd_ui_verify(args)
+        print("Usage: pc ui verify [options]")
+        print("Try 'pc ui verify --help' for available options.")
         return EXIT_VALIDATION_ERROR
     if args.command == "gui":
         return _handle_gui_command(args)
