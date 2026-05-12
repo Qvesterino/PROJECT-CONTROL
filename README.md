@@ -88,7 +88,8 @@ python .\pc.py tui     # Python fallback
 Or use the new diagnostic commands:
 
 ```bash
-pc dead        # Find dead code
+pc ghost       # Find ghost candidates: orphans, legacy, sessions, duplicates, semantic drift
+pc dead        # Find dead code: zero or minimal usage files
 pc unused      # Find unused systems
 pc patterns    # Detect suspicious patterns
 pc search TODO # Smart search
@@ -99,6 +100,10 @@ pc audit patron # Smoke-test the Patron's Path integration contract
 pc ecosystem health # Validate Project Control, Nebula export, and downstream readiness
 ```
 
+`pc ghost` is broader than `pc dead`: ghost analysis scans for architectural drift and stale artifacts, while dead code radar focuses on truly unused files.
+
+Optional downstream integration (Patron's Path / Codebase Nebula) is configured in `.project-control/patron_path.yaml`. This is not required for the core engine to work, but it is required if you want `pc audit patron` or the Nebula bridge workflow to validate the downstream contract.
+
 The Patron's Path audit keeps the downstream contract explicit for Codebase Nebula and File Genome consumers, while `pc ecosystem health` runs a single readiness pass over Project Control plus the Nebula bridge export.
 
 That's it. You now understand your codebase.
@@ -107,13 +112,15 @@ That's it. You now understand your codebase.
 
 ## What is Ghost Analysis?
 
-Ghost analysis finds parts of your codebase that no longer matter:
+Ghost analysis finds parts of your codebase that no longer matter. It is broader than a classic dead-code scan.
 
 - **Orphans** — files that are never referenced by anything
 - **Legacy** — outdated code matching known legacy patterns
 - **Sessions** — temporary or session artifacts left behind
 - **Duplicates** — files with identical names in different paths
 - **Semantic** — files that don't belong (embedding-powered, optional)
+
+`pc ghost` is intended to highlight architectural drift and suspicious artifacts. For a narrower scan of strictly unused files, use `pc dead`.
 
 It is fast, heuristic, and designed to highlight architectural drift before it becomes technical debt.
 
