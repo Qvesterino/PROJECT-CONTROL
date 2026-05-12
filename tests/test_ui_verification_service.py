@@ -58,7 +58,7 @@ class TestUIVerificationService(TestCase):
     def test_summarize_verification_builds_section_and_category_stats(self) -> None:
         config = UIVerificationConfig(app_name="Demo", profile_name="demo", html_path=Path("index.html"))
         elements = [
-            UIElement(id="a", tag="button", type=None, selector="#a", category="button", section="toolbar", test_result="pass"),
+            UIElement(id="a", tag="button", type=None, selector="#a", category="button", section="toolbar", source_path="src/ui/toolbar.ts", test_result="pass"),
             UIElement(id="b", tag="button", type=None, selector="#b", category="button", section="toolbar", test_result="fail"),
             UIElement(id="c", tag="input", type="range", selector="#c", category="slider", section="preview", test_result="hidden-by-context"),
             UIElement(id="d", tag="input", type="file", selector="#d", category="file", section="imports", test_result="not-applicable"),
@@ -79,6 +79,7 @@ class TestUIVerificationService(TestCase):
         self.assertEqual(report.summary["by_section"]["toolbar"]["pass"], 1)
         self.assertEqual(report.summary["by_section"]["toolbar"]["fail"], 1)
         self.assertEqual(report.summary["by_category"]["button"]["total"], 2)
+        self.assertEqual(report.elements[0]["sourcePath"], "src/ui/toolbar.ts")
 
     def test_run_ui_verification_profile_requires_project_profile(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

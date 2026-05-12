@@ -35,8 +35,8 @@ class TestUIVerificationRenderer(TestCase):
             not_applicable=0,
             warned=0,
             elements=[
-                {"id": "okButton", "section": "toolbar", "tag": "button", "type": None, "category": "button", "present": True, "visible": True, "interacted": True, "test_result": "pass", "notes": ["Clicked successfully"], "error": None},
-                {"id": "badButton", "section": "toolbar", "tag": "button", "type": None, "category": "button", "present": True, "visible": True, "interacted": False, "test_result": "fail", "notes": [], "error": "Click failed"},
+                {"id": "okButton", "section": "toolbar", "tag": "button", "type": None, "category": "button", "present": True, "visible": True, "interacted": True, "test_result": "pass", "notes": ["Clicked successfully"], "error": None, "sourcePath": "src/ui/toolbar.ts"},
+                {"id": "badButton", "section": "toolbar", "tag": "button", "type": None, "category": "button", "present": True, "visible": True, "interacted": False, "test_result": "fail", "notes": [], "error": "Click failed", "sourcePath": "src/ui/toolbar.ts"},
             ],
             summary={
                 "pass_rate": 50.0,
@@ -84,6 +84,7 @@ class TestUIVerificationRenderer(TestCase):
             self.assertEqual(html_path.name, "ui_verification_report.html")
             payload = json.loads(json_path.read_text(encoding="utf-8"))
             self.assertEqual(payload["app_name"], "Demo UI")
+            self.assertEqual(payload["elements"][0]["sourcePath"], "src/ui/toolbar.ts")
 
     def test_standard_writer_creates_markdown_json_and_optional_html(self) -> None:
         report = self._build_report()

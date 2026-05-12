@@ -487,6 +487,7 @@ def cmd_nebula_export(args: argparse.Namespace) -> int:
             print(f"Unused systems: {by_kind.get('unused_system', 0)}")
             print(f"Suspicious patterns: {by_kind.get('suspicious_pattern', 0)}")
             print(f"Artifact hygiene: {by_kind.get('artifact_hygiene', 0)}")
+            print(f"Audit retention: {by_kind.get('audit_retention', 0)}")
             print(f"VFX contract: {by_kind.get('vfx_contract', 0)}")
             print(f"UI audit: {by_kind.get('ui_audit', 0)}")
         return EXIT_OK

@@ -45,12 +45,17 @@ class UIElement:
     criticality: str = "coverage"
     mode_context: str = "imported"
     proof_type: str = "presence-only"
+    source_path: Optional[str] = None
     test_result: str = "pending"
     error: Optional[str] = None
     notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        data = asdict(self)
+        source_path = data.pop("source_path", None)
+        if source_path:
+            data["sourcePath"] = source_path
+        return data
 
 
 @dataclass
@@ -497,6 +502,9 @@ class UIVerificationRunner:
         if manifest_entry:
             element.criticality = manifest_entry.get("criticality", element.criticality)
             element.proof_type = manifest_entry.get("proofType", element.proof_type)
+            source_path = manifest_entry.get("sourcePath") or manifest_entry.get("source_path")
+            if isinstance(source_path, str) and source_path.strip():
+                element.source_path = source_path.strip()
 
         count = locator.count()
         if count == 0:

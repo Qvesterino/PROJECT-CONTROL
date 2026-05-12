@@ -25,7 +25,9 @@ def _write_fixture_project(root: Path) -> None:
     (root / "src").mkdir(parents=True, exist_ok=True)
     (root / "src" / "dup").mkdir(parents=True, exist_ok=True)
     (root / "src" / "other").mkdir(parents=True, exist_ok=True)
+    (root / "src" / "ui").mkdir(parents=True, exist_ok=True)
     (root / "test-results").mkdir(parents=True, exist_ok=True)
+    (root / ".project-control" / "exports").mkdir(parents=True, exist_ok=True)
 
     (root / "main.js").write_text(
         "import { UsedManager } from './src/UsedManager.js';\n"
@@ -77,7 +79,60 @@ def _write_fixture_project(root: Path) -> None:
         encoding="utf-8",
     )
 
+    (root / "src" / "ui" / "toolbar.ts").write_text(
+        "export const toolbar = true;\n",
+        encoding="utf-8",
+    )
+
     (root / "test-results" / "screenshot-failed.png").write_bytes(b"not-a-real-png")
+    (root / ".project-control" / "exports" / "ghost_old.md").write_text("# old ghost report\n", encoding="utf-8")
+    (root / ".project-control" / "exports" / "ui_verification_data.json").write_text(
+        json.dumps(
+            {
+                "timestamp": "2026-05-10T12:00:00Z",
+                "app_name": "Demo UI",
+                "profile_name": "demo",
+                "url": "http://127.0.0.1:9000",
+                "browser": "chromium",
+                "html_path": str((root / "index.html").resolve()),
+                "manifest_path": str((root / "src" / "shared" / "release-verification-manifest.json").resolve()),
+                "total": 2,
+                "passed": 0,
+                "failed": 1,
+                "hidden_by_context": 0,
+                "not_applicable": 0,
+                "warned": 1,
+                "elements": [
+                    {
+                        "id": "toolbarButton",
+                        "selector": "#toolbarButton",
+                        "section": "toolbar",
+                        "category": "button",
+                        "criticality": "critical",
+                        "proofType": "interaction",
+                        "sourcePath": "src/ui/toolbar.ts",
+                        "test_result": "fail",
+                        "error": "Click failed",
+                        "notes": ["Toolbar button did not react"],
+                    },
+                    {
+                        "id": "previewPanel",
+                        "selector": "#previewPanel",
+                        "section": "preview",
+                        "category": "panel",
+                        "test_result": "warn",
+                        "notes": ["Missing source path should keep this out of Nebula"],
+                    },
+                ],
+                "summary": {
+                    "pass_rate": 0.0,
+                    "by_section": {},
+                },
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
 
 def _prepare_project(root: Path) -> None:
@@ -99,6 +154,9 @@ def _prepare_project(root: Path) -> None:
         reloaded_patterns.get("ignore_dirs", []),
         get_scan_extensions(reloaded_patterns),
     )
+    for file_entry in snapshot["files"]:
+        if file_entry["path"].endswith("ghost_old.md"):
+            file_entry["modified"] = "2026-01-01T00:00:00+00:00"
     save_snapshot(snapshot, root)
 
 
@@ -123,7 +181,7 @@ class NebulaExportTests(unittest.TestCase):
 
         self.assertTrue(output_path.exists())
         self.assertEqual(output_path.name, "nebula_bridge.json")
-        self.assertEqual(payload["schemaVersion"], 1)
+        self.assertEqual(payload["schemaVersion"], 2)
         self.assertEqual(payload["metadata"]["exportedBy"], "pc nebula export")
         self.assertEqual(payload["metadata"]["pathStyle"], "relative-posix")
         self.assertEqual(payload["traces"], [])
@@ -131,7 +189,7 @@ class NebulaExportTests(unittest.TestCase):
 
         self.assertEqual(
             set(payload["summary"]["byKind"].keys()),
-            {"ghost", "dead", "unused_system", "suspicious_pattern", "artifact_hygiene"},
+            {"ghost", "dead", "unused_system", "suspicious_pattern", "artifact_hygiene", "audit_retention", "vfx_contract", "ui_audit"},
         )
         self.assertEqual(
             set(payload["summary"]["bySeverity"].keys()),
@@ -148,6 +206,19 @@ class NebulaExportTests(unittest.TestCase):
         self.assertIn("unused_system", kinds)
         self.assertIn("suspicious_pattern", kinds)
         self.assertIn("artifact_hygiene", kinds)
+        self.assertIn("audit_retention", kinds)
+        self.assertIn("ui_audit", kinds)
+
+        ui_findings = [finding for finding in findings if finding["kind"] == "ui_audit"]
+        self.assertEqual(len(ui_findings), 1)
+        self.assertEqual(ui_findings[0]["path"], "src/ui/toolbar.ts")
+        self.assertEqual(ui_findings[0]["severity"], "high")
+        self.assertEqual(ui_findings[0]["evidence"]["sourcePath"], "src/ui/toolbar.ts")
+        self.assertNotIn("previewPanel", {finding["title"] for finding in ui_findings})
+
+        retention_findings = [finding for finding in findings if finding["kind"] == "audit_retention"]
+        self.assertGreaterEqual(len(retention_findings), 1)
+        self.assertTrue(any(finding["path"].endswith("ghost_old.md") for finding in retention_findings))
 
         for finding in findings:
             self.assertNotIn("\\", finding["path"])

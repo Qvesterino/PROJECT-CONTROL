@@ -1,4 +1,4 @@
-"""Locked schema v1 for the Codebase Nebula bridge artifact."""
+"""Locked schema v2 for the Codebase Nebula bridge artifact."""
 
 from __future__ import annotations
 
@@ -7,13 +7,14 @@ from pathlib import Path
 from typing import Any
 
 
-NEBULA_BRIDGE_SCHEMA_VERSION = 1
+NEBULA_BRIDGE_SCHEMA_VERSION = 2
 SUPPORTED_FINDING_KINDS = (
     "ghost",
     "dead",
     "unused_system",
     "suspicious_pattern",
     "artifact_hygiene",
+    "audit_retention",
     "vfx_contract",
     "ui_audit",
 )

@@ -16,6 +16,7 @@ from project_control.analysis.dead_analyzer import analyze_dead_code
 from project_control.analysis.patterns_analyzer import analyze_patterns
 from project_control.analysis.unused_analyzer import analyze_unused_systems
 from project_control.config.patterns_loader import load_patterns
+from project_control.core.audit_retention_service import run_audit_retention
 from project_control.core.artifact_service import run_artifact_hygiene
 from project_control.core.content_store import ContentStore
 from project_control.core.ghost import ghost
@@ -33,6 +34,8 @@ from project_control.nebula.schema import (
     normalize_relative_path,
     sort_findings,
 )
+
+UI_VERIFICATION_REPORT_PATH = Path(".project-control/exports/ui_verification_data.json")
 
 
 @contextmanager
@@ -394,6 +397,16 @@ def _artifact_severity(candidate: dict[str, Any]) -> str:
     return "info"
 
 
+def _audit_retention_severity(candidate: dict[str, Any]) -> str:
+    if candidate.get("safe_to_delete"):
+        return "medium"
+    if candidate.get("cleanup_confidence") == "high":
+        return "medium"
+    if candidate.get("cleanup_confidence") == "review":
+        return "low"
+    return "info"
+
+
 def _vfx_contract_severity(verdict: str) -> str:
     if verdict == "KILL":
         return "high"
@@ -495,6 +508,155 @@ def _artifact_findings(project_root: Path) -> list[NebulaBridgeFinding]:
     return findings
 
 
+def _audit_retention_findings(project_root: Path) -> list[NebulaBridgeFinding]:
+    try:
+        retention_data = run_audit_retention(
+            Namespace(
+                older_than=None,
+                min_score=None,
+                keep_latest=None,
+                by_family=False,
+                json=False,
+                delete_list=False,
+            ),
+            project_root,
+        )
+    except Exception:
+        return []
+
+    result = retention_data["result"]
+    findings: list[NebulaBridgeFinding] = []
+    candidates = [candidate for candidate in result.get("candidates", []) if candidate.get("is_report_candidate")]
+    candidates.sort(key=lambda candidate: str(candidate.get("path", "")))
+
+    for candidate in candidates:
+        path = candidate.get("path")
+        if not path:
+            continue
+        normalized_path = normalize_relative_path(path)
+        cleanup_confidence = str(candidate.get("cleanup_confidence") or "ignore")
+        report_family = str(candidate.get("report_family") or "unknown")
+        why = [str(item) for item in candidate.get("why", [])]
+        details = why[0] if why else "Potential stale generated report detected by audit retention analysis."
+        tags = ["audit-retention", cleanup_confidence]
+        if report_family and report_family != "unknown":
+            tags.append(report_family)
+        findings.append(
+            _make_finding(
+                finding_id=f"audit_retention:{normalized_path}:{cleanup_confidence}",
+                path=normalized_path,
+                kind="audit_retention",
+                severity=_audit_retention_severity(candidate),
+                title="Audit retention candidate",
+                details=details,
+                source="pc audits retention",
+                evidence={
+                    "score": int(candidate.get("score", 0)),
+                    "cleanupConfidence": cleanup_confidence,
+                    "safeToDelete": bool(candidate.get("safe_to_delete")),
+                    "reportFamily": report_family,
+                    "ageDays": candidate.get("age_days"),
+                    "why": why,
+                    "estimatedSpaceSavedBytes": int(candidate.get("estimated_space_saved_bytes", 0)),
+                },
+                tags=tags,
+            )
+        )
+
+    return findings
+
+
+def _ui_audit_severity(element: dict[str, Any]) -> str:
+    result = str(element.get("test_result") or "")
+    criticality = str(element.get("criticality") or "coverage").lower()
+    if result == "fail":
+        return "high" if criticality in {"blocking", "critical", "core"} else "medium"
+    if result == "warn":
+        return "low"
+    return "info"
+
+
+def _ui_audit_findings(project_root: Path) -> list[NebulaBridgeFinding]:
+    report_path = project_root / UI_VERIFICATION_REPORT_PATH
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+    if not isinstance(payload, dict):
+        return []
+
+    elements = payload.get("elements", [])
+    if not isinstance(elements, list):
+        return []
+
+    profile_name = str(payload.get("profile_name") or payload.get("profileName") or "default")
+    findings: list[NebulaBridgeFinding] = []
+
+    for index, raw_element in enumerate(elements):
+        if not isinstance(raw_element, dict):
+            continue
+        test_result = str(raw_element.get("test_result") or "")
+        if test_result not in {"fail", "warn"}:
+            continue
+
+        source_path = raw_element.get("sourcePath") or raw_element.get("source_path")
+        if not isinstance(source_path, str) or not source_path.strip():
+            continue
+
+        try:
+            normalized_path = normalize_relative_path(source_path.strip())
+        except ValueError:
+            continue
+
+        element_id = str(raw_element.get("id") or f"element-{index}")
+        section = str(raw_element.get("section") or "unknown")
+        category = str(raw_element.get("category") or "unknown")
+        selector = str(raw_element.get("selector") or "")
+        criticality = str(raw_element.get("criticality") or "coverage")
+        proof_type = str(raw_element.get("proofType") or raw_element.get("proof_type") or "presence-only")
+        notes = [str(item) for item in raw_element.get("notes", []) if isinstance(item, str) and item.strip()]
+        error = str(raw_element.get("error") or "").strip()
+
+        details_parts = [
+            f"Profile: {profile_name}",
+            f"Section: {section}",
+            f"Category: {category}",
+            f"Result: {test_result}",
+        ]
+        if error:
+            details_parts.append(f"Error: {error}")
+        if notes:
+            details_parts.append(f"Notes: {'; '.join(notes)}")
+
+        findings.append(
+            _make_finding(
+                finding_id=f"ui_audit:{normalized_path}:{element_id}:{test_result}",
+                path=normalized_path,
+                kind="ui_audit",
+                severity=_ui_audit_severity(raw_element),
+                title=f"UI audit: {element_id}",
+                details=". ".join(details_parts) + ".",
+                source="pc ui verify",
+                evidence={
+                    "elementId": element_id,
+                    "selector": selector or None,
+                    "section": section,
+                    "category": category,
+                    "criticality": criticality,
+                    "proofType": proof_type,
+                    "profileName": profile_name,
+                    "sourcePath": normalized_path,
+                    "error": error or None,
+                    "notes": notes,
+                },
+                tags=["ui-audit", test_result, section, category],
+            )
+        )
+
+    return findings
+
+
 def build_nebula_bridge(project_root: Path) -> dict[str, Any]:
     ensure_project_initialized(project_root)
     require_healthy_snapshot(project_root, operation="nebula export")
@@ -511,7 +673,9 @@ def build_nebula_bridge(project_root: Path) -> dict[str, Any]:
         findings.extend(_unused_system_findings(project_root))
         findings.extend(_pattern_findings(project_root))
         findings.extend(_artifact_findings(project_root))
+        findings.extend(_audit_retention_findings(project_root))
         findings.extend(_vfx_contract_findings(project_root))
+        findings.extend(_ui_audit_findings(project_root))
 
     sorted_findings = sort_findings(findings)
     bundle = NebulaBridgeBundle(

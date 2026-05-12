@@ -11,6 +11,18 @@ from typing import Optional
 from project_control.services.ui_verification_service import VerificationReport
 
 
+def _serialize_verification_report(report: VerificationReport) -> dict:
+    payload = asdict(report)
+    payload["elements"] = [
+        {
+            **{key: value for key, value in element.items() if key != "source_path"},
+            **({"sourcePath": element["source_path"]} if element.get("source_path") else {}),
+        }
+        for element in payload.get("elements", [])
+    ]
+    return payload
+
+
 def render_ui_verification_console_summary(report: VerificationReport) -> str:
     """Render a concise console summary for a verification report."""
 
@@ -45,7 +57,7 @@ def write_ui_verification_json_report(report: VerificationReport, out_dir: Path)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "ui_verification_data.json"
-    path.write_text(json.dumps(asdict(report), indent=2, ensure_ascii=False), encoding="utf-8")
+    path.write_text(json.dumps(_serialize_verification_report(report), indent=2, ensure_ascii=False), encoding="utf-8")
     return path
 
 

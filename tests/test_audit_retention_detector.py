@@ -91,6 +91,28 @@ class AuditRetentionDetectorTests(unittest.TestCase):
         self.assertIn("safe_directory", candidate["reasons"])
         self.assertFalse(candidate["safe_to_delete"])
 
+    def test_internal_generated_reports_are_discovered_even_when_missing_from_snapshot(self) -> None:
+        exports_dir = self.project_root / ".project-control" / "exports"
+        exports_dir.mkdir(parents=True, exist_ok=True)
+        fallback_report = exports_dir / "ghost_candidates.md"
+        fallback_report.write_text("# stale report\n", encoding="utf-8")
+
+        snapshot, store = _build_snapshot(
+            self.project_root,
+            [{"path": "src/index.ts", "bytes": b"export const ready = true;\n"}],
+        )
+        snapshot["generated_at"] = "2026-05-06T00:00:00+00:00"
+
+        with patch("project_control.analysis.audit_retention_detector._is_referenced", return_value=False):
+            with patch("project_control.analysis.audit_retention_detector._read_git_signals", return_value=(False, True)):
+                result = analyze(snapshot, self.patterns, store)
+
+        fallback_candidate = next(
+            item for item in result["candidates"] if item["path"] == ".project-control/exports/ghost_candidates.md"
+        )
+        self.assertEqual(fallback_candidate["report_family"], "ghost")
+        self.assertIn("internal_generated_directory", fallback_candidate["reasons"])
+
     def test_keep_latest_per_family_retains_newest_and_marks_older_safe(self) -> None:
         self.patterns["audit_retention"]["keep_latest_per_family"] = 1
         snapshot, store = _build_snapshot(

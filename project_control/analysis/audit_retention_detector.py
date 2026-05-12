@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -146,6 +148,49 @@ def _build_why(candidate: dict[str, Any]) -> list[str]:
     return why
 
 
+def _build_internal_generated_fallback_entries(
+    project_root: Path,
+    extensions: set[str],
+    known_paths: set[str],
+) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+
+    for raw_dir in INTERNAL_GENERATED_DIRS:
+        base_dir = project_root / raw_dir
+        if not base_dir.exists():
+            continue
+
+        for path in base_dir.rglob("*"):
+            if not path.is_file() or path.suffix.lower() not in extensions:
+                continue
+
+            try:
+                normalized_path = _normalize_path(path.relative_to(project_root).as_posix())
+            except ValueError:
+                continue
+
+            if normalized_path in known_paths:
+                continue
+
+            try:
+                data = path.read_bytes()
+                stat = path.stat()
+            except OSError:
+                continue
+
+            known_paths.add(normalized_path)
+            entries.append(
+                {
+                    "path": normalized_path,
+                    "size": stat.st_size,
+                    "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+                    "sha256": sha256(data).hexdigest(),
+                }
+            )
+
+    return entries
+
+
 def analyze(snapshot: dict[str, Any], patterns: dict[str, Any], content_store: "ContentStore") -> dict[str, Any]:
     """Analyze stale generated reports and return structured retention candidates."""
     config = patterns.get("audit_retention", {})
@@ -167,10 +212,17 @@ def analyze(snapshot: dict[str, Any], patterns: dict[str, Any], content_store: "
     project_root = content_store.snapshot_path.parent.parent
     reference_now = _effective_now(snapshot)
     git_supported = _git_supported(project_root)
+    snapshot_files = [entry for entry in snapshot.get("files", []) if isinstance(entry, dict)]
+    known_paths = {
+        _normalize_path(str(entry.get("path")))
+        for entry in snapshot_files
+        if entry.get("path")
+    }
+    snapshot_files.extend(_build_internal_generated_fallback_entries(project_root, extensions, known_paths))
 
     candidates: list[dict[str, Any]] = []
 
-    for file_entry in snapshot.get("files", []):
+    for file_entry in snapshot_files:
         raw_path = file_entry.get("path")
         if not raw_path:
             continue
